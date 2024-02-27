@@ -8,6 +8,7 @@ description = "A non-production-ready-and-will-never-be database written for my 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+sql-parse = { path = "./sql-parse", version = "0.1.0" }
 
 [workspace.dependencies]
 
