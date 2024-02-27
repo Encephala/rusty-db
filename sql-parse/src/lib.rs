@@ -16,20 +16,12 @@ pub enum Token {
 }
 
 pub trait Parser {
-    fn parse(self, input: &str) -> Option<(Token, &str)>;
+    fn parse(input: &str) -> Option<(&str, &str)>;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_parse_simple_select() {
-        let input = "SELECT * FROM my_table;";
-    }
-
-    #[test]
-    fn test_handle_multiple_whitespace() {
-        let input = "SELECT \t           ​‌‍* FROM my_table;";
     }
 }
