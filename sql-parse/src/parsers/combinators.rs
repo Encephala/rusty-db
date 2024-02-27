@@ -10,7 +10,7 @@ impl<P: Parser> Combinator<P> for MultipleCombinator {
         let mut count = 0;
         let mut remainder = input;
 
-        while let Some((_, _remainder)) = parser.parse(remainder) {
+        while let Some((_, _remainder)) = <P as Parser>::parse(remainder) {
             remainder = _remainder;
             count += 1;
         }
