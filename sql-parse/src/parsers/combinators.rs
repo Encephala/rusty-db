@@ -1,7 +1,5 @@
 use super::Parser;
 
-use super::primitives::WhitespaceParser;
-
 pub trait Combinator<P: Parser> {
     fn parse(input: &str, parser: P) -> Option<(&str, &str)>;
 }
@@ -28,7 +26,9 @@ impl<P: Parser> Combinator<P> for MultipleCombinator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::primitives::WhitespaceParser;
 
+    #[test]
     fn test_multiple_combinator() {
         assert_eq!(MultipleCombinator::parse(" ", WhitespaceParser), Some((" ", "")));
         assert_eq!(MultipleCombinator::parse(" a", WhitespaceParser), Some((" ", "a")));
