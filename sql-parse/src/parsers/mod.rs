@@ -1,4 +1,4 @@
 mod primitives;
 mod combinators;
 
-use super::Parser;
+use super::{Parser, Combinator};

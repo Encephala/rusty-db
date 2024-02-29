@@ -2,7 +2,7 @@ use super::Parser;
 
 pub struct WhitespaceParser;
 impl Parser for WhitespaceParser {
-    fn parse(input: & str) -> Option<(&str, &str)> {
+    fn parse<'a>(&'a self, input: &'a str) -> Option<(&str, &str)> {
         let is_whitespace = input.chars().next().map(|c| c.is_whitespace())?;
 
         if is_whitespace {
@@ -21,26 +21,30 @@ mod asdf {
 
     #[test]
     fn test_whitespace_parser() {
-        assert_eq!(WhitespaceParser::parse(" "), Some((" ", "")));
-        assert_eq!(WhitespaceParser::parse(" a"), Some((" ", "a")));
-        assert_eq!(WhitespaceParser::parse("a"), None);
+        let parser = WhitespaceParser;
+
+        assert_eq!(parser.parse(" "), Some((" ", "")));
+        assert_eq!(parser.parse(" a"), Some((" ", "a")));
+        assert_eq!(parser.parse("a"), None);
     }
 
     #[test]
     fn test_whitespace_parser_all_unicode_whitespace() {
-        assert_eq!(WhitespaceParser::parse(" \t           asdf"), Some((" ", "\t           asdf")));
-        assert_eq!(WhitespaceParser::parse("\t           asdf"), Some(("\t", "           asdf")));
-        assert_eq!(WhitespaceParser::parse("           asdf"), Some((" ", "          asdf")));
-        assert_eq!(WhitespaceParser::parse("          asdf"), Some((" ", "         asdf")));
-        assert_eq!(WhitespaceParser::parse("         asdf"), Some((" ", "        asdf")));
-        assert_eq!(WhitespaceParser::parse("        asdf"), Some((" ", "       asdf")));
-        assert_eq!(WhitespaceParser::parse("       asdf"), Some((" ", "      asdf")));
-        assert_eq!(WhitespaceParser::parse("      asdf"), Some((" ", "     asdf")));
-        assert_eq!(WhitespaceParser::parse("     asdf"), Some((" ", "    asdf")));
-        assert_eq!(WhitespaceParser::parse("    asdf"), Some((" ", "   asdf")));
-        assert_eq!(WhitespaceParser::parse("   asdf"), Some((" ", "  asdf")));
-        assert_eq!(WhitespaceParser::parse("  asdf"), Some((" ", " asdf")));
-        assert_eq!(WhitespaceParser::parse(" asdf"), Some((" ", "asdf")));
-        assert_eq!(WhitespaceParser::parse("asdf"), None);
+        let parser = WhitespaceParser;
+
+        assert_eq!(parser.parse(" \t           asdf"), Some((" ", "\t           asdf")));
+        assert_eq!(parser.parse("\t           asdf"), Some(("\t", "           asdf")));
+        assert_eq!(parser.parse("           asdf"), Some((" ", "          asdf")));
+        assert_eq!(parser.parse("          asdf"), Some((" ", "         asdf")));
+        assert_eq!(parser.parse("         asdf"), Some((" ", "        asdf")));
+        assert_eq!(parser.parse("        asdf"), Some((" ", "       asdf")));
+        assert_eq!(parser.parse("       asdf"), Some((" ", "      asdf")));
+        assert_eq!(parser.parse("      asdf"), Some((" ", "     asdf")));
+        assert_eq!(parser.parse("     asdf"), Some((" ", "    asdf")));
+        assert_eq!(parser.parse("    asdf"), Some((" ", "   asdf")));
+        assert_eq!(parser.parse("   asdf"), Some((" ", "  asdf")));
+        assert_eq!(parser.parse("  asdf"), Some((" ", " asdf")));
+        assert_eq!(parser.parse(" asdf"), Some((" ", "asdf")));
+        assert_eq!(parser.parse("asdf"), None);
     }
 }

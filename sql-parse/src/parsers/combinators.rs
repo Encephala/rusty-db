@@ -1,18 +1,21 @@
-use super::Parser;
+use super::{Parser, Combinator};
 
-pub trait Combinator<P: Parser> {
-    fn parse(input: &str, parser: P) -> Option<(&str, &str)>;
+struct MultipleCombinator {
+    parser: Box<dyn Parser + 'static>,
 }
 
-struct MultipleCombinator;
-impl<P: Parser> Combinator<P> for MultipleCombinator {
-    fn parse(input: &str, parser: P) -> Option<(&str, &str)> {
+impl Combinator for MultipleCombinator {
+    fn new(parser: impl Parser + 'static) -> Self {
+        MultipleCombinator { parser: Box::new(parser) }
+    }
+
+    fn parse<'a>(&'a self, input: &'a str) -> Option<(&str, &str)> {
         let mut count = 0;
         let mut remainder = input;
 
-        while let Some((_, _remainder)) = <P as Parser>::parse(remainder) {
+        while let Some((whitespace, _remainder)) = self.parser.parse(remainder) {
             remainder = _remainder;
-            count += 1;
+            count += whitespace.chars().map(|c| c.len_utf8()).sum::<usize>();
         }
 
         if count == 0 {
@@ -30,11 +33,14 @@ mod tests {
 
     #[test]
     fn test_multiple_combinator() {
-        assert_eq!(MultipleCombinator::parse(" ", WhitespaceParser), Some((" ", "")));
-        assert_eq!(MultipleCombinator::parse(" a", WhitespaceParser), Some((" ", "a")));
-        assert_eq!(MultipleCombinator::parse("a", WhitespaceParser), None);
-        assert_eq!(MultipleCombinator::parse("  ", WhitespaceParser), Some(("  ", "")));
-        assert_eq!(MultipleCombinator::parse(" a ", WhitespaceParser), Some((" ", "a ")));
-        assert_eq!(MultipleCombinator::parse("a ", WhitespaceParser), None);
+        let parser = MultipleCombinator::new(WhitespaceParser);
+
+        assert_eq!(parser.parse(" "), Some((" ", "")));
+        assert_eq!(parser.parse(" a"), Some((" ", "a")));
+        assert_eq!(parser.parse("a"), None);
+        assert_eq!(parser.parse("  "), Some(("  ", "")));
+        assert_eq!(parser.parse(" a "), Some((" ", "a ")));
+        assert_eq!(parser.parse("a "), None);
+        assert_eq!(parser.parse(" \t           asdf"), Some((" \t           ", "asdf")));
     }
 }
