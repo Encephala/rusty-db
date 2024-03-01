@@ -32,6 +32,12 @@ impl Parser for AllCombinator {
     }
 }
 
+impl AllCombinator {
+    pub fn all(self, parser: impl Parser + 'static) -> Self {
+        return AllCombinator { parser: Box::new(parser) };
+    }
+}
+
 
 pub struct SomeCombinator {
     parsers: Vec<Box<dyn Parser>>,
@@ -56,7 +62,6 @@ impl Parser for SomeCombinator {
 }
 
 impl SomeCombinator {
-    #[allow(dead_code)]
     pub fn or(mut self, parser: impl Parser + 'static) -> Self {
         self.parsers.push(Box::new(parser));
         return self;
@@ -86,7 +91,6 @@ impl Parser for ThenCombinator {
 }
 
 impl ThenCombinator {
-    #[allow(dead_code)]
     pub fn then(mut self, parser: impl Parser + 'static) -> Self {
         self.then = Some(Box::new(parser));
         return self;
@@ -97,7 +101,7 @@ impl ThenCombinator {
 mod tests {
     use super::*;
     use super::super::primitives::*;
-    use super::super::glue::*;
+    use super::super::chaining::*;
 
     #[test]
     fn test_all_combinator() {
@@ -145,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_combining_combinators() {
-        let parser = AllCombinator::new(WhitespaceParser).then(
+        let parser = WhitespaceParser.all().then(
             LetterParser.or(DigitParser)
                 .or(SpecialCharParser)
             );
