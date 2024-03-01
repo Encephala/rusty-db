@@ -1,9 +1,17 @@
+//! Combinators for combining parsers together.
+//! - [`AllCombinator`]: Parses one or more matches of the given parser.
+//! - [`AnyCombinator`]: Parses zero or more matches of the given parser.
+//! - [`OrCombinator`]: Parses the first match of any of the given parsers.
+//! - [`ThenCombinator`]: Parses the first parser, then the second parser.
+
 use super::primitives::Parser;
 
+/// Parses the input by combining one or more [`Parser`] objects.
 pub trait Combinator: Parser {
     fn new(parser: impl Parser + 'static) -> Self;
 }
 
+/// Parses one or more matches of the given parser.
 pub struct AllCombinator {
     parser: Box<dyn Parser>,
 }
@@ -39,6 +47,7 @@ impl AllCombinator {
 }
 
 
+/// Parses zero or more matches of the given parser.
 pub struct AnyCombinator {
     parser: Box<dyn Parser>
 }
@@ -70,6 +79,10 @@ impl AnyCombinator {
 }
 
 
+/// Parses the first match of any of the given parsers.
+
+// TODO: Is this a problem due to ambiguous grammars
+// in that the order of the parsers matters?
 pub struct OrCombinator {
     parsers: Vec<Box<dyn Parser>>,
 }
@@ -100,6 +113,7 @@ impl OrCombinator {
 }
 
 
+/// Parses the first parser, then the second parser.
 pub struct ThenCombinator {
     parser: Box<dyn Parser>,
     then: Option<Box<dyn Parser>>,
@@ -127,6 +141,7 @@ impl ThenCombinator {
         return self;
     }
 }
+
 
 #[cfg(test)]
 mod tests {

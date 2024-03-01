@@ -1,3 +1,13 @@
+//! Primitives for parsing individual characters.
+//! - [`WhitespaceParser`]: Parses a whitespace character.
+//! - [`LetterParser`]: Parses a roman letter character.
+//! - [`DigitParser`]: Parses a digit character.
+//! - [`SpecialCharParser`]: Parses one of the [`SPECIAL_CHARS`].
+
+/// Parses the input string by some rule.
+///
+/// If the input string conforms the rule, it returns the matched string and the remaining string.
+/// Otherwise, it returns [`None`].
 pub trait Parser {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
@@ -14,6 +24,7 @@ fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, Strin
     return None;
 }
 
+/// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
 pub struct WhitespaceParser;
 impl Parser for WhitespaceParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -22,6 +33,7 @@ impl Parser for WhitespaceParser {
 }
 
 
+/// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
 pub struct LetterParser;
 impl Parser for LetterParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -30,6 +42,7 @@ impl Parser for LetterParser {
 }
 
 
+/// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
 pub struct DigitParser;
 impl Parser for DigitParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -52,6 +65,7 @@ const SPECIAL_CHARS: [char; 11] = [
     '=',
 ];
 
+/// Parses a special character, as defined by the [`SPECIAL_CHARS`] constant.
 pub struct SpecialCharParser;
 impl Parser for SpecialCharParser {
     fn parse(&self, input: String) -> Option<(String, String)> {

@@ -1,9 +1,15 @@
-//! Provides a blanket implementation for the `ThenOr` trait,
-//! which allows for chaining parsers and combinators together using the `then` and `or` methods.
+//! Defines the [`CombinatorChain`] trait, which is implemented by all parsers.
+//!
+//! This enables for chaining parsers and combinators together through the builder pattern using
+//! - [`CombinatorChain::all`]: Create an [`AllCombinator`] from `self`.
+//! - [`CombinatorChain::any`]: Create an [`AnyCombinator`] from `self`.
+//! - [`CombinatorChain::or`]: Create an [`OrCombinator`] from `self` and the given parser.
+//! - [`CombinatorChain::then`]: Create a [`ThenCombinator`] from `self` and the given parser.
 
 use super::combinators::{Combinator, AllCombinator, AnyCombinator, ThenCombinator, OrCombinator};
 use super::primitives::Parser;
 
+/// Create combinator parsers through the builder pattern.
 pub trait CombinatorChain {
     fn all(self) -> AllCombinator
     where Self: Parser + Sized + 'static {
