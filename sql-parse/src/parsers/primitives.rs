@@ -1,22 +1,33 @@
 use super::Parser;
 
+fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, String)> {
+    let condition = input.chars().next().map(|c| predicate(c))?;
+
+    if condition {
+        let index_second_char = input.chars().next().map(|c| c.len_utf8())?;
+
+        return Some((input[..index_second_char].into(), input[index_second_char..].into()));
+    }
+
+    return None;
+}
+
 pub struct WhitespaceParser;
 impl Parser for WhitespaceParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        let is_whitespace = input.chars().next().map(|c| c.is_whitespace())?;
+        parse_if(input, |c| c.is_whitespace())
+    }
+}
 
-        if is_whitespace {
-            let index_second_char = input.chars().next().map(|c| c.len_utf8())?;
-
-            return Some((input[..index_second_char].into(), input[index_second_char..].into()));
-        }
-
-        return None;
+pub struct LetterParser;
+impl Parser for LetterParser {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        parse_if(input, |c| c.is_alphabetic())
     }
 }
 
 #[cfg(test)]
-mod asdf {
+mod tests {
     use super::*;
 
     #[test]
@@ -46,5 +57,15 @@ mod asdf {
         assert_eq!(parser.parse("  asdf".into()), Some((" ".into(), " asdf".into())));
         assert_eq!(parser.parse(" asdf".into()), Some((" ".into(), "asdf".into())));
         assert_eq!(parser.parse("asdf".into()), None);
+    }
+
+    #[test]
+    fn test_letter_parser() {
+        let parser = LetterParser;
+
+        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(parser.parse("A".into()), Some(("A".into(), "".into())));
+        assert_eq!(parser.parse("1".into()), None);
+        assert_eq!(parser.parse(" ".into()), None);
     }
 }
