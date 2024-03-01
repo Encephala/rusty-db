@@ -1,7 +1,7 @@
 use super::Parser;
 
 fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, String)> {
-    let condition = input.chars().next().map(|c| predicate(c))?;
+    let condition = input.chars().next().map(predicate)?;
 
     if condition {
         let index_second_char = input.chars().next().map(|c| c.len_utf8())?;
@@ -29,7 +29,7 @@ impl Parser for LetterParser {
 pub struct DigitParser;
 impl Parser for DigitParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_digit(10))
+        parse_if(input, |c| c.is_ascii_digit())
     }
 }
 
