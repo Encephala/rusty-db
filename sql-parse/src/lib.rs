@@ -24,10 +24,3 @@ pub trait Combinator {
 
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_parse_simple_select() {
-    }
-}
