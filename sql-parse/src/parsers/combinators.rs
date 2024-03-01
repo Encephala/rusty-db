@@ -9,9 +9,9 @@ impl Combinator for MultipleCombinator {
         MultipleCombinator { parser: Box::new(parser) }
     }
 
-    fn parse<'a>(&'a self, input: &'a str) -> Option<(&str, &str)> {
+    fn parse(&self, input: String) -> Option<(String, String)> {
         let mut count = 0;
-        let mut remainder = input;
+        let mut remainder = input.clone();
 
         while let Some((whitespace, _remainder)) = self.parser.parse(remainder) {
             remainder = _remainder;
@@ -22,7 +22,7 @@ impl Combinator for MultipleCombinator {
             return None;
         }
 
-        return Some((&input[..count], &input[count..]));
+        return Some((input[..count].into(), input[count..].into()));
     }
 }
 
@@ -35,12 +35,12 @@ mod tests {
     fn test_multiple_combinator() {
         let parser = MultipleCombinator::new(WhitespaceParser);
 
-        assert_eq!(parser.parse(" "), Some((" ", "")));
-        assert_eq!(parser.parse(" a"), Some((" ", "a")));
-        assert_eq!(parser.parse("a"), None);
-        assert_eq!(parser.parse("  "), Some(("  ", "")));
-        assert_eq!(parser.parse(" a "), Some((" ", "a ")));
-        assert_eq!(parser.parse("a "), None);
-        assert_eq!(parser.parse(" \t           asdf"), Some((" \t           ", "asdf")));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(parser.parse("a".into()), None);
+        assert_eq!(parser.parse("  ".into()), Some(("  ".into(), "".into())));
+        assert_eq!(parser.parse(" a ".into()), Some((" ".into(), "a ".into())));
+        assert_eq!(parser.parse("a ".into()), None);
+        assert_eq!(parser.parse(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
     }
 }

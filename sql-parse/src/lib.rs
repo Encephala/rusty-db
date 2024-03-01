@@ -16,13 +16,13 @@ pub enum Token {
 }
 
 pub trait Parser {
-    fn parse<'a>(&'a self, input: &'a str) -> Option<(&str, &str)>;
+    fn parse(&self, input: String) -> Option<(String, String)>;
 }
 
 pub trait Combinator {
     fn new(parser: impl Parser + 'static) -> Self;
 
-    fn parse<'a>(&'a self, input: &'a str) -> Option<(&str, &str)>;
+    fn parse(&self, input: String) -> Option<(String, String)>;
 }
 
 #[cfg(test)]
