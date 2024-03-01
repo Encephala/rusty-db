@@ -1,4 +1,6 @@
-use super::Parser;
+pub trait Parser {
+    fn parse(&self, input: String) -> Option<(String, String)>;
+}
 
 fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, String)> {
     let condition = input.chars().next().map(predicate)?;

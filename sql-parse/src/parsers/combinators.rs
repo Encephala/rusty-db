@@ -1,4 +1,8 @@
-use super::{Parser, Combinator};
+use super::primitives::Parser;
+
+pub trait Combinator {
+    fn new(parser: impl Parser + 'static) -> Self;
+}
 
 pub struct AllCombinator {
     parser: Box<dyn Parser>,
@@ -8,7 +12,9 @@ impl Combinator for AllCombinator {
     fn new(parser: impl Parser + 'static) -> Self {
         return AllCombinator { parser: Box::new(parser) };
     }
+}
 
+impl Parser for AllCombinator {
     fn parse(&self, input: String) -> Option<(String, String)> {
         let mut count = 0;
         let mut remainder = input.clone();
@@ -34,7 +40,9 @@ impl Combinator for SomeCombinator {
     fn new(parser: impl Parser + 'static) -> Self {
         return SomeCombinator { parsers: vec![Box::new(parser)] };
     }
+}
 
+impl Parser for SomeCombinator {
     fn parse(&self, input: String) -> Option<(String, String)> {
         for parser in &self.parsers {
             if let Some((matched, remainder)) = parser.parse(input.clone()) {
@@ -63,7 +71,9 @@ impl Combinator for ThenCombinator {
     fn new(parser: impl Parser + 'static) -> Self {
         return ThenCombinator { parser: Box::new(parser), then: None };
     }
+}
 
+impl Parser for ThenCombinator {
     fn parse(&self, input: String) -> Option<(String, String)> {
         return self.parser.parse(input).and_then(|(matched, remainder)| {
             self.then.as_ref()?
@@ -128,5 +138,17 @@ mod tests {
         assert_eq!(parser.parse("a1".into()), None);
         assert_eq!(parser.parse("11".into()), None);
         assert_eq!(parser.parse(" a".into()), None);
+    }
+
+    #[test]
+    fn test_combining_combinators() {
+        let parser = ThenCombinator::new(AllCombinator::new(WhitespaceParser))
+            .then(SomeCombinator::new(LetterParser).or(DigitParser));
+
+        assert_eq!(parser.parse(" ".into()), None);
+        assert_eq!(parser.parse("a1".into()), None);
+        assert_eq!(parser.parse("  ".into()), None);
+        assert_eq!(parser.parse(" 1a".into()), Some((" 1".into(), "a".into())));
+        assert_eq!(parser.parse(" a1".into()), Some((" a".into(), "1".into())));
     }
 }
