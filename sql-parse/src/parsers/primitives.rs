@@ -26,6 +26,34 @@ impl Parser for LetterParser {
     }
 }
 
+pub struct DigitParser;
+impl Parser for DigitParser {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        parse_if(input, |c| c.is_digit(10))
+    }
+}
+
+const SPECIAL_CHARS: [char; 11] = [
+    ' ',
+    '"',
+    '\'',
+    '(',
+    ')',
+    '*',
+    ',',
+    '.',
+    '<',
+    '>',
+    '=',
+];
+
+pub struct SpecialCharParser;
+impl Parser for SpecialCharParser {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        parse_if(input, |c| SPECIAL_CHARS.contains(&c))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
