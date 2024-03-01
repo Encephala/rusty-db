@@ -1,6 +1,6 @@
 use super::primitives::Parser;
 
-pub trait Combinator {
+pub trait Combinator: Parser {
     fn new(parser: impl Parser + 'static) -> Self;
 }
 
@@ -32,6 +32,7 @@ impl Parser for AllCombinator {
     }
 }
 
+
 pub struct SomeCombinator {
     parsers: Vec<Box<dyn Parser>>,
 }
@@ -56,11 +57,12 @@ impl Parser for SomeCombinator {
 
 impl SomeCombinator {
     #[allow(dead_code)]
-    fn or(mut self, parser: impl Parser + 'static) -> Self {
+    pub fn or(mut self, parser: impl Parser + 'static) -> Self {
         self.parsers.push(Box::new(parser));
         return self;
     }
 }
+
 
 pub struct ThenCombinator {
     parser: Box<dyn Parser>,
@@ -85,7 +87,7 @@ impl Parser for ThenCombinator {
 
 impl ThenCombinator {
     #[allow(dead_code)]
-    fn then(mut self, parser: impl Parser + 'static) -> Self {
+    pub fn then(mut self, parser: impl Parser + 'static) -> Self {
         self.then = Some(Box::new(parser));
         return self;
     }
@@ -95,6 +97,7 @@ impl ThenCombinator {
 mod tests {
     use super::*;
     use super::super::primitives::*;
+    use super::super::glue::*;
 
     #[test]
     fn test_all_combinator() {
@@ -142,13 +145,15 @@ mod tests {
 
     #[test]
     fn test_combining_combinators() {
-        let parser = ThenCombinator::new(AllCombinator::new(WhitespaceParser))
-            .then(SomeCombinator::new(LetterParser).or(DigitParser));
+        let parser = AllCombinator::new(WhitespaceParser).then(
+            LetterParser.or(DigitParser)
+                .or(SpecialCharParser)
+            );
 
         assert_eq!(parser.parse(" ".into()), None);
         assert_eq!(parser.parse("a1".into()), None);
         assert_eq!(parser.parse("  ".into()), None);
         assert_eq!(parser.parse(" 1a".into()), Some((" 1".into(), "a".into())));
-        assert_eq!(parser.parse(" a1".into()), Some((" a".into(), "1".into())));
+        assert_eq!(parser.parse(" <1".into()), Some((" <".into(), "1".into())));
     }
 }

@@ -21,6 +21,7 @@ impl Parser for WhitespaceParser {
     }
 }
 
+
 pub struct LetterParser;
 impl Parser for LetterParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -28,12 +29,14 @@ impl Parser for LetterParser {
     }
 }
 
+
 pub struct DigitParser;
 impl Parser for DigitParser {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| c.is_ascii_digit())
     }
 }
+
 
 const SPECIAL_CHARS: [char; 11] = [
     ' ',
@@ -55,6 +58,7 @@ impl Parser for SpecialCharParser {
         parse_if(input, |c| SPECIAL_CHARS.contains(&c))
     }
 }
+
 
 #[cfg(test)]
 mod tests {
