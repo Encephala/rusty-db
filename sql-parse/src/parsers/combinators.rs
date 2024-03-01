@@ -39,17 +39,48 @@ impl AllCombinator {
 }
 
 
-pub struct SomeCombinator {
-    parsers: Vec<Box<dyn Parser>>,
+pub struct AnyCombinator {
+    parser: Box<dyn Parser>
 }
 
-impl Combinator for SomeCombinator {
+impl Combinator for AnyCombinator {
     fn new(parser: impl Parser + 'static) -> Self {
-        return SomeCombinator { parsers: vec![Box::new(parser)] };
+        return AnyCombinator { parser: Box::new(parser) };
     }
 }
 
-impl Parser for SomeCombinator {
+impl Parser for AnyCombinator {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        let mut count = 0;
+        let mut remainder = input.clone();
+
+        while let Some((whitespace, _remainder)) = self.parser.parse(remainder) {
+            remainder = _remainder;
+            count += whitespace.chars().map(|c| c.len_utf8()).sum::<usize>();
+        }
+
+        return Some((input[..count].into(), input[count..].into()));
+    }
+}
+
+impl AnyCombinator {
+    pub fn any(self, parser: impl Parser + 'static) -> Self {
+        return AnyCombinator { parser: Box::new(parser) };
+    }
+}
+
+
+pub struct OrCombinator {
+    parsers: Vec<Box<dyn Parser>>,
+}
+
+impl Combinator for OrCombinator {
+    fn new(parser: impl Parser + 'static) -> Self {
+        return OrCombinator { parsers: vec![Box::new(parser)] };
+    }
+}
+
+impl Parser for OrCombinator {
     fn parse(&self, input: String) -> Option<(String, String)> {
         for parser in &self.parsers {
             if let Some((matched, remainder)) = parser.parse(input.clone()) {
@@ -61,7 +92,7 @@ impl Parser for SomeCombinator {
     }
 }
 
-impl SomeCombinator {
+impl OrCombinator {
     pub fn or(mut self, parser: impl Parser + 'static) -> Self {
         self.parsers.push(Box::new(parser));
         return self;
@@ -118,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_some_combinator() {
-        let parser = SomeCombinator::new(WhitespaceParser)
+        let parser = OrCombinator::new(WhitespaceParser)
             .or(LetterParser)
             .or(SpecialCharParser);
 
