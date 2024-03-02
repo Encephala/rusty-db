@@ -78,7 +78,7 @@ impl Parser for SpecialChar {
 
 /// Parses a given specific character.
 pub struct Literal {
-    literal: char,
+    pub literal: char,
 }
 
 impl Parser for Literal {
