@@ -12,7 +12,8 @@ pub trait Parser {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
 
-fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, String)> {
+fn parse_if<F>(input: String, predicate: F) -> Option<(String, String)>
+where F: Fn(char) -> bool {
     let condition = input.chars().next().map(predicate)?;
 
     if condition {
@@ -23,6 +24,7 @@ fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, Strin
 
     return None;
 }
+
 
 /// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
 pub struct Whitespace;
@@ -70,6 +72,18 @@ pub struct SpecialChar;
 impl Parser for SpecialChar {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| SPECIAL_CHARS.contains(&c))
+    }
+}
+
+
+/// Parses a given specific character.
+pub struct Literal {
+    literal: char,
+}
+
+impl Parser for Literal {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        parse_if(input, |c| c == self.literal)
     }
 }
 
@@ -122,5 +136,13 @@ mod tests {
         assert_eq!(parser.parse("a".into()), None);
         assert_eq!(parser.parse("1".into()), None);
         assert_eq!(parser.parse("(".into()), Some(("(".into(), "".into())));
+    }
+
+    #[test]
+    fn test_literal_parser() {
+        let parser = Literal { literal: 'a' };
+
+        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(parser.parse("b".into()), None);
     }
 }
