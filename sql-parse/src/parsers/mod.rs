@@ -3,8 +3,8 @@ pub mod combinators;
 pub mod chaining;
 
 use primitives::Parser;
-pub use primitives::{WhitespaceParser, DigitParser, LetterParser, SpecialCharParser};
-pub use combinators::{AllCombinator, AnyCombinator, OrCombinator, ThenCombinator};
-pub use chaining::CombinatorChain;
+pub use primitives::{Whitespace, Digit, Letter, SpecialChar};
+pub use combinators::{All, Any, Or, Then};
+pub use chaining::Chain;
 
-impl<T: Parser> CombinatorChain for T {}
+impl<T: Parser> Chain for T {}

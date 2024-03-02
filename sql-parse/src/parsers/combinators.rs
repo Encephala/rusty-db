@@ -1,8 +1,8 @@
 //! Combinators for combining parsers together.
-//! - [`AllCombinator`]: Parses one or more matches of the given parser.
-//! - [`AnyCombinator`]: Parses zero or more matches of the given parser.
-//! - [`OrCombinator`]: Parses the first match of any of the given parsers.
-//! - [`ThenCombinator`]: Parses the first parser, then the second parser.
+//! - [`All`]: Parses one or more matches of the given parser.
+//! - [`Any`]: Parses zero or more matches of the given parser.
+//! - [`Or`]: Parses the first match of any of the given parsers.
+//! - [`Then`]: Parses the first parser, then the second parser.
 
 use super::primitives::Parser;
 
@@ -12,17 +12,17 @@ pub trait Combinator: Parser {
 }
 
 /// Parses one or more matches of the given parser.
-pub struct AllCombinator {
+pub struct All {
     parser: Box<dyn Parser>,
 }
 
-impl Combinator for AllCombinator {
+impl Combinator for All {
     fn new(parser: impl Parser + 'static) -> Self {
-        return AllCombinator { parser: Box::new(parser) };
+        return All { parser: Box::new(parser) };
     }
 }
 
-impl Parser for AllCombinator {
+impl Parser for All {
     fn parse(&self, input: String) -> Option<(String, String)> {
         let mut count = 0;
         let mut remainder = input.clone();
@@ -40,25 +40,25 @@ impl Parser for AllCombinator {
     }
 }
 
-impl AllCombinator {
+impl All {
     pub fn all(self, parser: impl Parser + 'static) -> Self {
-        return AllCombinator { parser: Box::new(parser) };
+        return All { parser: Box::new(parser) };
     }
 }
 
 
 /// Parses zero or more matches of the given parser.
-pub struct AnyCombinator {
+pub struct Any {
     parser: Box<dyn Parser>
 }
 
-impl Combinator for AnyCombinator {
+impl Combinator for Any {
     fn new(parser: impl Parser + 'static) -> Self {
-        return AnyCombinator { parser: Box::new(parser) };
+        return Any { parser: Box::new(parser) };
     }
 }
 
-impl Parser for AnyCombinator {
+impl Parser for Any {
     fn parse(&self, input: String) -> Option<(String, String)> {
         let mut count = 0;
         let mut remainder = input.clone();
@@ -72,9 +72,9 @@ impl Parser for AnyCombinator {
     }
 }
 
-impl AnyCombinator {
+impl Any {
     pub fn any(self, parser: impl Parser + 'static) -> Self {
-        return AnyCombinator { parser: Box::new(parser) };
+        return Any { parser: Box::new(parser) };
     }
 }
 
@@ -83,17 +83,17 @@ impl AnyCombinator {
 
 // TODO: Is this a problem due to ambiguous grammars
 // in that the order of the parsers matters?
-pub struct OrCombinator {
+pub struct Or {
     parsers: Vec<Box<dyn Parser>>,
 }
 
-impl Combinator for OrCombinator {
+impl Combinator for Or {
     fn new(parser: impl Parser + 'static) -> Self {
-        return OrCombinator { parsers: vec![Box::new(parser)] };
+        return Or { parsers: vec![Box::new(parser)] };
     }
 }
 
-impl Parser for OrCombinator {
+impl Parser for Or {
     fn parse(&self, input: String) -> Option<(String, String)> {
         for parser in &self.parsers {
             if let Some((matched, remainder)) = parser.parse(input.clone()) {
@@ -105,7 +105,7 @@ impl Parser for OrCombinator {
     }
 }
 
-impl OrCombinator {
+impl Or {
     pub fn or(mut self, parser: impl Parser + 'static) -> Self {
         self.parsers.push(Box::new(parser));
         return self;
@@ -114,18 +114,18 @@ impl OrCombinator {
 
 
 /// Parses the first parser, then the second parser.
-pub struct ThenCombinator {
+pub struct Then {
     parser: Box<dyn Parser>,
     then: Option<Box<dyn Parser>>,
 }
 
-impl Combinator for ThenCombinator {
+impl Combinator for Then {
     fn new(parser: impl Parser + 'static) -> Self {
-        return ThenCombinator { parser: Box::new(parser), then: None };
+        return Then { parser: Box::new(parser), then: None };
     }
 }
 
-impl Parser for ThenCombinator {
+impl Parser for Then {
     fn parse(&self, input: String) -> Option<(String, String)> {
         return self.parser.parse(input).and_then(|(matched, remainder)| {
             self.then.as_ref()?
@@ -135,7 +135,7 @@ impl Parser for ThenCombinator {
     }
 }
 
-impl ThenCombinator {
+impl Then {
     pub fn then(mut self, parser: impl Parser + 'static) -> Self {
         self.then = Some(Box::new(parser));
         return self;
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_all_combinator() {
-        let parser = AllCombinator::new(WhitespaceParser);
+        let parser = All::new(Whitespace);
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
@@ -164,9 +164,9 @@ mod tests {
 
     #[test]
     fn test_some_combinator() {
-        let parser = OrCombinator::new(WhitespaceParser)
-            .or(LetterParser)
-            .or(SpecialCharParser);
+        let parser = Or::new(Whitespace)
+            .or(Letter)
+            .or(SpecialChar);
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
@@ -174,7 +174,7 @@ mod tests {
         assert_eq!(parser.parse("  ".into()), Some((" ".into(), " ".into())));
         assert_eq!(parser.parse("1 ".into()), None);
 
-        let parser = parser.or(DigitParser);
+        let parser = parser.or(Digit);
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_then_combinator() {
-        let parser = ThenCombinator::new(DigitParser).then(LetterParser);
+        let parser = Then::new(Digit).then(Letter);
 
         assert_eq!(parser.parse("1".into()), None);
         assert_eq!(parser.parse("1a".into()), Some(("1a".into(), "".into())));
@@ -195,9 +195,9 @@ mod tests {
 
     #[test]
     fn test_combining_combinators() {
-        let parser = WhitespaceParser.all().then(
-            LetterParser.or(DigitParser)
-                .or(SpecialCharParser)
+        let parser = Whitespace.all().then(
+            Letter.or(Digit)
+                .or(SpecialChar)
             );
 
         assert_eq!(parser.parse(" ".into()), None);

@@ -1,8 +1,8 @@
 //! Primitives for parsing individual characters.
-//! - [`WhitespaceParser`]: Parses a whitespace character.
-//! - [`LetterParser`]: Parses a roman letter character.
-//! - [`DigitParser`]: Parses a digit character.
-//! - [`SpecialCharParser`]: Parses one of the [`SPECIAL_CHARS`].
+//! - [`Whitespace`]: Parses a whitespace character.
+//! - [`Letter`]: Parses a roman letter character.
+//! - [`Digit`]: Parses a digit character.
+//! - [`SpecialChar`]: Parses one of the [`SPECIAL_CHARS`].
 
 /// Parses the input string by some rule.
 ///
@@ -25,8 +25,8 @@ fn parse_if(input: String, predicate: fn(char) -> bool) -> Option<(String, Strin
 }
 
 /// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
-pub struct WhitespaceParser;
-impl Parser for WhitespaceParser {
+pub struct Whitespace;
+impl Parser for Whitespace {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| c.is_whitespace())
     }
@@ -34,8 +34,8 @@ impl Parser for WhitespaceParser {
 
 
 /// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
-pub struct LetterParser;
-impl Parser for LetterParser {
+pub struct Letter;
+impl Parser for Letter {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| c.is_alphabetic())
     }
@@ -43,8 +43,8 @@ impl Parser for LetterParser {
 
 
 /// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
-pub struct DigitParser;
-impl Parser for DigitParser {
+pub struct Digit;
+impl Parser for Digit {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| c.is_ascii_digit())
     }
@@ -66,8 +66,8 @@ const SPECIAL_CHARS: [char; 11] = [
 ];
 
 /// Parses a special character, as defined by the [`SPECIAL_CHARS`] constant.
-pub struct SpecialCharParser;
-impl Parser for SpecialCharParser {
+pub struct SpecialChar;
+impl Parser for SpecialChar {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| SPECIAL_CHARS.contains(&c))
     }
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_whitespace_parser() {
-        let parser = WhitespaceParser;
+        let parser = Whitespace;
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_whitespace_parser_all_unicode_whitespace() {
-        let parser = WhitespaceParser;
+        let parser = Whitespace;
 
         assert_eq!(parser.parse(" \t           asdf".into()), Some((" ".into(), "\t           asdf".into())));
         assert_eq!(parser.parse("\t           asdf".into()), Some(("\t".into(), "           asdf".into())));
@@ -109,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_letter_parser() {
-        let parser = LetterParser;
+        let parser = Letter;
 
         assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
         assert_eq!(parser.parse("A".into()), Some(("A".into(), "".into())));
