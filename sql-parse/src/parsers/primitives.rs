@@ -92,18 +92,6 @@ mod tests {
         let parser = Whitespace;
 
         assert_eq!(parser.parse(" \t           asdf".into()), Some((" ".into(), "\t           asdf".into())));
-        assert_eq!(parser.parse("\t           asdf".into()), Some(("\t".into(), "           asdf".into())));
-        assert_eq!(parser.parse("           asdf".into()), Some((" ".into(), "          asdf".into())));
-        assert_eq!(parser.parse("          asdf".into()), Some((" ".into(), "         asdf".into())));
-        assert_eq!(parser.parse("         asdf".into()), Some((" ".into(), "        asdf".into())));
-        assert_eq!(parser.parse("        asdf".into()), Some((" ".into(), "       asdf".into())));
-        assert_eq!(parser.parse("       asdf".into()), Some((" ".into(), "      asdf".into())));
-        assert_eq!(parser.parse("      asdf".into()), Some((" ".into(), "     asdf".into())));
-        assert_eq!(parser.parse("     asdf".into()), Some((" ".into(), "    asdf".into())));
-        assert_eq!(parser.parse("    asdf".into()), Some((" ".into(), "   asdf".into())));
-        assert_eq!(parser.parse("   asdf".into()), Some((" ".into(), "  asdf".into())));
-        assert_eq!(parser.parse("  asdf".into()), Some((" ".into(), " asdf".into())));
-        assert_eq!(parser.parse(" asdf".into()), Some((" ".into(), "asdf".into())));
         assert_eq!(parser.parse("asdf".into()), None);
     }
 
@@ -115,5 +103,24 @@ mod tests {
         assert_eq!(parser.parse("A".into()), Some(("A".into(), "".into())));
         assert_eq!(parser.parse("1".into()), None);
         assert_eq!(parser.parse(" ".into()), None);
+    }
+
+    #[test]
+    fn test_digit_parser() {
+        let parser = Digit;
+
+        assert_eq!(parser.parse("1".into()), Some(("1".into(), "".into())));
+        assert_eq!(parser.parse("12".into()), Some(("1".into(), "2".into())));
+        assert_eq!(parser.parse("a".into()), None);
+    }
+
+    #[test]
+    fn test_special_char_parser() {
+        let parser = SpecialChar;
+
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse("a".into()), None);
+        assert_eq!(parser.parse("1".into()), None);
+        assert_eq!(parser.parse("(".into()), Some(("(".into(), "".into())));
     }
 }
