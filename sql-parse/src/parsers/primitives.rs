@@ -8,7 +8,10 @@
 ///
 /// If the input string conforms the rule, it returns the matched string and the remaining string.
 /// Otherwise, it returns [`None`].
-pub trait Parser {
+
+use core::fmt::Debug;
+
+pub trait Parser: Debug {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
 
@@ -27,6 +30,7 @@ where F: Fn(char) -> bool {
 
 
 /// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
+#[derive(Debug)]
 pub struct Whitespace;
 impl Parser for Whitespace {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -36,6 +40,7 @@ impl Parser for Whitespace {
 
 
 /// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
+#[derive(Debug)]
 pub struct Letter;
 impl Parser for Letter {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -45,6 +50,7 @@ impl Parser for Letter {
 
 
 /// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
+#[derive(Debug)]
 pub struct Digit;
 impl Parser for Digit {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -68,6 +74,7 @@ const SPECIAL_CHARS: [char; 11] = [
 ];
 
 /// Parses a special character, as defined by the [`SPECIAL_CHARS`] constant.
+#[derive(Debug)]
 pub struct SpecialChar;
 impl Parser for SpecialChar {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -77,6 +84,7 @@ impl Parser for SpecialChar {
 
 
 /// Parses a given specific character.
+#[derive(Debug)]
 pub struct Literal {
     pub literal: char,
 }

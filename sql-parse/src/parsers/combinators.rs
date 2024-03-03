@@ -12,6 +12,7 @@ pub trait Combinator: Parser {
 }
 
 /// Parses one or more matches of the given parser.
+#[derive(Debug)]
 pub struct All {
     parser: Box<dyn Parser>,
 }
@@ -48,6 +49,7 @@ impl All {
 
 
 /// Parses zero or more matches of the given parser.
+#[derive(Debug)]
 pub struct Any {
     parser: Box<dyn Parser>
 }
@@ -83,6 +85,7 @@ impl Any {
 
 // TODO: Is this a problem due to ambiguous grammars
 // in that the order of the parsers matters?
+#[derive(Debug)]
 pub struct Or {
     parsers: Vec<Box<dyn Parser>>,
 }
@@ -114,6 +117,7 @@ impl Or {
 
 
 /// Parses the first parser, then the second parser.
+#[derive(Debug)]
 pub struct Then {
     parser: Box<dyn Parser>,
     then: Option<Box<dyn Parser>>,
