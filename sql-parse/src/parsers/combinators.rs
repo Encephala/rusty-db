@@ -131,6 +131,8 @@ impl Combinator for Then {
 
 impl Parser for Then {
     fn parse(&self, input: String) -> Option<(String, String)> {
+        dbg!(&self);
+        // TODO: It's not great that this returns None if self.then is None
         return self.parser.parse(input).and_then(|(matched, remainder)| {
             self.then.as_ref()?
                 .parse(remainder)
@@ -141,6 +143,15 @@ impl Parser for Then {
 
 impl Then {
     pub fn then(mut self, parser: impl Parser + 'static) -> Self {
+        // TODO: Make is to that if self.then is already defined,
+        // it isn't overwritten.
+        // If self.then is Then, and self.then.then is None,
+        // we should set self.then.then to parser
+        // If self.then is Then, and self.then.then is Some,
+        // we should call this function on self.then
+        // (that sounds like ownership hell)
+        //
+        // If self.then is not Then, we should probably panic
         self.then = Some(Box::new(parser));
         return self;
     }

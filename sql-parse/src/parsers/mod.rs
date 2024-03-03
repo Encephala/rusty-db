@@ -1,6 +1,7 @@
 pub mod primitives;
 pub mod combinators;
 pub mod chaining;
+pub mod keywords;
 
 use primitives::Parser;
 pub use primitives::{Whitespace, Digit, Letter, SpecialChar};
