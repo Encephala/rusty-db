@@ -6,19 +6,14 @@
 
 use super::primitives::Parser;
 
-/// Parses the input by combining one or more [`Parser`] objects.
-pub trait Combinator: Parser {
-    fn new(parser: impl Parser + 'static) -> Self;
-}
-
 /// Parses one or more matches of the given parser.
 #[derive(Debug)]
 pub struct All {
     parser: Box<dyn Parser>,
 }
 
-impl Combinator for All {
-    fn new(parser: impl Parser + 'static) -> Self {
+impl All {
+    pub fn new(parser: impl Parser + 'static) -> Self {
         return All { parser: Box::new(parser) };
     }
 }
@@ -54,8 +49,8 @@ pub struct Any {
     parser: Box<dyn Parser>
 }
 
-impl Combinator for Any {
-    fn new(parser: impl Parser + 'static) -> Self {
+impl Any {
+    pub fn new(parser: impl Parser + 'static) -> Self {
         return Any { parser: Box::new(parser) };
     }
 }
@@ -90,8 +85,8 @@ pub struct Or {
     parsers: Vec<Box<dyn Parser>>,
 }
 
-impl Combinator for Or {
-    fn new(parser: impl Parser + 'static) -> Self {
+impl Or {
+    pub fn new(parser: impl Parser + 'static) -> Self {
         return Or { parsers: vec![Box::new(parser)] };
     }
 }
@@ -123,8 +118,8 @@ pub struct Then {
     then: Option<Box<dyn Parser>>,
 }
 
-impl Combinator for Then {
-    fn new(parser: impl Parser + 'static) -> Self {
+impl Then {
+    pub fn new(parser: impl Parser + 'static) -> Self {
         return Then { parser: Box::new(parser), then: None };
     }
 }

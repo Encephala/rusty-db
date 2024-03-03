@@ -6,7 +6,7 @@
 //! - [`Chain::or`]: Create an [`Or`] from `self` and the given parser.
 //! - [`Chain::then`]: Create a [`Then`] from `self` and the given parser.
 
-use super::combinators::{Combinator, All, Any, Then, Or};
+use super::combinators::{All, Any, Then, Or};
 use super::primitives::Parser;
 
 /// Create combinator parsers through the builder pattern.

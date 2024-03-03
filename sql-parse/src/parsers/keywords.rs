@@ -1,5 +1,5 @@
 use super::primitives::{Parser, Literal};
-use super::combinators::{Combinator, Then};
+use super::combinators::Then;
 
 #[derive(Debug)]
 pub struct Keyword {
