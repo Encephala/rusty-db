@@ -4,6 +4,8 @@
 //! - [`Or`]: Parses the first match of any of the given parsers.
 //! - [`Then`]: Parses the first parser, then the second parser.
 
+use std::convert::From;
+
 use super::primitives::Parser;
 
 /// Parses one or more matches of the given parser.
@@ -44,6 +46,12 @@ impl Parser for All {
     }
 }
 
+impl From<Box<dyn Parser>> for All {
+    fn from(value: Box<dyn Parser>) -> Self {
+        return All { parser: value };
+    }
+}
+
 
 /// Parses zero or more matches of the given parser.
 #[derive(Debug)]
@@ -54,10 +62,6 @@ pub struct Any {
 impl Any {
     pub fn new(parser: impl Parser + 'static) -> Self {
         return Any { parser: Box::new(parser) };
-    }
-
-    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
-        return Any { parser };
     }
 
     pub fn any(self, parser: impl Parser + 'static) -> Self {
@@ -76,6 +80,12 @@ impl Parser for Any {
         }
 
         return Some((input[..match_length].into(), input[match_length..].into()));
+    }
+}
+
+impl From<Box<dyn Parser>> for Any {
+    fn from(value: Box<dyn Parser>) -> Self {
+        return Any { parser: value };
     }
 }
 
@@ -113,6 +123,12 @@ impl Parser for Or {
         }
 
         return None;
+    }
+}
+
+impl From<Box<dyn Parser>> for Or {
+    fn from(value: Box<dyn Parser>) -> Self {
+        return Or { parsers: vec![value] };
     }
 }
 
@@ -160,6 +176,12 @@ impl Then {
         ));
 
         return self;
+    }
+}
+
+impl From<Box<dyn Parser>> for Then {
+    fn from(value: Box<dyn Parser>) -> Self {
+        return Then { parser: value, then: None };
     }
 }
 
