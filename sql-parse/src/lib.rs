@@ -24,7 +24,7 @@ mod tests {
             .then(Literal { literal: ';' });
 
         assert_eq!(parser.parse("SELECT * FROM blabla;".into()), Some(("SELECT * FROM blabla;".into(), "".into())));
-        assert_eq!(parser.parse("SELECT asdf FROM other".into()), Some(("SELECT asdf FROM other".into(), "".into())));
+        assert_eq!(parser.parse("SELECT asdf FROM other".into()), None);
         assert_eq!(parser.parse("SELECT *asdf FROM blabla;".into()), None);
     }
 }
