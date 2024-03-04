@@ -21,7 +21,7 @@ mod tests {
             .then(Keyword { literal: "FROM".into() })
             .then(Whitespace.any())
             .then(Letter.all())
-            .then(Literal { literal: ';' }.any());
+            .then(Literal { literal: ';' });
 
         assert_eq!(parser.parse("SELECT * FROM blabla;".into()), Some(("SELECT * FROM blabla;".into(), "".into())));
         assert_eq!(parser.parse("SELECT asdf FROM other".into()), Some(("SELECT asdf FROM other".into(), "".into())));
