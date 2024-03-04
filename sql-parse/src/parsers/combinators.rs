@@ -28,19 +28,19 @@ impl All {
 
 impl Parser for All {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut count = 0;
+        let mut match_length = 0;
         let mut remainder = input.clone();
 
-        while let Some((whitespace, _remainder)) = self.parser.parse(remainder) {
-            remainder = _remainder;
-            count += whitespace.chars().map(|c| c.len_utf8()).sum::<usize>();
+        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+            remainder = new_remainder;
+            match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
         }
 
-        if count == 0 {
+        if match_length == 0 {
             return None;
         }
 
-        return Some((input[..count].into(), input[count..].into()));
+        return Some((input[..match_length].into(), input[match_length..].into()));
     }
 }
 
@@ -67,15 +67,15 @@ impl Any {
 
 impl Parser for Any {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut count = 0;
+        let mut match_length = 0;
         let mut remainder = input.clone();
 
-        while let Some((whitespace, _remainder)) = self.parser.parse(remainder) {
-            remainder = _remainder;
-            count += whitespace.chars().map(|c| c.len_utf8()).sum::<usize>();
+        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+            remainder = new_remainder;
+            match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
         }
 
-        return Some((input[..count].into(), input[count..].into()));
+        return Some((input[..match_length].into(), input[match_length..].into()));
     }
 }
 
