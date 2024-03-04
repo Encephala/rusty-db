@@ -12,7 +12,6 @@ impl Parser for Keyword {
 
         for c in self.literal.chars().skip(1) {
             parser = parser.then(Literal { literal: c });
-            dbg!(&parser);
         }
 
         return parser.parse(input);
