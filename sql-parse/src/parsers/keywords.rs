@@ -3,7 +3,7 @@ use super::combinators::Then;
 
 #[derive(Debug)]
 pub struct Keyword {
-    literal: String,
+    pub literal: String,
 }
 
 impl Parser for Keyword {

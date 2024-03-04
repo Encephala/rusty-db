@@ -3,9 +3,9 @@ pub mod combinators;
 pub mod chaining;
 pub mod keywords;
 
-use primitives::Parser;
-pub use primitives::{Whitespace, Digit, Letter, SpecialChar};
+pub use primitives::{Parser, Whitespace, Digit, Letter, SpecialChar, Literal};
 pub use combinators::{All, Any, Or, Then};
 pub use chaining::Chain;
+pub use keywords::Keyword;
 
 impl<T: Parser> Chain for T {}
