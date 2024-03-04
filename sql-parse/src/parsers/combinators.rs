@@ -16,6 +16,14 @@ impl All {
     pub fn new(parser: impl Parser + 'static) -> Self {
         return All { parser: Box::new(parser) };
     }
+
+    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
+        return All { parser };
+    }
+
+    pub fn all(self, parser: impl Parser + 'static) -> Self {
+        return All { parser: Box::new(parser) };
+    }
 }
 
 impl Parser for All {
@@ -36,12 +44,6 @@ impl Parser for All {
     }
 }
 
-impl All {
-    pub fn all(self, parser: impl Parser + 'static) -> Self {
-        return All { parser: Box::new(parser) };
-    }
-}
-
 
 /// Parses zero or more matches of the given parser.
 #[derive(Debug)]
@@ -51,6 +53,14 @@ pub struct Any {
 
 impl Any {
     pub fn new(parser: impl Parser + 'static) -> Self {
+        return Any { parser: Box::new(parser) };
+    }
+
+    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
+        return Any { parser };
+    }
+
+    pub fn any(self, parser: impl Parser + 'static) -> Self {
         return Any { parser: Box::new(parser) };
     }
 }
@@ -69,12 +79,6 @@ impl Parser for Any {
     }
 }
 
-impl Any {
-    pub fn any(self, parser: impl Parser + 'static) -> Self {
-        return Any { parser: Box::new(parser) };
-    }
-}
-
 
 /// Parses the first match of any of the given parsers.
 
@@ -89,6 +93,15 @@ impl Or {
     pub fn new(parser: impl Parser + 'static) -> Self {
         return Or { parsers: vec![Box::new(parser)] };
     }
+
+    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
+        return Or { parsers: vec![parser] };
+    }
+
+    pub fn or(mut self, parser: impl Parser + 'static) -> Self {
+        self.parsers.push(Box::new(parser));
+        return self;
+    }
 }
 
 impl Parser for Or {
@@ -100,13 +113,6 @@ impl Parser for Or {
         }
 
         return None;
-    }
-}
-
-impl Or {
-    pub fn or(mut self, parser: impl Parser + 'static) -> Self {
-        self.parsers.push(Box::new(parser));
-        return self;
     }
 }
 
