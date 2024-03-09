@@ -137,16 +137,16 @@ impl From<Box<dyn Parser>> for Or {
 #[derive(Debug)]
 pub struct Then {
     parser: Box<dyn Parser>,
-    then: Option<Box<dyn Parser>>,
+    next: Option<Box<dyn Parser>>,
 }
 
 impl Then {
     pub fn new(parser: impl Parser + 'static) -> Self {
-        return Then { parser: Box::new(parser), then: None };
+        return Then { parser: Box::new(parser), next: None };
     }
 
     pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
-        return Then { parser, then: None };
+        return Then { parser, next: None };
     }
 }
 
@@ -154,7 +154,7 @@ impl Parser for Then {
     fn parse(&self, input: String) -> Option<(String, String)> {
         // TODO: It's not great that this returns None if self.then is None
         return self.parser.parse(input).and_then(|(matched, remainder)| {
-            self.then.as_ref()?
+            self.next.as_ref()?
                 .parse(remainder)
                 .map(|(then_matched, remainder)| (matched + &then_matched, remainder))
         });
@@ -164,15 +164,15 @@ impl Parser for Then {
 impl Then {
     pub fn then(mut self, parser: impl Parser + 'static) -> Self {
         // Base case
-        if self.then.is_none() {
-            self.then = Some(Box::new(parser));
+        if self.next.is_none() {
+            self.next = Some(Box::new(parser));
 
             return self;
         }
 
         // General case
-        self.then = Some(Box::new(
-            Then::new_from_box(self.then.take().unwrap()).then(parser)
+        self.next = Some(Box::new(
+            Then::new_from_box(self.next.take().unwrap()).then(parser)
         ));
 
         return self;
@@ -181,7 +181,7 @@ impl Then {
 
 impl From<Box<dyn Parser>> for Then {
     fn from(value: Box<dyn Parser>) -> Self {
-        return Then { parser: value, then: None };
+        return Then { parser: value, next: None };
     }
 }
 
