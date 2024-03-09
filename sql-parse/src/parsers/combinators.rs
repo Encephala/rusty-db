@@ -22,10 +22,6 @@ impl All {
     pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
         return All { parser };
     }
-
-    pub fn all(self, parser: impl Parser + 'static) -> Self {
-        return All { parser: Box::new(parser) };
-    }
 }
 
 impl Parser for All {
@@ -61,10 +57,6 @@ pub struct Any {
 
 impl Any {
     pub fn new(parser: impl Parser + 'static) -> Self {
-        return Any { parser: Box::new(parser) };
-    }
-
-    pub fn any(self, parser: impl Parser + 'static) -> Self {
         return Any { parser: Box::new(parser) };
     }
 }
