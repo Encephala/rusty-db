@@ -15,11 +15,11 @@ mod tests {
     #[test]
     fn parse_basic_select_statement() {
         let parser = Keyword { literal: "SELECT".into() }
-            .then(Whitespace.any())
+            .then(Whitespace.all())
             .then(Letter.all().or(Literal { literal: '*' }))
-            .then(Whitespace.any())
+            .then(Whitespace.all())
             .then(Keyword { literal: "FROM".into() })
-            .then(Whitespace.any())
+            .then(Whitespace.all())
             .then(Letter.all())
             .then(Literal { literal: ';' });
 
