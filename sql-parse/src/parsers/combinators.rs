@@ -18,10 +18,6 @@ impl All {
     pub fn new(parser: impl Parser + 'static) -> Self {
         return All { parser: Box::new(parser) };
     }
-
-    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
-        return All { parser };
-    }
 }
 
 impl Parser for All {
@@ -96,10 +92,6 @@ impl Or {
         return Or { parsers: vec![Box::new(parser)] };
     }
 
-    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
-        return Or { parsers: vec![parser] };
-    }
-
     pub fn or(mut self, parser: impl Parser + 'static) -> Self {
         self.parsers.push(Box::new(parser));
         return self;
@@ -136,10 +128,6 @@ impl Then {
     pub fn new(parser: impl Parser + 'static) -> Self {
         return Then { parser: Box::new(parser), next: None };
     }
-
-    pub fn new_from_box(parser: Box<dyn Parser>) -> Self {
-        return Then { parser, next: None };
-    }
 }
 
 impl Parser for Then {
@@ -164,7 +152,9 @@ impl Then {
 
         // General case
         self.next = Some(Box::new(
-            Then::new_from_box(self.next.take().unwrap()).then(parser)
+            Then::from(
+                self.next.take().unwrap()
+            ).then(parser)
         ));
 
         return self;
