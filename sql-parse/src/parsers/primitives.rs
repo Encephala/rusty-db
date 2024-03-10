@@ -2,6 +2,7 @@
 //! - [`Whitespace`]: Parses a whitespace character.
 //! - [`Letter`]: Parses a roman letter character.
 //! - [`Digit`]: Parses a digit character.
+//! - [`Literal`]: Parses a given specific character.
 
 use core::fmt::Debug;
 use dyn_clone::DynClone;
