@@ -4,12 +4,13 @@
 //! - [`Digit`]: Parses a digit character.
 
 use core::fmt::Debug;
+use dyn_clone::DynClone;
 
 /// Parses the input string by some rule.
 ///
 /// If the input string conforms the rule, it returns the matched string and the remaining string.
 /// Otherwise, it returns [`None`].
-pub trait Parser: Debug + dyn_clone::DynClone {
+pub trait Parser: Debug + DynClone {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
 

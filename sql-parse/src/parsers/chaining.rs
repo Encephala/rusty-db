@@ -1,4 +1,4 @@
-//! Defines the [`CombinatorChain`] trait, which is implemented by all parsers.
+//! Defines the [`CombinatorChain`] trait, and implements it for all types that are Parser.
 //!
 //! This enables for chaining parsers and combinators together through the builder pattern using
 //! - [`Chain::all`]: Create an [`All`] from `self`.
@@ -31,3 +31,5 @@ pub trait Chain {
         return Then::new(self).then(parser);
     }
 }
+
+impl<T: Parser> Chain for T {}
