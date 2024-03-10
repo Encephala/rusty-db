@@ -7,7 +7,7 @@ pub mod parsers;
 mod tests {
     use super::parsers::{
         Parser,
-        Whitespace, Letter, Literal,
+        Whitespace, Letter, Literal, Empty,
         Keyword,
         Chain,
     };
@@ -23,7 +23,7 @@ mod tests {
             .then(Keyword::new("FROM"))
             .then(Whitespace.all())
             .then(Letter.all())
-            .then(Literal::new(';').any());
+            .then(Empty.or(Literal::new(';')));
 
         assert_eq!(parser.parse("SELECT * FROM blabla;".into()), Some(("SELECT * FROM blabla;".into(), "".into())));
         assert_eq!(parser.parse("SELECT asdf,fdsa FROM other".into()), Some(("SELECT asdf,fdsa FROM other".into(), "".into())));

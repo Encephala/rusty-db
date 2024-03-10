@@ -81,6 +81,20 @@ impl Literal {
 }
 
 
+/// Parses that the input is empty (i.e. the end of the input).
+#[derive(Debug, Clone)]
+pub struct Empty;
+impl Parser for Empty {
+    fn parse(&self, input: String) -> Option<(String, String)> {
+        if input.is_empty() {
+            return Some(("".into(), "".into()));
+        }
+
+        return None;
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
