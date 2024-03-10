@@ -2,7 +2,6 @@
 //! - [`Whitespace`]: Parses a whitespace character.
 //! - [`Letter`]: Parses a roman letter character.
 //! - [`Digit`]: Parses a digit character.
-//! - [`SpecialChar`]: Parses one of the [`SPECIAL_CHARS`].
 
 /// Parses the input string by some rule.
 ///
@@ -62,30 +61,6 @@ impl Parser for Digit {
 }
 
 
-const SPECIAL_CHARS: [char; 11] = [
-    ' ',
-    '"',
-    '\'',
-    '(',
-    ')',
-    '*',
-    ',',
-    '.',
-    '<',
-    '>',
-    '=',
-];
-
-/// Parses a special character, as defined by the [`SPECIAL_CHARS`] constant.
-#[derive(Debug, Clone)]
-pub struct SpecialChar;
-impl Parser for SpecialChar {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| SPECIAL_CHARS.contains(&c))
-    }
-}
-
-
 /// Parses a given specific character.
 #[derive(Debug, Clone)]
 pub struct Literal {
@@ -137,16 +112,6 @@ mod tests {
         assert_eq!(parser.parse("1".into()), Some(("1".into(), "".into())));
         assert_eq!(parser.parse("12".into()), Some(("1".into(), "2".into())));
         assert_eq!(parser.parse("a".into()), None);
-    }
-
-    #[test]
-    fn test_special_char_parser() {
-        let parser = SpecialChar;
-
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse("a".into()), None);
-        assert_eq!(parser.parse("1".into()), None);
-        assert_eq!(parser.parse("(".into()), Some(("(".into(), "".into())));
     }
 
     #[test]

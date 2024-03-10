@@ -190,8 +190,7 @@ mod tests {
     #[test]
     fn test_some_combinator() {
         let parser = Or::new(Whitespace)
-            .or(Letter)
-            .or(SpecialChar);
+            .or(Letter);
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
@@ -222,7 +221,7 @@ mod tests {
     fn test_combining_combinators() {
         let parser = Whitespace.all().then(
             Letter.or(Digit)
-                .or(SpecialChar)
+                .or(Literal { literal: '<' })
             );
 
         assert_eq!(parser.parse(" ".into()), None);
