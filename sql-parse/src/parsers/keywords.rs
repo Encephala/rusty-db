@@ -3,15 +3,15 @@ use super::combinators::Then;
 
 #[derive(Debug, Clone)]
 pub struct Keyword {
-    pub literal: String,
+    literal: String,
 }
 
 impl Parser for Keyword {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut parser: Then = Then::new(Literal { literal: self.literal.chars().next().unwrap() });
+        let mut parser: Then = Then::new(Literal::new(self.literal.chars().next().unwrap()));
 
         for c in self.literal.chars().skip(1) {
-            parser = parser.then(Literal { literal: c });
+            parser = parser.then(Literal::new(c));
         }
 
         return parser.parse(input);

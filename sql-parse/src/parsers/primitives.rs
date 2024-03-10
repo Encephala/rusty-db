@@ -65,12 +65,18 @@ impl Parser for Digit {
 /// Parses a given specific character.
 #[derive(Debug, Clone)]
 pub struct Literal {
-    pub literal: char,
+    literal: char,
 }
 
 impl Parser for Literal {
     fn parse(&self, input: String) -> Option<(String, String)> {
         parse_if(input, |c| c == self.literal)
+    }
+}
+
+impl Literal {
+    pub fn new(literal: char) -> Self {
+        return Literal { literal };
     }
 }
 

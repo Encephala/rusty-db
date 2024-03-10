@@ -4,8 +4,6 @@
 //! - [`Or`]: Parses the first match of any of the given parsers.
 //! - [`Then`]: Parses the first parser, then the second parser.
 
-use std::convert::From;
-
 use super::primitives::Parser;
 
 /// Parses one or more matches of the given parser.
@@ -38,12 +36,6 @@ impl Parser for All {
     }
 }
 
-impl From<Box<dyn Parser>> for All {
-    fn from(value: Box<dyn Parser>) -> Self {
-        return All { parser: value };
-    }
-}
-
 
 /// Parses zero or more matches of the given parser.
 #[derive(Debug, Clone)]
@@ -68,12 +60,6 @@ impl Parser for Any {
         }
 
         return Some((input[..match_length].into(), input[match_length..].into()));
-    }
-}
-
-impl From<Box<dyn Parser>> for Any {
-    fn from(value: Box<dyn Parser>) -> Self {
-        return Any { parser: value };
     }
 }
 
@@ -107,12 +93,6 @@ impl Parser for Or {
         }
 
         return None;
-    }
-}
-
-impl From<Box<dyn Parser>> for Or {
-    fn from(value: Box<dyn Parser>) -> Self {
-        return Or { parsers: vec![value] };
     }
 }
 
@@ -151,19 +131,12 @@ impl Then {
         }
 
         // General case
-        self.next = Some(Box::new(
-            Then::from(
-                self.next.take().unwrap()
-            ).then(parser)
-        ));
+        self.next = Some(Box::new(Then {
+            parser: self.next.take().unwrap(),
+            next: Some(Box::new(parser))
+        }));
 
         return self;
-    }
-}
-
-impl From<Box<dyn Parser>> for Then {
-    fn from(value: Box<dyn Parser>) -> Self {
-        return Then { parser: value, next: None };
     }
 }
 
@@ -221,7 +194,7 @@ mod tests {
     fn test_combining_combinators() {
         let parser = Whitespace.all().then(
             Letter.or(Digit)
-                .or(Literal { literal: '<' })
+                .or(Literal::new('<'))
             );
 
         assert_eq!(parser.parse(" ".into()), None);
