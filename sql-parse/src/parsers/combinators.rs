@@ -161,7 +161,20 @@ mod tests {
     }
 
     #[test]
-    fn test_some_combinator() {
+    fn test_any_combinator() {
+        let parser = Any::new(Whitespace);
+
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(parser.parse("a".into()), Some(("".into(), "a".into())));
+        assert_eq!(parser.parse("  ".into()), Some(("  ".into(), "".into())));
+        assert_eq!(parser.parse(" a ".into()), Some((" ".into(), "a ".into())));
+        assert_eq!(parser.parse("a ".into()), Some(("".into(), "a ".into())));
+        assert_eq!(parser.parse(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
+    }
+
+    #[test]
+    fn test_or_combinator() {
         let parser = Or::new(Whitespace)
             .or(Letter);
 
