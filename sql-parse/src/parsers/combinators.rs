@@ -9,7 +9,7 @@ use std::convert::From;
 use super::primitives::Parser;
 
 /// Parses one or more matches of the given parser.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct All {
     parser: Box<dyn Parser>,
 }
@@ -46,7 +46,7 @@ impl From<Box<dyn Parser>> for All {
 
 
 /// Parses zero or more matches of the given parser.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Any {
     parser: Box<dyn Parser>
 }
@@ -82,7 +82,7 @@ impl From<Box<dyn Parser>> for Any {
 
 // TODO: Is this a problem due to ambiguous grammars
 // in that the order of the parsers matters?
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Or {
     parsers: Vec<Box<dyn Parser>>,
 }
@@ -118,7 +118,7 @@ impl From<Box<dyn Parser>> for Or {
 
 
 /// Parses the first parser, then the second parser.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Then {
     parser: Box<dyn Parser>,
     next: Option<Box<dyn Parser>>,

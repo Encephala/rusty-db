@@ -1,7 +1,7 @@
 use super::primitives::{Parser, Literal};
 use super::combinators::Then;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Keyword {
     pub literal: String,
 }

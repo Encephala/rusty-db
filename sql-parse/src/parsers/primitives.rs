@@ -11,9 +11,12 @@
 
 use core::fmt::Debug;
 
-pub trait Parser: Debug {
+pub trait Parser: Debug + dyn_clone::DynClone {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
+
+dyn_clone::clone_trait_object!(Parser);
+
 
 fn parse_if<F>(input: String, predicate: F) -> Option<(String, String)>
 where F: Fn(char) -> bool {
@@ -30,7 +33,7 @@ where F: Fn(char) -> bool {
 
 
 /// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Whitespace;
 impl Parser for Whitespace {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -40,7 +43,7 @@ impl Parser for Whitespace {
 
 
 /// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Letter;
 impl Parser for Letter {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -50,7 +53,7 @@ impl Parser for Letter {
 
 
 /// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Digit;
 impl Parser for Digit {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -74,7 +77,7 @@ const SPECIAL_CHARS: [char; 11] = [
 ];
 
 /// Parses a special character, as defined by the [`SPECIAL_CHARS`] constant.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpecialChar;
 impl Parser for SpecialChar {
     fn parse(&self, input: String) -> Option<(String, String)> {
@@ -84,7 +87,7 @@ impl Parser for SpecialChar {
 
 
 /// Parses a given specific character.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Literal {
     pub literal: char,
 }
