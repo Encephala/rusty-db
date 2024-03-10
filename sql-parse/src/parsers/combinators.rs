@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_all_combinator() {
-        let parser = All::new(Whitespace);
+        let parser = Whitespace.all();
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_any_combinator() {
-        let parser = Any::new(Whitespace);
+        let parser = Whitespace.any();
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
@@ -175,8 +175,7 @@ mod tests {
 
     #[test]
     fn test_or_combinator() {
-        let parser = Or::new(Whitespace)
-            .or(Letter);
+        let parser = Whitespace.or(Letter);
 
         assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
         assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
@@ -194,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_then_combinator() {
-        let parser = Then::new(Digit).then(Letter);
+        let parser = Digit.then(Letter);
 
         assert_eq!(parser.parse("1".into()), None);
         assert_eq!(parser.parse("1a".into()), Some(("1a".into(), "".into())));
