@@ -3,13 +3,12 @@
 //! - [`Letter`]: Parses a roman letter character.
 //! - [`Digit`]: Parses a digit character.
 
+use core::fmt::Debug;
+
 /// Parses the input string by some rule.
 ///
 /// If the input string conforms the rule, it returns the matched string and the remaining string.
 /// Otherwise, it returns [`None`].
-
-use core::fmt::Debug;
-
 pub trait Parser: Debug + dyn_clone::DynClone {
     fn parse(&self, input: String) -> Option<(String, String)>;
 }
