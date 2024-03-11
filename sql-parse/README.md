@@ -19,6 +19,3 @@ That is, unless I backtrack on that idea and forget to update this readme.
 - Represent the result of parsers in a nicer way than just the matched string
     - Yeah I have no idea what this would ook like
 - Implement parsing end of input
-- `parser.any().any()` is currently broken, probably same for `.all().all()`
-    - Neither has a real-world usecase, but they shouldn't be broken
-    - Are `.any().all()` and `.all().any()` broken?
