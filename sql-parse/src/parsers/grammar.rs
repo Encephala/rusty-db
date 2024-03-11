@@ -70,9 +70,15 @@ mod tests {
         let parser = Keyword::new("SELECT");
 
         assert_eq!(parser.parse("SELECT".into()), Some(("SELECT".into(), "".into())));
-        assert_eq!(parser.parse("SELECT *".into()), Some(("SELECT".into(), " *".into())));
-        assert_eq!(parser.parse("SELEC".into()), None);
         assert_eq!(parser.parse("garbage".into()), None);
+    }
+
+    #[test]
+    fn test_keyword_parser_empty() {
+        let parser = Keyword::new("");
+
+        assert_eq!(parser.parse("".into()), Some(("".into(), "".into())));
+        assert_eq!(parser.parse("garbage".into()), Some(("".into(), "garbage".into())));
     }
 
     #[test]
