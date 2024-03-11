@@ -3,7 +3,6 @@ use super::combinators::Then;
 use super::chaining::Chain;
 
 /// Parses a literal string.
-/// Implemented as a chain of [`Literal`] parsers.
 #[derive(Debug, Clone)]
 pub struct Keyword {
     literal: String,

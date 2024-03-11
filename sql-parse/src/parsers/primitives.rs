@@ -109,11 +109,22 @@ mod tests {
     }
 
     #[test]
-    fn test_whitespace_parser_all_unicode_whitespace() {
+    fn test_whitespace_parser_unicode_whitespace() {
         let parser = Whitespace;
 
-        assert_eq!(parser.parse(" \t           asdf".into()), Some((" ".into(), "\t           asdf".into())));
-        assert_eq!(parser.parse("asdf".into()), None);
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse("\t".into()), Some(("\t".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
     }
 
     #[test]
