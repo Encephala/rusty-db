@@ -2,14 +2,14 @@
 
 A parser:
 
-```rust
+```rs
 trait Parser {
-    fn parse(self, input: String) -> Option<(String, String)>
+    fn parse(self, input: String) -> Option<(Vec<Token>, String)>
 }
 ```
 
-i.e. it takes the characters and returns a token and the remaining characters if it could parse itself from the input,
-otherwise it returns None.
+i.e. it takes the characters and returns (a) token(s) and the remaining characters if it could parse itself
+from the input, otherwise it returns None.
 
 That is, unless I backtrack on that idea and forget to update this readme.
 
