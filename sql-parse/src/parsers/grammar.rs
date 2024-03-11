@@ -11,7 +11,7 @@ pub struct Keyword {
 
 impl Parser for Keyword {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        if self.literal.len() == 0 {
+        if self.literal.is_empty() {
             return Some(("".into(), input));
         }
 
