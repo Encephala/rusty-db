@@ -11,7 +11,11 @@ pub struct Keyword {
 
 impl Parser for Keyword {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut parser: Then = Then::new(Literal::new(self.literal.chars().next().unwrap()));
+        if self.literal.len() == 0 {
+            return Some(("".into(), input));
+        }
+
+        let mut parser = Then::new(Literal::new(self.literal.chars().next().unwrap()));
 
         for c in self.literal.chars().skip(1) {
             parser = parser.then(Literal::new(c));
