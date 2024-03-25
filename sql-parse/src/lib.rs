@@ -7,21 +7,21 @@ pub mod lexing;
 #[cfg(test)]
 mod tests {
     use super::lexing::{
-        Parser,
+        Tokeniser,
         Whitespace, Letter, Literal, Empty,
-        Keyword,
+        Word,
         Chain,
     };
 
     #[test]
     fn parse_basic_select_statement() {
-        let parser = Keyword::new("SELECT")
+        let parser = Word::new("SELECT")
             .then(Whitespace.all())
             .then(Letter.all().or(Literal::new('*'))
                 .then(Literal::new(',').then(Letter.all()).any())
             )
             .then(Whitespace.all())
-            .then(Keyword::new("FROM"))
+            .then(Word::new("FROM"))
             .then(Whitespace.all())
             .then(Letter.all())
             .then(Empty.or(Literal::new(';')));

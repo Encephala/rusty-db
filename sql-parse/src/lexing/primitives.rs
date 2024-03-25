@@ -1,23 +1,21 @@
 //! Primitives for parsing individual characters.
-//! - [`Whitespace`]: Parses a whitespace character.
-//! - [`Letter`]: Parses a roman letter character.
-//! - [`Digit`]: Parses a digit character.
-//! - [`Literal`]: Parses a given specific character.
+//! - [`Whitespace`]: Matches a whitespace character.
+//! - [`Letter`]: Matches a roman letter character.
+//! - [`Digit`]: Matches a digit character.
+//! - [`Literal`]: Matches a given specific character.
 
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 
-use super::tokens::Token;
-
-/// Parses the input string by some rule.
+/// Matches the input string by some rule.
 ///
 /// If the input string conforms the rule, it returns the matched string and the remaining string.
 /// Otherwise, it returns [`None`].
-pub trait Parser: Debug + DynClone {
-    fn parse(&self, input: String) -> Option<(String, String)>;
+pub trait Tokeniser: Debug + DynClone {
+    fn consume(&self, input: String) -> Option<(String, String)>;
 }
 
-dyn_clone::clone_trait_object!(Parser);
+dyn_clone::clone_trait_object!(Tokeniser);
 
 
 fn parse_if<F>(input: String, predicate: F) -> Option<(String, String)>
@@ -34,44 +32,44 @@ where F: Fn(char) -> bool {
 }
 
 
-/// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
+/// Matches a whitespace character, as defined by the [`char::is_whitespace`] method.
 #[derive(Debug, Clone)]
 pub struct Whitespace;
-impl Parser for Whitespace {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Whitespace {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         return parse_if(input, |c| c.is_whitespace());
     }
 }
 
 
-/// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
+/// Matches a letter character, as defined by the [`char::is_alphabetic`] method.
 #[derive(Debug, Clone)]
 pub struct Letter;
-impl Parser for Letter {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Letter {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         return parse_if(input, |c| c.is_alphabetic());
     }
 }
 
 
-/// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
+/// Matches a digit character, as defined by the [`char::is_ascii_digit`] method.
 #[derive(Debug, Clone)]
 pub struct Digit;
-impl Parser for Digit {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Digit {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         return parse_if(input, |c| c.is_ascii_digit());
     }
 }
 
 
-/// Parses a given specific character.
+/// Matches a given specific character.
 #[derive(Debug, Clone)]
 pub struct Literal {
     literal: char,
 }
 
-impl Parser for Literal {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Literal {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         return parse_if(input, |c| c == self.literal);
     }
 }
@@ -83,11 +81,11 @@ impl Literal {
 }
 
 
-/// Parses that the input is empty (i.e. the end of the input).
+/// Matches that the input is empty (i.e. the end of the input).
 #[derive(Debug, Clone)]
 pub struct Empty;
-impl Parser for Empty {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Empty {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         if input.is_empty() {
             return Some(("".into(), "".into()));
         }
@@ -102,57 +100,57 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_whitespace_parser() {
-        let parser = Whitespace;
+    fn test_whitespace_lexer() {
+        let lexer = Whitespace;
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
-        assert_eq!(parser.parse("a".into()), None);
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(lexer.consume("a".into()), None);
     }
 
     #[test]
-    fn test_whitespace_parser_unicode_whitespace() {
-        let parser = Whitespace;
+    fn test_whitespace_lexer_unicode_whitespace() {
+        let lexer = Whitespace;
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse("\t".into()), Some(("\t".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume("\t".into()), Some(("\t".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
     }
 
     #[test]
-    fn test_letter_parser() {
-        let parser = Letter;
+    fn test_letter_lexer() {
+        let lexer = Letter;
 
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse("A".into()), Some(("A".into(), "".into())));
-        assert_eq!(parser.parse("1".into()), None);
-        assert_eq!(parser.parse(" ".into()), None);
+        assert_eq!(lexer.consume("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(lexer.consume("A".into()), Some(("A".into(), "".into())));
+        assert_eq!(lexer.consume("1".into()), None);
+        assert_eq!(lexer.consume(" ".into()), None);
     }
 
     #[test]
-    fn test_digit_parser() {
-        let parser = Digit;
+    fn test_digit_lexer() {
+        let lexer = Digit;
 
-        assert_eq!(parser.parse("1".into()), Some(("1".into(), "".into())));
-        assert_eq!(parser.parse("12".into()), Some(("1".into(), "2".into())));
-        assert_eq!(parser.parse("a".into()), None);
+        assert_eq!(lexer.consume("1".into()), Some(("1".into(), "".into())));
+        assert_eq!(lexer.consume("12".into()), Some(("1".into(), "2".into())));
+        assert_eq!(lexer.consume("a".into()), None);
     }
 
     #[test]
-    fn test_literal_parser() {
-        let parser = Literal { literal: 'a' };
+    fn test_literal_lexer() {
+        let lexer = Literal { literal: 'a' };
 
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse("b".into()), None);
+        assert_eq!(lexer.consume("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(lexer.consume("b".into()), None);
     }
 }

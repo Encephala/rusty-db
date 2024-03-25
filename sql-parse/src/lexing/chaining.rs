@@ -1,35 +1,35 @@
-//! Defines the [`CombinatorChain`] trait, and implements it for all types that are Parser.
+//! Defines the [`CombinatorChain`] trait, and implements it for all types that are Tokeniser.
 //!
-//! This enables for chaining parsers and combinators together through the builder pattern using
+//! This enables for chaining lexers and combinators together through the builder pattern using
 //! - [`Chain::all`]: Create an [`All`] from `self`.
 //! - [`Chain::any`]: Create an [`Any`] from `self`.
-//! - [`Chain::or`]: Create an [`Or`] from `self` and the given parser.
-//! - [`Chain::then`]: Create a [`Then`] from `self` and the given parser.
+//! - [`Chain::or`]: Create an [`Or`] from `self` and the given lexer.
+//! - [`Chain::then`]: Create a [`Then`] from `self` and the given lexer.
 
 use super::combinators::{All, Any, Then, Or};
-use super::primitives::Parser;
+use super::primitives::Tokeniser;
 
-/// Create combinator parsers through the builder pattern.
+/// Create combinator lexers through the builder pattern.
 pub trait Chain {
     fn all(self) -> All
-    where Self: Parser + Sized + 'static {
+    where Self: Tokeniser + Sized + 'static {
         return All::new(self);
     }
 
     fn any(self) -> Any
-    where Self: Parser + Sized + 'static {
+    where Self: Tokeniser + Sized + 'static {
         return Any::new(self);
     }
 
-    fn or(self, parser: impl Parser + 'static) -> Or
-    where Self: Parser + Sized + 'static {
-        return Or::new(self).or(parser);
+    fn or(self, lexer: impl Tokeniser + 'static) -> Or
+    where Self: Tokeniser + Sized + 'static {
+        return Or::new(self).or(lexer);
     }
 
-    fn then(self, parser: impl Parser + 'static) -> Then
-    where Self: Parser + Sized + 'static {
-        return Then::new(self).then(parser);
+    fn then(self, lexer: impl Tokeniser + 'static) -> Then
+    where Self: Tokeniser + Sized + 'static {
+        return Then::new(self).then(lexer);
     }
 }
 
-impl<T: Parser> Chain for T {}
+impl<T: Tokeniser> Chain for T {}

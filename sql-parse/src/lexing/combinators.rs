@@ -1,29 +1,29 @@
-//! Combinators for combining parsers together.
-//! - [`All`]: Parses one or more matches of the given parser.
-//! - [`Any`]: Parses zero or more matches of the given parser.
-//! - [`Or`]: Parses the first match of any of the given parsers.
-//! - [`Then`]: Parses the first parser, then the second parser.
+//! Combinators for combining lexers together.
+//! - [`All`]: Matches one or more matches of the given lexer.
+//! - [`Any`]: Matches zero or more matches of the given lexer.
+//! - [`Or`]: Matches the first match of any of the given lexers.
+//! - [`Then`]: Matches the first lexer, then the second lexer.
 
-use super::primitives::Parser;
+use super::primitives::Tokeniser;
 
-/// Parses one or more matches of the given parser.
+/// Matches one or more matches of the given lexer.
 #[derive(Debug, Clone)]
 pub struct All {
-    parser: Box<dyn Parser>,
+    lexer: Box<dyn Tokeniser>,
 }
 
 impl All {
-    pub fn new(parser: impl Parser + 'static) -> Self {
-        return All { parser: Box::new(parser) };
+    pub fn new(lexer: impl Tokeniser + 'static) -> Self {
+        return All { lexer: Box::new(lexer) };
     }
 }
 
-impl Parser for All {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for All {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         let mut match_length = 0;
         let mut remainder = input.clone();
 
-        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+        while let Some((matched, new_remainder)) = self.lexer.consume(remainder) {
             remainder = new_remainder;
             match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
         }
@@ -37,24 +37,24 @@ impl Parser for All {
 }
 
 
-/// Parses zero or more matches of the given parser.
+/// Matches zero or more matches of the given lexer.
 #[derive(Debug, Clone)]
 pub struct Any {
-    parser: Box<dyn Parser>
+    lexer: Box<dyn Tokeniser>
 }
 
 impl Any {
-    pub fn new(parser: impl Parser + 'static) -> Self {
-        return Any { parser: Box::new(parser) };
+    pub fn new(lexer: impl Tokeniser + 'static) -> Self {
+        return Any { lexer: Box::new(lexer) };
     }
 }
 
-impl Parser for Any {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Any {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         let mut match_length = 0;
         let mut remainder = input.clone();
 
-        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+        while let Some((matched, new_remainder)) = self.lexer.consume(remainder) {
             remainder = new_remainder;
             match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
         }
@@ -64,30 +64,30 @@ impl Parser for Any {
 }
 
 
-/// Parses the first match of any of the given parsers.
+/// Matches the first match of any of the given lexers.
 
 // TODO: Is this a problem due to ambiguous grammars
-// in that the order of the parsers matters?
+// in that the order of the lexers matters?
 #[derive(Debug, Clone)]
 pub struct Or {
-    parsers: Vec<Box<dyn Parser>>,
+    lexers: Vec<Box<dyn Tokeniser>>,
 }
 
 impl Or {
-    pub fn new(parser: impl Parser + 'static) -> Self {
-        return Or { parsers: vec![Box::new(parser)] };
+    pub fn new(lexer: impl Tokeniser + 'static) -> Self {
+        return Or { lexers: vec![Box::new(lexer)] };
     }
 
-    pub fn or(mut self, parser: impl Parser + 'static) -> Self {
-        self.parsers.push(Box::new(parser));
+    pub fn or(mut self, lexer: impl Tokeniser + 'static) -> Self {
+        self.lexers.push(Box::new(lexer));
         return self;
     }
 }
 
-impl Parser for Or {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        for parser in &self.parsers {
-            if let Some((matched, remainder)) = parser.parse(input.clone()) {
+impl Tokeniser for Or {
+    fn consume(&self, input: String) -> Option<(String, String)> {
+        for lexer in &self.lexers {
+            if let Some((matched, remainder)) = lexer.consume(input.clone()) {
                 return Some((matched, remainder));
             }
         }
@@ -97,43 +97,43 @@ impl Parser for Or {
 }
 
 
-/// Parses the first parser, then the second parser.
+/// Matches the first lexer, then the second lexer.
 #[derive(Debug, Clone)]
 pub struct Then {
-    parser: Box<dyn Parser>,
-    next: Option<Box<dyn Parser>>,
+    lexer: Box<dyn Tokeniser>,
+    next: Option<Box<dyn Tokeniser>>,
 }
 
 impl Then {
-    pub fn new(parser: impl Parser + 'static) -> Self {
-        return Then { parser: Box::new(parser), next: None };
+    pub fn new(lexer: impl Tokeniser + 'static) -> Self {
+        return Then { lexer: Box::new(lexer), next: None };
     }
 }
 
-impl Parser for Then {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+impl Tokeniser for Then {
+    fn consume(&self, input: String) -> Option<(String, String)> {
         // TODO: It's not great that this returns None if self.then is None
-        return self.parser.parse(input).and_then(|(matched, remainder)| {
+        return self.lexer.consume(input).and_then(|(matched, remainder)| {
             self.next.as_ref()?
-                .parse(remainder)
+                .consume(remainder)
                 .map(|(then_matched, remainder)| (matched + &then_matched, remainder))
         });
     }
 }
 
 impl Then {
-    pub fn then(mut self, parser: impl Parser + 'static) -> Self {
+    pub fn then(mut self, lexer: impl Tokeniser + 'static) -> Self {
         // Base case
         if self.next.is_none() {
-            self.next = Some(Box::new(parser));
+            self.next = Some(Box::new(lexer));
 
             return self;
         }
 
         // General case
         self.next = Some(Box::new(Then {
-            parser: self.next.take().unwrap(),
-            next: Some(Box::new(parser))
+            lexer: self.next.take().unwrap(),
+            next: Some(Box::new(lexer))
         }));
 
         return self;
@@ -149,77 +149,77 @@ mod tests {
 
     #[test]
     fn test_all_combinator() {
-        let parser = Whitespace.all();
+        let lexer = Whitespace.all();
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
-        assert_eq!(parser.parse("a".into()), None);
-        assert_eq!(parser.parse("  ".into()), Some(("  ".into(), "".into())));
-        assert_eq!(parser.parse(" a ".into()), Some((" ".into(), "a ".into())));
-        assert_eq!(parser.parse("a ".into()), None);
-        assert_eq!(parser.parse(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(lexer.consume("a".into()), None);
+        assert_eq!(lexer.consume("  ".into()), Some(("  ".into(), "".into())));
+        assert_eq!(lexer.consume(" a ".into()), Some((" ".into(), "a ".into())));
+        assert_eq!(lexer.consume("a ".into()), None);
+        assert_eq!(lexer.consume(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
     }
 
     #[test]
     fn test_any_combinator() {
-        let parser = Whitespace.any();
+        let lexer = Whitespace.any();
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
-        assert_eq!(parser.parse("a".into()), Some(("".into(), "a".into())));
-        assert_eq!(parser.parse("  ".into()), Some(("  ".into(), "".into())));
-        assert_eq!(parser.parse(" a ".into()), Some((" ".into(), "a ".into())));
-        assert_eq!(parser.parse("a ".into()), Some(("".into(), "a ".into())));
-        assert_eq!(parser.parse(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(lexer.consume("a".into()), Some(("".into(), "a".into())));
+        assert_eq!(lexer.consume("  ".into()), Some(("  ".into(), "".into())));
+        assert_eq!(lexer.consume(" a ".into()), Some((" ".into(), "a ".into())));
+        assert_eq!(lexer.consume("a ".into()), Some(("".into(), "a ".into())));
+        assert_eq!(lexer.consume(" \t           asdf".into()), Some((" \t           ".into(), "asdf".into())));
     }
 
     #[test]
     fn test_or_combinator() {
-        let parser = Whitespace.or(Letter);
+        let lexer = Whitespace.or(Letter);
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
-        assert_eq!(parser.parse("  ".into()), Some((" ".into(), " ".into())));
-        assert_eq!(parser.parse("1 ".into()), None);
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(lexer.consume(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(lexer.consume("  ".into()), Some((" ".into(), " ".into())));
+        assert_eq!(lexer.consume("1 ".into()), None);
 
-        let parser = parser.or(Digit);
+        let lexer = lexer.or(Digit);
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse("1".into()), Some(("1".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
+        assert_eq!(lexer.consume(" ".into()), Some((" ".into(), "".into())));
+        assert_eq!(lexer.consume("a".into()), Some(("a".into(), "".into())));
+        assert_eq!(lexer.consume("1".into()), Some(("1".into(), "".into())));
+        assert_eq!(lexer.consume(" a".into()), Some((" ".into(), "a".into())));
     }
 
     #[test]
     fn test_then_combinator() {
-        let parser = Digit.then(Letter);
+        let lexer = Digit.then(Letter);
 
-        assert_eq!(parser.parse("1".into()), None);
-        assert_eq!(parser.parse("1a".into()), Some(("1a".into(), "".into())));
-        assert_eq!(parser.parse("a1".into()), None);
-        assert_eq!(parser.parse("11".into()), None);
-        assert_eq!(parser.parse(" a".into()), None);
+        assert_eq!(lexer.consume("1".into()), None);
+        assert_eq!(lexer.consume("1a".into()), Some(("1a".into(), "".into())));
+        assert_eq!(lexer.consume("a1".into()), None);
+        assert_eq!(lexer.consume("11".into()), None);
+        assert_eq!(lexer.consume(" a".into()), None);
     }
 
     #[test]
     fn then_returns_none_if_next_is_none() {
-        let parser = Then::new(Digit);
+        let lexer = Then::new(Digit);
 
-        assert_eq!(parser.parse("1a".into()), None);
+        assert_eq!(lexer.consume("1a".into()), None);
     }
 
     #[test]
     fn test_combining_combinators() {
-        let parser = Whitespace.all().then(
+        let lexer = Whitespace.all().then(
             Letter.or(Digit)
                 .or(Literal::new('<'))
             );
 
-        assert_eq!(parser.parse(" ".into()), None);
-        assert_eq!(parser.parse("a1".into()), None);
-        assert_eq!(parser.parse("  ".into()), None);
-        assert_eq!(parser.parse(" 1a".into()), Some((" 1".into(), "a".into())));
-        assert_eq!(parser.parse(" <1".into()), Some((" <".into(), "1".into())));
+        assert_eq!(lexer.consume(" ".into()), None);
+        assert_eq!(lexer.consume("a1".into()), None);
+        assert_eq!(lexer.consume("  ".into()), None);
+        assert_eq!(lexer.consume(" 1a".into()), Some((" 1".into(), "a".into())));
+        assert_eq!(lexer.consume(" <1".into()), Some((" <".into(), "1".into())));
     }
 }
