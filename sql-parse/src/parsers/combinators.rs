@@ -203,6 +203,13 @@ mod tests {
     }
 
     #[test]
+    fn then_returns_none_if_next_is_none() {
+        let parser = Then::new(Digit);
+
+        assert_eq!(parser.parse("1a".into()), None);
+    }
+
+    #[test]
     fn test_combining_combinators() {
         let parser = Whitespace.all().then(
             Letter.or(Digit)
