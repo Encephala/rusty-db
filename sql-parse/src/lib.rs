@@ -1,11 +1,12 @@
 #![allow(clippy::needless_return)]
 
-pub mod parsers;
+pub mod parsing;
+pub mod lexing;
 
 
 #[cfg(test)]
 mod tests {
-    use super::parsers::{
+    use super::lexing::{
         Parser,
         Whitespace, Letter, Literal, Empty,
         Keyword,
