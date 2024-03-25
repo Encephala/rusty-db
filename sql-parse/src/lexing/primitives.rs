@@ -7,6 +7,8 @@
 use core::fmt::Debug;
 use dyn_clone::DynClone;
 
+use super::tokens::Token;
+
 /// Parses the input string by some rule.
 ///
 /// If the input string conforms the rule, it returns the matched string and the remaining string.
@@ -37,7 +39,7 @@ where F: Fn(char) -> bool {
 pub struct Whitespace;
 impl Parser for Whitespace {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_whitespace())
+        return parse_if(input, |c| c.is_whitespace());
     }
 }
 
@@ -47,7 +49,7 @@ impl Parser for Whitespace {
 pub struct Letter;
 impl Parser for Letter {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_alphabetic())
+        return parse_if(input, |c| c.is_alphabetic());
     }
 }
 
@@ -57,7 +59,7 @@ impl Parser for Letter {
 pub struct Digit;
 impl Parser for Digit {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_ascii_digit())
+        return parse_if(input, |c| c.is_ascii_digit());
     }
 }
 
@@ -70,7 +72,7 @@ pub struct Literal {
 
 impl Parser for Literal {
     fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c == self.literal)
+        return parse_if(input, |c| c == self.literal);
     }
 }
 
