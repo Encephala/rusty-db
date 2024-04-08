@@ -7,7 +7,7 @@
 //! - [`Chain::then`]: Create a [`Then`] from `self` and the given parser.
 
 use super::combinators::{All, Any, Then, Or};
-use super::primitives::Parser;
+use super::Parser;
 
 /// Create combinator parsers through the builder pattern.
 pub trait Chain {

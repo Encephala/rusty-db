@@ -4,7 +4,7 @@
 //! - [`Or`]: Parses the first match of any of the given parsers.
 //! - [`Then`]: Parses the first parser, then the second parser.
 
-use super::primitives::Parser;
+use super::{Parser, Token};
 
 /// Parses one or more matches of the given parser.
 #[derive(Debug, Clone)]
@@ -19,20 +19,20 @@ impl All {
 }
 
 impl Parser for All {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut match_length = 0;
+    fn parse(&self, input: String) -> Option<(Vec<Token>, String)> {
         let mut remainder = input.clone();
+        let mut result: Vec<Token> = Vec::new();
 
-        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+        while let Some((mut matched, new_remainder)) = self.parser.parse(remainder) {
             remainder = new_remainder;
-            match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
+            result.append(&mut matched);
         }
 
-        if match_length == 0 {
+        if result.is_empty() {
             return None;
         }
 
-        return Some((input[..match_length].into(), input[match_length..].into()));
+        return Some((result, remainder));
     }
 }
 
@@ -50,16 +50,16 @@ impl Any {
 }
 
 impl Parser for Any {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        let mut match_length = 0;
+    fn parse(&self, input: String) -> Option<(Vec<Token>, String)> {
         let mut remainder = input.clone();
+        let mut result: Vec<Token> = Vec::new();
 
-        while let Some((matched, new_remainder)) = self.parser.parse(remainder) {
+        while let Some((mut matched, new_remainder)) = self.parser.parse(remainder) {
             remainder = new_remainder;
-            match_length += matched.chars().map(|c| c.len_utf8()).sum::<usize>();
+            result.append(&mut matched);
         }
 
-        return Some((input[..match_length].into(), input[match_length..].into()));
+        return Some((result, remainder));
     }
 }
 
@@ -85,7 +85,7 @@ impl Or {
 }
 
 impl Parser for Or {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+    fn parse(&self, input: String) -> Option<(Vec<Token>, String)> {
         for parser in &self.parsers {
             if let Some((matched, remainder)) = parser.parse(input.clone()) {
                 return Some((matched, remainder));
@@ -111,12 +111,16 @@ impl Then {
 }
 
 impl Parser for Then {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+    fn parse(&self, input: String) -> Option<(Vec<Token>, String)> {
         // TODO: It's not great that this returns None if self.then is None
-        return self.parser.parse(input).and_then(|(matched, remainder)| {
+        return self.parser.parse(input).and_then(|(mut matched, remainder)| {
             self.next.as_ref()?
                 .parse(remainder)
-                .map(|(then_matched, remainder)| (matched + &then_matched, remainder))
+                .map(|(mut then_matched, remainder)| {
+                    matched.append(&mut then_matched);
+
+                    (matched, remainder)
+                })
         });
     }
 }

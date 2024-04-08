@@ -1,4 +1,5 @@
-use super::primitives::{Parser, Whitespace, Letter, Digit, Literal};
+use super::{Parser, Token};
+use super::primitives::{Whitespace, Letter, Digit, Literal};
 use super::combinators::Then;
 use super::chaining::Chain;
 
@@ -9,7 +10,7 @@ pub struct Keyword {
 }
 
 impl Parser for Keyword {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+    fn parse(&self, input: String) -> Option<(Token, String)> {
         if self.literal.is_empty() {
             return Some(("".into(), input));
         }
@@ -37,7 +38,7 @@ impl Keyword {
 pub struct Identifier;
 
 impl Parser for Identifier {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+    fn parse(&self, input: String) -> Option<(Token, String)> {
         let parser = Letter.then(Letter.or(Digit).or(Literal::new('_')).any());
 
         return parser.parse(input);
@@ -51,7 +52,7 @@ impl Parser for Identifier {
 pub struct IdentifierList;
 
 impl Parser for IdentifierList {
-    fn parse(&self, input: String) -> Option<(String, String)> {
+    fn parse(&self, input: String) -> Option<(Token, String)> {
         let identifier_separator = Whitespace.any().then(Literal::new(',')).then(Whitespace.any());
 
         let parser = Identifier.then(identifier_separator.then(Identifier).any());
