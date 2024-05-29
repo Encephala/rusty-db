@@ -95,6 +95,6 @@ mod tests {
     fn test_identifier_list_parser() {
         let parser = IdentifierList;
 
-        assert_eq!(parser.parse("column1, column2 , column3,column4".into()), Some(("column1, column2, column3,column4".into(), "".into())));
+        assert_eq!(parser.parse("column1, column2 , column3,column4".into()), Some(("column1, column2 , column3,column4".into(), "".into())));
     }
 }
