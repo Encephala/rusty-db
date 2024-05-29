@@ -5,6 +5,12 @@ pub enum Token {
     Select,
     From,
     Where,
+    Insert,
+    Into,
+    Create,
+    Database,
+    Table,
+
     Ident(String),
     Int(usize),
     Decimal(usize, usize),
@@ -26,7 +32,7 @@ pub enum Token {
     // Times,
     Slash,
 
-    Invalid,
+    Invalid(String),
 }
 
 impl From<String> for Token {
@@ -39,6 +45,11 @@ impl From<String> for Token {
             "SELECT" => Select,
             "FROM" => From,
             "WHERE" => Where,
+            "INSERT" => Insert,
+            "INTO" => Into,
+            "CREATE" => Create,
+            "DATABASE" => Database,
+            "TABLE" => Table,
             _ => Ident(value),
         };
     }
@@ -129,7 +140,7 @@ impl<'a> Lexer<'a> {
             c if c.is_alphabetic() => return self.read_identifier(),
             c if c.is_numeric() => return self.read_number(),
 
-            _ => Invalid,
+            other => Invalid(format!("Unknown character '{other}'")),
         };
 
         self.advance();
@@ -178,7 +189,7 @@ impl<'a> Lexer<'a> {
                 Token::Decimal(whole.parse().unwrap(), fractional.parse().unwrap())
             },
             _ => {
-                panic!("Invalid decimal number found, had {number_of_dots} decimal points");
+                Token::Invalid(format!("Found {number_of_dots} decimal separators in number '{result}'"))
             }
         }
      }
@@ -299,5 +310,24 @@ mod tests {
                 Semicolon,
             ]
         )
+    }
+
+    #[test]
+    fn error_on_invalid_token() {
+        assert_eq!(
+            Lexer::new("&").lex(),
+            vec![
+                Invalid("Unknown character '&'".into())
+            ]
+        );
+
+        assert_eq!(
+            Lexer::new("1 1.2 1.2.3").lex(),
+            vec![
+                Int(1),
+                Decimal(1, 2),
+                Invalid("Found 2 decimal separators in number '1.2.3'".into())
+            ]
+        );
     }
 }
