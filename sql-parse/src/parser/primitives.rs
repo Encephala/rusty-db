@@ -1,156 +1,108 @@
-//! Primitives for parsing individual characters.
-//! - [`Whitespace`]: Parses a whitespace character.
-//! - [`Letter`]: Parses a roman letter character.
-//! - [`Digit`]: Parses a digit character.
-//! - [`Literal`]: Parses a given specific character.
+use super::super::lexer::Token;
 
-use core::fmt::Debug;
-use dyn_clone::DynClone;
-
-/// Parses the input string by some rule.
-///
-/// If the input string conforms the rule, it returns the matched string and the remaining string.
-/// Otherwise, it returns [`None`].
-pub trait Parser: Debug + DynClone {
-    fn parse(&self, input: String) -> Option<(String, String)>;
+struct Tokens<'a> {
+    tokens: &'a mut [Token]
 }
 
-dyn_clone::clone_trait_object!(Parser);
-
-
-fn parse_if<F>(input: String, predicate: F) -> Option<(String, String)>
-where F: Fn(char) -> bool {
-    let condition = input.chars().next().map(predicate)?;
-
-    if condition {
-        let index_second_char = input.chars().next().map(|c| c.len_utf8())?;
-
-        return Some((input[..index_second_char].into(), input[index_second_char..].into()));
+impl<'a> Tokens<'a> {
+    fn new(value: &'a mut [Token]) -> Self {
+        return Self { tokens: value };
     }
 
-    return None;
-}
-
-
-/// Parses a whitespace character, as defined by the [`char::is_whitespace`] method.
-#[derive(Debug, Clone)]
-pub struct Whitespace;
-impl Parser for Whitespace {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_whitespace())
+    fn drop_head(&'a mut self) {
+        self.tokens = &mut self.tokens[1..];
     }
 }
 
+impl<'a, I: std::slice::SliceIndex<[Token]>> std::ops::Index<I> for Tokens<'a> {
+    type Output = <I as std::slice::SliceIndex<[Token]>>::Output;
 
-/// Parses a letter character, as defined by the [`char::is_alphabetic`] method.
-#[derive(Debug, Clone)]
-pub struct Letter;
-impl Parser for Letter {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_alphabetic())
+    fn index(&self, index: I) -> &Self::Output {
+        return &self.tokens[index];
     }
 }
 
-
-/// Parses a digit character, as defined by the [`char::is_ascii_digit`] method.
-#[derive(Debug, Clone)]
-pub struct Digit;
-impl Parser for Digit {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c.is_ascii_digit())
-    }
+pub trait Parser {
+    fn parse<'a>(input: Tokens<'a>) -> Option<Statement>;
 }
 
-
-/// Parses a given specific character.
-#[derive(Debug, Clone)]
-pub struct Literal {
-    literal: char,
-}
-
-impl Parser for Literal {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        parse_if(input, |c| c == self.literal)
-    }
-}
-
-impl Literal {
-    pub fn new(literal: char) -> Self {
-        return Literal { literal };
-    }
-}
-
-
-/// Parses that the input is empty (i.e. the end of the input).
-#[derive(Debug, Clone)]
-pub struct Empty;
-impl Parser for Empty {
-    fn parse(&self, input: String) -> Option<(String, String)> {
-        if input.is_empty() {
-            return Some(("".into(), "".into()));
-        }
-
+fn check_and_skip<'a>(input: &'a mut Tokens<'a>, equals: Token) -> Option<()> {
+    if input[0] != equals {
         return None;
+    }
+
+    input.drop_head();
+
+    return Some(());
+}
+
+fn parse_identifier<'a>(input: &'a mut Tokens<'a>) -> Option<String> {
+    // TODO: ensure length is >= 1
+    let name = match &input[0] {
+        Token::Ident(name) => Some(name.clone()),
+        _ => None,
+    }?;
+
+    input.drop_head();
+
+    return Some(name);
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Statement {
+    Select { column: String, table: String },
+}
+
+
+#[derive(Debug)]
+struct SelectParser;
+
+impl Parser for SelectParser {
+    fn parse<'a>(mut input: Tokens<'a>) -> Option<Statement> {
+        check_and_skip(&mut input, Token::Select)?;
+
+        let column = parse_identifier(&mut input)?;
+
+        check_and_skip(&mut input, Token::From)?;
+
+        let table = parse_identifier(&mut input)?;
+
+        // TODO: Where clause, etc.
+
+        check_and_skip(&mut input, Token::Semicolon)?;
+
+        return Some(Statement::Select {
+            column,
+            table,
+        });
     }
 }
 
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::lexer::Lexer;
+
+    use super::{Tokens, Parser, SelectParser, Statement};
 
     #[test]
-    fn test_whitespace_parser() {
-        let parser = Whitespace;
+    fn basic_select() {
+        let input = "SELECT bla from asdf;";
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" a".into()), Some((" ".into(), "a".into())));
-        assert_eq!(parser.parse("a".into()), None);
-    }
+        let mut tokens = Lexer::new(input).lex();
 
-    #[test]
-    fn test_whitespace_parser_unicode_whitespace() {
-        let parser = Whitespace;
+        let result = SelectParser::parse(Tokens::new(&mut tokens));
 
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse("\t".into()), Some(("\t".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-        assert_eq!(parser.parse(" ".into()), Some((" ".into(), "".into())));
-    }
-
-    #[test]
-    fn test_letter_parser() {
-        let parser = Letter;
-
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse("A".into()), Some(("A".into(), "".into())));
-        assert_eq!(parser.parse("1".into()), None);
-        assert_eq!(parser.parse(" ".into()), None);
-    }
-
-    #[test]
-    fn test_digit_parser() {
-        let parser = Digit;
-
-        assert_eq!(parser.parse("1".into()), Some(("1".into(), "".into())));
-        assert_eq!(parser.parse("12".into()), Some(("1".into(), "2".into())));
-        assert_eq!(parser.parse("a".into()), None);
-    }
-
-    #[test]
-    fn test_literal_parser() {
-        let parser = Literal { literal: 'a' };
-
-        assert_eq!(parser.parse("a".into()), Some(("a".into(), "".into())));
-        assert_eq!(parser.parse("b".into()), None);
+        if let Some(statement) = result {
+            assert_eq!(
+                statement,
+                Statement::Select {
+                    column: "bla".into(),
+                    table: "asdf".into(),
+                }
+            );
+        } else {
+            panic!("Failed to parse SELECT");
+        }
     }
 }
