@@ -4,7 +4,7 @@ mod lexer;
 pub mod parser;
 
 pub fn parse(input: &str) {
-    let _tokens = lexer::Lexer::new(input).lex();
+    let _tokens = lexer::Lexer::lex(input);
 
     // TODO: Parsing
 }

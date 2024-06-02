@@ -62,7 +62,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+    fn new(input: &'a str) -> Self {
         let mut result = Self {
             input: input.chars().peekable(),
             current_char: None,
@@ -87,13 +87,15 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn lex(&mut self) -> Vec<Token> {
+    pub fn lex(input: &'a str) -> Vec<Token> {
+        let mut lexer = Lexer::new(input);
+
         let mut result = vec![];
 
-        while self.current_char.is_some() {
-            self.skip_whitespace();
+        while lexer.current_char.is_some() {
+            lexer.skip_whitespace();
 
-            result.push(self.next_token());
+            result.push(lexer.next_token());
         }
 
         return result;
@@ -149,6 +151,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn read_identifier(&mut self) -> Token {
+        // Note: identifier has to start with letter but may contain numbers
         let mut result = String::new();
 
         while let Some(current_char) = self.current_char {
@@ -225,9 +228,7 @@ mod tests {
     fn simple_select_statement() {
         let input = "SELECT blabla FROM asdf WHERE your_mom;";
 
-        let mut lexer = Lexer::new(input);
-
-        let result = lexer.lex();
+        let result = Lexer::lex(input);
 
         assert_eq!(
             result,
@@ -244,13 +245,22 @@ mod tests {
     }
 
     #[test]
+    fn identifier_cant_start_with_number() {
+        let input = "SELECT 1abc FROM asdf";
+
+        let result = Lexer::lex(input);
+
+        assert_eq!(result, vec![Select, Int(1), Ident("abc".into()), From, Ident("asdf".into())]);
+    }
+
+    #[test]
     fn all_symbols() {
-        let mut lexer = Lexer::new(
+        let result = Lexer::lex(
             ", ; * = < <= > >= + - /"
         );
 
         assert_eq!(
-            lexer.lex(),
+            result,
             vec![
                 Comma,
                 Semicolon,
@@ -269,13 +279,13 @@ mod tests {
 
     #[test]
     fn symbols_in_query() {
-        let mut lexer = Lexer::new(
+        let result = Lexer::lex(
             "SELECT * FROM bla WHERE asdf <> 5;",
         );
 
         // TODO
         assert_eq!(
-            lexer.lex(),
+            result,
             vec![
                 Select,
                 Asterisk,
@@ -292,9 +302,9 @@ mod tests {
 
     #[test]
     fn identifier_list() {
-        let result = Lexer::new(
+        let result = Lexer::lex(
             "SELECT a,b, asdf FROM c;"
-        ).lex();
+        );
 
         assert_eq!(
             result,
@@ -315,14 +325,14 @@ mod tests {
     #[test]
     fn handle_invalid_token() {
         assert_eq!(
-            Lexer::new("&").lex(),
+            Lexer::lex("&"),
             vec![
                 Invalid("Unknown character '&'".into())
             ]
         );
 
         assert_eq!(
-            Lexer::new("1 1.2 1.2.3").lex(),
+            Lexer::lex("1 1.2 1.2.3"),
             vec![
                 Int(1),
                 Decimal(1, 2),

@@ -47,12 +47,12 @@ impl InfixOperator {
 }
 
 
-pub trait Parser {
+pub trait ExpressionParser {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression>;
 }
 
 pub struct Number;
-impl Parser for Number {
+impl ExpressionParser for Number {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         if let Some(Token::Int(value)) = input.get(0) {
             *input = &input[1..];
@@ -65,7 +65,7 @@ impl Parser for Number {
 }
 
 pub struct Identifier;
-impl Parser for Identifier {
+impl ExpressionParser for Identifier {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         if let Token::Ident(name) = input.get(0)? {
             *input = &input[1..];
@@ -78,7 +78,7 @@ impl Parser for Identifier {
 }
 
 pub struct AllColumn;
-impl Parser for AllColumn {
+impl ExpressionParser for AllColumn {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Asterisk)?;
 
@@ -87,14 +87,14 @@ impl Parser for AllColumn {
 }
 
 pub struct Column;
-impl Parser for Column {
+impl ExpressionParser for Column {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         return Identifier.or(AllColumn).parse(input);
     }
 }
 
-pub struct WhereParser;
-impl Parser for WhereParser {
+pub struct Where;
+impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;
 
@@ -113,16 +113,18 @@ impl Parser for WhereParser {
 
 #[cfg(test)]
 mod tests {
-    use super::{AllColumn, Column, Expression, E, Identifier, InfixOperator, Number, Parser, WhereParser};
+    use super::{AllColumn, Column, Expression, E, Identifier, InfixOperator, ExpressionParser, Number, Where};
     use crate::lexer::Lexer;
 
-    fn test_all_cases(parser: impl Parser, inputs: &[(&str, Option<Expression>)]) {
+
+    pub fn test_all_cases(parser: impl ExpressionParser, inputs: &[(&str, Option<Expression>)]) {
         inputs.iter().for_each(|test_case| {
-            let result = parser.parse(&mut Lexer::new(test_case.0).lex().as_slice());
+            let result = parser.parse(&mut Lexer::lex(test_case.0).as_slice());
 
             assert_eq!(result, test_case.1);
         });
     }
+
 
     #[test]
     fn number_parser_basic() {
@@ -140,6 +142,7 @@ mod tests {
         let inputs = [
             ("blablabla", Some(E::Ident("blablabla".into()))),
             ("Bl_a", Some(E::Ident("Bl_a".into()))),
+            ("1abc", None),
         ];
 
         test_all_cases(Identifier, &inputs);
@@ -189,6 +192,6 @@ mod tests {
             ("WHERE * = 0", None),
         ];
 
-        test_all_cases(WhereParser, &inputs);
+        test_all_cases(Where, &inputs);
     }
 }
