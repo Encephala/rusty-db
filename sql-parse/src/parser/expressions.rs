@@ -53,7 +53,7 @@ pub trait Parser {
 
 pub struct Number;
 impl Parser for Number {
-    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         if let Some(Token::Int(value)) = input.get(0) {
             *input = &input[1..];
 
@@ -98,7 +98,7 @@ impl Parser for WhereParser {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;
 
-        let parser = Column.or(Number);
+        let parser = Identifier.or(Number);
 
         let left = parser.parse(input)?.into();
 
@@ -113,7 +113,7 @@ impl Parser for WhereParser {
 
 #[cfg(test)]
 mod tests {
-    use super::{AllColumn, Column, Expression, Identifier, InfixOperator, Number, Parser, WhereParser, E};
+    use super::{AllColumn, Column, Expression, E, Identifier, InfixOperator, Number, Parser, WhereParser};
     use crate::lexer::Lexer;
 
     fn test_all_cases(parser: impl Parser, inputs: &[(&str, Option<Expression>)]) {
@@ -186,6 +186,7 @@ mod tests {
             })),
             ("WHERE column", None),
             ("column <> other_column", None),
+            ("WHERE * = 0", None),
         ];
 
         test_all_cases(WhereParser, &inputs);
