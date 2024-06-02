@@ -313,7 +313,7 @@ mod tests {
     }
 
     #[test]
-    fn error_on_invalid_token() {
+    fn handle_invalid_token() {
         assert_eq!(
             Lexer::new("&").lex(),
             vec![

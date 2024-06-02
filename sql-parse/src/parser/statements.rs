@@ -1,6 +1,6 @@
-use crate::lexer::Token;
+use super::expressions::{Expression, Parser, Identifier, WhereParser};
 use super::utils::check_and_skip;
-use super::expressions::{Expression, IdentifierParser, Parser, WhereParser};
+use crate::lexer::Token;
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
@@ -13,18 +13,17 @@ pub enum Statement {
 
 
 struct SelectStatement;
-
 impl SelectStatement {
     fn parse(&self, mut input: &[Token]) -> Option<Statement> {
         let input = &mut input;
 
         check_and_skip(input, Token::Select)?;
 
-        let column = IdentifierParser.parse(input)?;
+        let column = Identifier.parse(input)?;
 
         check_and_skip(input, Token::From)?;
 
-        let table = IdentifierParser.parse(input)?;
+        let table = Identifier.parse(input)?;
 
         let where_clause = WhereParser.parse(input);
 
@@ -38,20 +37,15 @@ impl SelectStatement {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::lexer::Lexer;
+    use super::super::expressions::InfixOperator;
+    use super::{Expression as E, SelectStatement, Statement as S};
 
-    use super::{
-        Parser,
-        Statement as S,
-        SelectStatement,
-        Expression as E,
-    };
 
     #[test]
-    fn basic_select() {
+    fn select_basic() {
         let input = "SELECT bla from asdf;";
 
         let tokens = Lexer::new(input).lex();
@@ -64,6 +58,27 @@ mod tests {
                 column: E::Ident("bla".into()),
                 table: E::Ident("asdf".into()),
                 where_clause: None,
-            }));
+            })
+        );
+    }
+
+    #[test]
+    fn select_with_where() {
+        let input = "SELECT bla FROM asdf WHERE a > b;";
+
+        let result = SelectStatement.parse(Lexer::new(input).lex().as_slice());
+
+        assert_eq!(
+            result,
+            Some(S::Select {
+                column: E::Ident("bla".into()),
+                table: E::Ident("asdf".into()),
+                where_clause: Some(E::Where {
+                    left: E::Ident("a".into()).into(),
+                    operator: InfixOperator::GreaterThan,
+                    right: E::Ident("b".into()).into(),
+                })
+            })
+        )
     }
 }

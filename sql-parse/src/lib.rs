@@ -1,7 +1,7 @@
 #![allow(clippy::needless_return)]
 
-pub mod parser;
 mod lexer;
+pub mod parser;
 
 pub fn parse(input: &str) {
     let _tokens = lexer::Lexer::new(input).lex();
@@ -10,5 +10,4 @@ pub fn parse(input: &str) {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
