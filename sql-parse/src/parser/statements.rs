@@ -1,4 +1,5 @@
-use super::expressions::{Expression, ExpressionParser, Identifier, Where, Array};
+use super::combinators::Chain;
+use super::expressions::{AllColumn, Array, Expression, ExpressionParser, Identifier, Where};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
@@ -37,7 +38,7 @@ impl StatementParser for Select {
 
         check_and_skip(input, Token::Select)?;
 
-        let columns = Identifier.parse(input)?;
+        let columns = Identifier.multiple().or(AllColumn).parse(input)?;
 
         check_and_skip(input, Token::From)?;
 
@@ -128,20 +129,24 @@ mod tests {
 
     #[test]
     fn select_basic() {
-        let input = "SELECT bla from asdf;";
-
-        let tokens = Lexer::lex(input);
-
-        let result = Select.parse(tokens.as_slice());
-
-        assert_eq!(
-            result,
-            Some(S::Select {
-                columns: E::Ident("bla".into()),
+        let inputs = [
+            ("SELECT bla from asdf;", S::Select {
+                columns: E::Array(vec![E::Ident("bla".into())]),
                 table: E::Ident("asdf".into()),
                 where_clause: None,
-            })
-        );
+            }),
+            ("SELECT * from asdf;", S::Select {
+                columns: E::AllColumns,
+                table: E::Ident("asdf".into()),
+                where_clause: None,
+            }),
+        ];
+
+        inputs.into_iter().for_each(|test_case| {
+            let result = Select.parse(&Lexer::lex(test_case.0));
+
+            assert_eq!(result, Some(test_case.1));
+        });
     }
 
     #[test]
@@ -153,7 +158,7 @@ mod tests {
         assert_eq!(
             result,
             Some(S::Select {
-                columns: E::Ident("bla".into()),
+                columns: E::Array(vec![E::Ident("bla".into())]),
                 table: E::Ident("asdf".into()),
                 where_clause: Some(E::Where {
                     left: E::Ident("a".into()).into(),
