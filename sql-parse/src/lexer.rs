@@ -7,6 +7,7 @@ pub enum Token {
     Where,
     Insert,
     Into,
+    Values,
     Create,
     Database,
     Table,
@@ -14,10 +15,13 @@ pub enum Token {
     Ident(String),
     Int(usize),
     Decimal(usize, usize),
+    Str(String),
 
     Asterisk,
     Comma,
     Semicolon,
+    LParenthesis,
+    RParenthesis,
 
     Equals,
     NotEquals,
@@ -48,6 +52,7 @@ impl From<String> for Token {
             "INSERT" => Insert,
             "INTO" => Into,
             "CREATE" => Create,
+            "VALUES" => Values,
             "DATABASE" => Database,
             "TABLE" => Table,
             _ => Ident(value),
@@ -109,7 +114,26 @@ impl<'a> Lexer<'a> {
             ',' => Comma,
             ';' => Semicolon,
             '*' => Asterisk,
+            '(' => LParenthesis,
+            ')' => RParenthesis,
             '=' => Equals,
+            '\'' => {
+                self.advance();
+
+                let mut result = String::new();
+
+                while let Some(character) = self.current_char {
+                    if character == '\'' {
+                        break;
+                    }
+
+                    result.push(character);
+
+                    self.advance();
+                }
+
+                Str(result)
+            },
             '<' => {
                 match self.next_char {
                     Some('>') => {
@@ -320,6 +344,21 @@ mod tests {
                 Semicolon,
             ]
         )
+    }
+
+    #[test]
+    fn string() {
+        let result = Lexer::lex(
+            "'asdfghjkl';"
+        );
+
+        assert_eq!(
+            result,
+            vec![
+                Str("asdfghjkl".into()),
+                Semicolon,
+            ]
+        );
     }
 
     #[test]

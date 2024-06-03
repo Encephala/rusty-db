@@ -1,4 +1,4 @@
-use super::expressions::{Expression, ExpressionParser, Identifier, Where};
+use super::expressions::{Expression, ExpressionParser, Identifier, Where, Array};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
@@ -12,7 +12,11 @@ pub enum Statement {
     Create {
         what: CreateType,
         name: Expression,
-    }
+    },
+    Insert {
+        into: Expression,
+        values: Expression, // Expression::Array
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -78,11 +82,39 @@ impl StatementParser for Create {
     }
 }
 
+
+pub struct Insert;
+impl StatementParser for Insert {
+    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
+        let input = &mut input;
+
+        check_and_skip(input, Token::Insert)?;
+
+        check_and_skip(input, Token::Into)?;
+
+        let into = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::Values)?;
+
+        let values = Array.parse(input)?;
+
+        check_and_skip(input, Token::Semicolon)?;
+
+        return Some(Statement::Insert {
+           into,
+           values
+        });
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::lexer::Lexer;
     use super::super::expressions::InfixOperator;
-    use super::{Create, CreateType, Select, Expression as E, Statement, Statement as S, StatementParser};
+    use super::*;
+
+    use {Expression as E, Statement as S};
 
 
     pub fn test_all_cases(parser: impl StatementParser, inputs: &[(&str, Option<Statement>)]) {
@@ -150,5 +182,33 @@ mod tests {
         ];
 
         test_all_cases(Create, &inputs);
+    }
+
+    #[test]
+    fn insert_basic() {
+        let inputs = [
+            ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
+                into: E::Ident("bla".into()),
+                values: E::Array(vec![
+                    E::Int(1),
+                    E::Str("hey".into()),
+                    E::Decimal(420, 69),
+                ])
+            })),
+            ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
+                into: E::Ident("bla".into()),
+                values: E::Array(vec![
+                    E::Int(1),
+                    E::Str("hey".into()),
+                    E::Decimal(420, 69),
+                ])
+            })),
+            // Can't forget semicolon
+            ("INSERT INTO bla VALUES ()", None),
+            // Can't forget `INTO`
+            ("INSERT bla VALUES ();", None),
+        ];
+
+        test_all_cases(Insert, &inputs);
     }
 }

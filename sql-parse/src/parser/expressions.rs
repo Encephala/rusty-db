@@ -7,7 +7,10 @@ pub enum Expression {
     AllColumns,
     Ident(String),
     Int(usize),
+    Decimal(usize, usize),
+    Str(String),
     Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
+    Array(Vec<Expression>),
 }
 use Expression as E;
 
@@ -47,10 +50,11 @@ impl InfixOperator {
 }
 
 
-pub trait ExpressionParser {
+pub trait ExpressionParser: std::fmt::Debug {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression>;
 }
 
+#[derive(Debug)]
 pub struct Number;
 impl ExpressionParser for Number {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
@@ -60,10 +64,31 @@ impl ExpressionParser for Number {
             return Some(E::Int(*value));
         }
 
+        if let Some(Token::Decimal(whole, fractional)) = input.get(0) {
+            *input = &input[1..];
+
+            return Some(E::Decimal(*whole, *fractional));
+        }
+
         return None;
     }
 }
 
+#[derive(Debug)]
+pub struct Str;
+impl ExpressionParser for Str {
+    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+        if let Some(Token::Str(value)) = input.get(0) {
+            *input = &input[1..];
+
+            return Some(E::Str(value.clone()));
+        }
+
+        return None;
+    }
+}
+
+#[derive(Debug)]
 pub struct Identifier;
 impl ExpressionParser for Identifier {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
@@ -77,6 +102,7 @@ impl ExpressionParser for Identifier {
     }
 }
 
+#[derive(Debug)]
 pub struct AllColumn;
 impl ExpressionParser for AllColumn {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
@@ -86,6 +112,7 @@ impl ExpressionParser for AllColumn {
     }
 }
 
+#[derive(Debug)]
 pub struct Column;
 impl ExpressionParser for Column {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
@@ -93,6 +120,7 @@ impl ExpressionParser for Column {
     }
 }
 
+#[derive(Debug)]
 pub struct Where;
 impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
@@ -111,9 +139,39 @@ impl ExpressionParser for Where {
 }
 
 
+#[derive(Debug)]
+pub struct Array;
+impl ExpressionParser for Array {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        check_and_skip(input, Token::LParenthesis)?;
+
+        let mut expressions = vec![];
+
+        let parser = Str.or(Number);
+
+        expressions.push(parser.parse(input)?);
+
+        while Some(&Token::Comma) == input.get(0) {
+            *input = &input[1..];
+
+            // Allow trailing comma at end of array
+            if let Some(Token::RParenthesis) = input.get(0) {
+                break;
+            }
+
+            expressions.push(parser.parse(input)?);
+        }
+
+        check_and_skip(input, Token::RParenthesis)?;
+
+        return Some(E::Array(expressions));
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
-    use super::{AllColumn, Column, Expression, E, Identifier, InfixOperator, ExpressionParser, Number, Where};
+    use super::*;
     use crate::lexer::Lexer;
 
 
@@ -132,6 +190,8 @@ mod tests {
             ("1", Some(E::Int(1))),
             ("69420", Some(E::Int(69420))),
             ("asdf", None),
+            ("5.321", Some(E::Decimal(5, 321))),
+            ("5.3.2.1", None),
         ];
 
         test_all_cases(Number, &inputs);
@@ -193,5 +253,23 @@ mod tests {
         ];
 
         test_all_cases(Where, &inputs);
+    }
+
+    #[test]
+    fn array_basic() {
+        let inputs = [
+            ("(1, 2.3, 'hey', 4)", Some(E::Array(vec![
+                E::Int(1),
+                E::Decimal(2, 3),
+                E::Str("hey".into()),
+                E::Int(4),
+            ]))),
+            // Allow trailing commas
+            ("(1,)", Some(E::Array(vec![
+                E::Int(1),
+            ]))),
+        ];
+
+        test_all_cases(Array, &inputs);
     }
 }
