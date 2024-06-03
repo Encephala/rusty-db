@@ -123,6 +123,11 @@ impl ExpressionParser for Column {
 
 #[derive(Debug)]
 pub struct Where;
+
+// TODO: This doesn't differentiate between a failed parsing of `WHERE` clause,
+// and the absence of a `WHERE` clause.
+// Again, have to move to Result<Option> or Option<Result>
+// That's gonna make me sad about not being able to use ? everywhere though :(
 impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;

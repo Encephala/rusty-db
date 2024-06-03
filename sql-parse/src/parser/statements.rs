@@ -160,6 +160,8 @@ impl StatementParser for Update {
 
         let where_clause = Where.parse(input);
 
+        check_and_skip(input, Token::Semicolon)?;
+
         return Some(Statement::Update {
             from,
             columns: Expression::Array(columns),
@@ -181,8 +183,23 @@ fn destructure_column_value_pair(pair: Expression) -> (Expression, Expression) {
 
 pub struct Delete;
 impl StatementParser for Delete {
-    fn parse(&self, input: &[Token]) -> Option<Statement> {
-        todo!()
+    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
+        let input = &mut input;
+
+        check_and_skip(input, Token::Delete)?;
+
+        check_and_skip(input, Token::From)?;
+
+        let from = Identifier.parse(input)?;
+
+        let where_clause = Where.parse(input);
+
+        check_and_skip(input, Token::Semicolon)?;
+
+        return Some(Statement::Delete {
+            from,
+            where_clause,
+        });
     }
 }
 
@@ -326,8 +343,32 @@ mod tests {
                 ]),
                 where_clause: None,
             })),
+            // Must end in semicolon
+            ("UPDATE tbl set col1 = 1, col2 = 'value'", None),
         ];
 
         test_all_cases(Update, &inputs);
+    }
+
+    #[test]
+    fn delete_basic() {
+        let inputs = [
+            ("DELETE FROM tbl;", Some(S::Delete {
+                from: E::Ident("tbl".into()),
+                where_clause: None,
+            })),
+            ("DELETE FROM tbl WHERE col = 1;", Some(S::Delete {
+                from: E::Ident("tbl".into()),
+                where_clause: Some(E::Where {
+                    left: E::Ident("col".into()).into(),
+                    operator: InfixOperator::Equals,
+                    right: E::Int(1).into(),
+                }),
+            })),
+            // Must end in semicolon
+            ("DELETE FROM tbl", None),
+        ];
+
+        test_all_cases(Delete, &inputs);
     }
 }
