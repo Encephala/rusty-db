@@ -11,6 +11,9 @@ pub enum Token {
     Create,
     Database,
     Table,
+    Update,
+    Set,
+    Delete,
 
     Ident(String),
     Int(usize),
@@ -55,6 +58,9 @@ impl From<String> for Token {
             "VALUES" => Values,
             "DATABASE" => Database,
             "TABLE" => Table,
+            "UPDATE" => Update,
+            "SET" => Set,
+            "DELETE" => Delete,
             _ => Ident(value),
         };
     }

@@ -1,5 +1,5 @@
 use super::combinators::Chain;
-use super::expressions::{AllColumn, Array, Expression, ExpressionParser, Identifier, Where};
+use super::expressions::{AllColumn, Array, Expression, ExpressionParser, Identifier, Where, Value};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
@@ -18,6 +18,16 @@ pub enum Statement {
         into: Expression,
         values: Expression, // Expression::Array
     },
+    Update {
+        from: Expression,
+        columns: Expression,
+        values: Expression,
+        where_clause: Option<Expression>,
+    },
+    Delete {
+        from: Expression,
+        where_clause: Option<Expression>,
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -109,11 +119,60 @@ impl StatementParser for Insert {
 }
 
 
-// To jumpstart my memory next time
 pub struct Update;
 impl StatementParser for Update {
-    fn parse(&self, input: &[Token]) -> Option<Statement> {
-        todo!()
+    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
+        let input = &mut input;
+
+        check_and_skip(input, Token::Update)?;
+
+        let from = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::Set)?;
+
+        #[derive(Debug)]
+        struct ColumnValuePair;
+        impl ExpressionParser for ColumnValuePair {
+            fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+                let column = Identifier.parse(input)?;
+
+                check_and_skip(input, Token::Equals)?;
+
+                let value = Value.parse(input)?;
+
+                return Some(Expression::ColumnValuePair {
+                    column: column.into(),
+                    value: value.into(),
+                });
+            }
+        }
+
+        let pairs = ColumnValuePair.multiple().parse(input)?;
+
+        let mut columns = vec![];
+        let mut values = vec![];
+
+        // Collect pairs into separate vectors
+        // Will always match
+        if let Expression::Array(pairs) = pairs {
+            pairs.into_iter().for_each(|pair| {
+                // Will always match
+                if let Expression::ColumnValuePair { column, value } = pair {
+                    columns.push(*column);
+
+                    values.push(*value);
+                }
+            });
+        }
+
+        let where_clause = Where.parse(input);
+
+        return Some(Statement::Update {
+            from,
+            columns: Expression::Array(columns),
+            values: Expression::Array(values),
+            where_clause,
+        });
     }
 }
 
@@ -232,5 +291,41 @@ mod tests {
         ];
 
         test_all_cases(Insert, &inputs);
+    }
+
+    #[test]
+    fn update_basic() {
+        let inputs = [
+            ("UPDATE tbl SET col = 1;", Some(S::Update {
+                from: E::Ident("tbl".into()),
+                columns: E::Array(vec![E::Ident("col".into())]),
+                values: E::Array(vec![E::Int(1)]),
+                where_clause: None,
+            })),
+            ("update tbl set col = 1 where other = 2;", Some(S::Update {
+                from: E::Ident("tbl".into()),
+                columns: E::Array(vec![E::Ident("col".into())]),
+                values: E::Array(vec![E::Int(1)]),
+                where_clause: Some(E::Where {
+                    left: E::Ident("other".into()).into(),
+                    operator: InfixOperator::Equals,
+                    right: E::Int(2).into(),
+                }),
+            })),
+            ("UPDATE tbl set col1 = 1, col2 = 'value';", Some(S::Update {
+                from: E::Ident("tbl".into()),
+                columns: E::Array(vec![
+                    E::Ident("col1".into()),
+                    E::Ident("col2".into()),
+                ]),
+                values: E::Array(vec![
+                    E::Int(1),
+                    E::Str("value".into()),
+                ]),
+                where_clause: None,
+            })),
+        ];
+
+        test_all_cases(Update, &inputs);
     }
 }

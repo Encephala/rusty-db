@@ -11,6 +11,7 @@ pub enum Expression {
     Str(String),
     Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
     Array(Vec<Expression>),
+    ColumnValuePair { column: Box<Expression>, value: Box<Expression> },
 }
 use Expression as E;
 
@@ -77,7 +78,7 @@ impl ExpressionParser for Number {
 #[derive(Debug)]
 pub struct Str;
 impl ExpressionParser for Str {
-    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         if let Some(Token::Str(value)) = input.get(0) {
             *input = &input[1..];
 
@@ -140,13 +141,22 @@ impl ExpressionParser for Where {
 
 
 #[derive(Debug)]
+pub struct Value;
+impl ExpressionParser for Value {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        return Str.or(Number).parse(input);
+    }
+}
+
+
+#[derive(Debug)]
 pub struct Array;
 impl ExpressionParser for Array {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::LParenthesis)?;
 
         // TODO: Make this parse any expression rather than hardcoded str or number
-        let expressions = Str.or(Number).multiple().parse(input)?;
+        let expressions = Value.multiple().parse(input)?;
 
         check_and_skip(input, Token::RParenthesis)?;
 
