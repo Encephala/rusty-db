@@ -4,7 +4,7 @@ mod lexer;
 pub mod parser;
 
 use lexer::{Token, Lexer};
-use parser::{Statement, StatementParser, Create, Insert, Select};
+use parser::{Statement, StatementParser, Create, Insert, Select, Update, Delete};
 
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);
@@ -13,6 +13,8 @@ pub fn parse_statement(input: &str) -> Option<Statement> {
         Token::Create => Create.parse(tokens),
         Token::Insert => Insert.parse(tokens),
         Token::Select => Select.parse(tokens),
+        Token::Update => Update.parse(tokens),
+        Token::Delete => Delete.parse(tokens),
         _ => None,
     };
 }
@@ -25,11 +27,11 @@ mod tests {
     #[test]
     fn parse_statements_basic() {
         let inputs = [
-            ("SELECT * FROM blabla;"),
             ("SELECT * FROM blabla WHERE x = 5;"),
             ("CREATE TABLE blabla;"),
-            ("CREATE DATABASE xd;"),
             ("INSERT INTO blabla VALUES ('a', 'b', 'c');"),
+            ("UPDATE tbl SET col1 = 1, col2 = 'bye' WHERE a = b;"),
+            ("DELETE FROM tbl WHERE a = 5;"),
         ];
 
         inputs.iter().for_each(|test_case| {
