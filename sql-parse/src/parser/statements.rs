@@ -155,14 +155,7 @@ impl StatementParser for Update {
         // Collect pairs into separate vectors
         // Will always match
         if let Expression::Array(pairs) = pairs {
-            pairs.into_iter().for_each(|pair| {
-                // Will always match
-                if let Expression::ColumnValuePair { column, value } = pair {
-                    columns.push(*column);
-
-                    values.push(*value);
-                }
-            });
+            (columns, values) = pairs.into_iter().map(destructure_column_value_pair).unzip();
         }
 
         let where_clause = Where.parse(input);
@@ -174,6 +167,15 @@ impl StatementParser for Update {
             where_clause,
         });
     }
+}
+
+fn destructure_column_value_pair(pair: Expression) -> (Expression, Expression) {
+    // Will always pass
+    if let Expression::ColumnValuePair { column, value } = pair {
+        return (*column, *value);
+    }
+
+    panic!("split_column_value_pairs called with something other than a ColumnValuePair");
 }
 
 
