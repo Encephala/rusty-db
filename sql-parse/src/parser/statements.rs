@@ -109,6 +109,23 @@ impl StatementParser for Insert {
 }
 
 
+// To jumpstart my memory next time
+pub struct Update;
+impl StatementParser for Update {
+    fn parse(&self, input: &[Token]) -> Option<Statement> {
+        todo!()
+    }
+}
+
+
+pub struct Delete;
+impl StatementParser for Delete {
+    fn parse(&self, input: &[Token]) -> Option<Statement> {
+        todo!()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::lexer::Lexer;
