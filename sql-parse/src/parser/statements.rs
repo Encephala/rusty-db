@@ -5,7 +5,7 @@ use crate::lexer::Token;
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Select {
-        column: Expression,
+        columns: Expression,
         table: Expression,
         where_clause: Option<Expression>,
     },
@@ -37,7 +37,7 @@ impl StatementParser for Select {
 
         check_and_skip(input, Token::Select)?;
 
-        let column = Identifier.parse(input)?;
+        let columns = Identifier.parse(input)?;
 
         check_and_skip(input, Token::From)?;
 
@@ -48,7 +48,7 @@ impl StatementParser for Select {
         check_and_skip(input, Token::Semicolon)?;
 
         return Some(Statement::Select {
-            column,
+            columns,
             table,
             where_clause,
         });
@@ -137,7 +137,7 @@ mod tests {
         assert_eq!(
             result,
             Some(S::Select {
-                column: E::Ident("bla".into()),
+                columns: E::Ident("bla".into()),
                 table: E::Ident("asdf".into()),
                 where_clause: None,
             })
@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(
             result,
             Some(S::Select {
-                column: E::Ident("bla".into()),
+                columns: E::Ident("bla".into()),
                 table: E::Ident("asdf".into()),
                 where_clause: Some(E::Where {
                     left: E::Ident("a".into()).into(),

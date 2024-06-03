@@ -116,7 +116,7 @@ impl ExpressionParser for AllColumn {
 pub struct Column;
 impl ExpressionParser for Column {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return Identifier.or(AllColumn).parse(input);
+        return Identifier.or(AllColumn).multiple().parse(input);
     }
 }
 
@@ -145,26 +145,12 @@ impl ExpressionParser for Array {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::LParenthesis)?;
 
-        let mut expressions = vec![];
-
-        let parser = Str.or(Number);
-
-        expressions.push(parser.parse(input)?);
-
-        while Some(&Token::Comma) == input.get(0) {
-            *input = &input[1..];
-
-            // Allow trailing comma at end of array
-            if let Some(Token::RParenthesis) = input.get(0) {
-                break;
-            }
-
-            expressions.push(parser.parse(input)?);
-        }
+        // TODO: Make this parse any expression rather than hardcoded str or number
+        let expressions = Str.or(Number).multiple().parse(input)?;
 
         check_and_skip(input, Token::RParenthesis)?;
 
-        return Some(E::Array(expressions));
+        return Some(expressions);
     }
 }
 
@@ -221,9 +207,15 @@ mod tests {
     #[test]
     fn column_parser_basic() {
         let inputs = [
-            ("*", Some(E::AllColumns)),
-            ("column_name", Some(E::Ident("column_name".into()))),
-            ("otherColumnName", Some(E::Ident("otherColumnName".into()))),
+            ("*", Some(E::Array(vec![E::AllColumns]))),
+            ("column_name", Some(E::Array(vec![E::Ident("column_name".into())]))),
+            ("otherColumnName", Some(E::Array(vec![E::Ident("otherColumnName".into())]))),
+            ("a, b", Some(E::Array(vec![
+                E::Ident("a".into()),
+                E::Ident("b".into()),
+            ]))),
+            // No trailing commas
+            ("a, b,", None),
         ];
 
         test_all_cases(Column, &inputs);

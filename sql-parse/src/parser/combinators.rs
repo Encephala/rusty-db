@@ -34,62 +34,39 @@ impl ExpressionParser for Or {
 }
 
 
+
 #[derive(Debug)]
-pub struct Then {
-    parser: Box<dyn ExpressionParser>,
-    next_parser: Option<Box<dyn ExpressionParser>>,
+pub struct Multiple {
+    parser: Box<dyn ExpressionParser>
 }
-
-impl Then {
-    fn _new(parser: impl ExpressionParser + 'static) -> Self {
-        return Then {
-            parser: Box::new(parser),
-            next_parser: None,
-        }
-    }
-
-    fn _then(mut self, new_next_parser: impl ExpressionParser + 'static) -> Self {
-        // self.next_parser is None, can insert immediately
-        if self.next_parser.is_none() {
-            self.next_parser = Some(Box::new(new_next_parser));
-
-            return self;
-        }
-
-        // self.next_parser is not None,
-        // have to first parse self.parser and self.next_parser, then parse new_next_parser
-        self.next_parser = Some(Box::new(Then {
-            parser: self.next_parser.unwrap(),
-            next_parser: Some(Box::new(new_next_parser)),
-        }));
-
-        return self;
-    }
-}
-
-impl ExpressionParser for Then {
-    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        let first = self.parser.parse(input)?;
-        let next = self.next_parser.as_ref()?.parse(input)?;
-
-        // TODO: this should be recursive
-        let result = match (first, next) {
-            (Expression::Array(mut array), next) => {
-                array.push(next);
-
-                Expression::Array(array)
-            },
-            (first, Expression::Array(ref mut array)) => {
-                let mut result = vec![first];
-
-                result.append(array);
-
-                Expression::Array(result)
-            },
-            (first, next) => Expression::Array(vec![first, next]),
+impl Multiple {
+    fn new(parser: impl ExpressionParser + 'static) -> Self {
+        return Multiple {
+            parser: Box::new(parser)
         };
+    }
+}
 
-        return Some(result);
+impl ExpressionParser for Multiple {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        let mut expressions = vec![];
+
+        expressions.push(self.parser.parse(input)?);
+
+        while Some(&Token::Comma) == input.get(0) {
+            *input = &input[1..];
+
+            // Allow trailing comma at end of array
+            // Idk if this is a good idea to have, probably hard to get proper
+            // error messages if parsing somewhere else fails
+            if let Some(Token::RParenthesis) = input.get(0) {
+                break;
+            }
+
+            expressions.push(self.parser.parse(input)?);
+        }
+
+        return Some(Expression::Array(expressions));
     }
 }
 
@@ -100,9 +77,9 @@ pub trait Chain {
         return Or::new(self).or(parser);
     }
 
-    fn then(self, parser: impl ExpressionParser + 'static) -> Then
+    fn multiple(self) -> Multiple
     where Self: ExpressionParser + Sized + 'static {
-        return Then::_new(self)._then(parser);
+        return Multiple::new(self);
     }
 }
 
@@ -111,25 +88,34 @@ impl<T: ExpressionParser> Chain for T {}
 #[cfg(test)]
 mod tests {
     use super::Chain;
-    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, Number};
+    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, Str, Number, Array};
     use crate::lexer::Lexer;
 
     #[test]
     fn or_basic() {
-
-    }
-
-    #[test]
-    fn then_basic() {
         let inputs = [
             (
-                Identifier.then(Number)._then(Identifier),
-                "asdf 123 bla",
+                Str.or(Number),
+                "'a'",
+                Some(E::Str('a'.into()))
+            ),
+            (
+                Str.or(Number),
+                "5",
+                Some(E::Int(5))
+            ),
+            (
+                Array.or(Identifier),
+                "('asdf', 1)",
                 Some(E::Array(vec![
-                    E::Ident("asdf".into()),
-                    E::Int(123),
-                    E::Ident("bla".into()),
+                    E::Str("asdf".into()),
+                    E::Int(1),
                 ])),
+            ),
+            (
+                Array.or(Identifier),
+                "hey",
+                Some(E::Ident("hey".into())),
             ),
         ];
 
@@ -139,6 +125,71 @@ mod tests {
             );
 
             assert_eq!(result, test_case.2);
-        })
+        });
+    }
+
+    #[test]
+    fn list_basic() {
+        let inputs: [(Box<dyn ExpressionParser>, _, _); 5] = [
+            (
+                Box::new(Identifier.multiple()),
+                "asdf, jkl",
+                E::Array(vec![
+                    E::Ident("asdf".into()),
+                    E::Ident("jkl".into()),
+                ]),
+            ),
+            (
+                Box::new(Identifier.or(Number).multiple()),
+                "asdf, 1234, 1.2",
+                E::Array(vec![
+                    E::Ident("asdf".into()),
+                    E::Int(1234),
+                    E::Decimal(1, 2),
+                ]),
+            ),
+            (
+                Box::new(Array.multiple()),
+                "('asdf', 1), ('jkl', 2)",
+                E::Array(vec![
+                    E::Array(vec![
+                        E::Str("asdf".into()),
+                        E::Int(1),
+                    ]),
+                    E::Array(vec![
+                        E::Str("jkl".into()),
+                        E::Int(2),
+                    ]),
+                ]),
+            ),
+            // For funsies
+            (
+                Box::new(Array.multiple().or(Number)),
+                "('asdf', 1), ('jkl', 2)",
+                E::Array(vec![
+                    E::Array(vec![
+                        E::Str("asdf".into()),
+                        E::Int(1),
+                    ]),
+                    E::Array(vec![
+                        E::Str("jkl".into()),
+                        E::Int(2),
+                    ]),
+                ]),
+            ),
+            (
+                Box::new(Array.multiple().or(Number)),
+                "1.2",
+                E::Decimal(1, 2),
+            ),
+        ];
+
+        inputs.into_iter().for_each(|test_case| {
+            let result = test_case.0.parse(
+                &mut Lexer::lex(test_case.1).as_slice()
+            );
+
+            assert_eq!(result, Some(test_case.2));
+        });
     }
 }
