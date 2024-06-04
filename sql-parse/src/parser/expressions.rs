@@ -138,13 +138,19 @@ impl Type {
 }
 impl ExpressionParser for Type {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return match input.get(0)? {
+        let result = match input.get(0)? {
             Token::Int => Some(E::Type(ColumnType::Int)),
             Token::Decimal => Some(E::Type(ColumnType::Decimal)),
             Token::Bool => Some(E::Type(ColumnType::Bool)),
             Token::VarChar => self.parse_varchar(input),
             _ => None,
         };
+
+        if result.is_some() {
+            *input = &input[1..];
+        }
+
+        return result;
     }
 }
 

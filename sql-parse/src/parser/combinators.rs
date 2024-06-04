@@ -53,7 +53,9 @@ impl ExpressionParser for Multiple {
 
         expressions.push(self.parser.parse(input)?);
 
+        dbg!(&input);
         while Some(&Token::Comma) == input.get(0) {
+            println!("Still a comma: {input:?}");
             *input = &input[1..];
 
             // Allow trailing comma at end of array

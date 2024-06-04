@@ -1,5 +1,6 @@
 
 use super::expressions::*;
+use super::combinators::Chain;
 use crate::lexer::Lexer;
 
 use Expression as E;
@@ -52,6 +53,25 @@ fn type_parser_basic() {
     ];
 
     test_all_cases(Type, &inputs);
+}
+
+#[test]
+fn type_parser_list() {
+    let input = "bool, int, integer, varchar(10)";
+
+    let result = Type.multiple().parse(
+        &mut Lexer::lex(input).as_slice()
+    );
+
+    assert_eq!(
+        result,
+        Some(E::Array(vec![
+            E::Type(ColumnType::Bool),
+            E::Type(ColumnType::Int),
+            E::Type(ColumnType::Int),
+            E::Type(ColumnType::VarChar(10)),
+        ]))
+    )
 }
 
 #[test]

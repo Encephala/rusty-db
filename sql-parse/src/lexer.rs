@@ -51,6 +51,8 @@ pub enum Token {
     // Times,
     Slash,
 
+    Eof,
+
     Invalid(String),
 }
 
@@ -127,6 +129,8 @@ impl<'a> Lexer<'a> {
 
             result.push(lexer.next_token());
         }
+
+        result.push(Token::Eof);
 
         return result;
     }
@@ -290,6 +294,7 @@ mod tests {
                 Int,
                 Int,
                 VarChar,
+                Eof,
             ],
         )
     }
@@ -310,6 +315,7 @@ mod tests {
                 Where,
                 Ident("your_mom".into()),
                 Semicolon,
+                Eof,
             ]
         );
     }
@@ -320,7 +326,17 @@ mod tests {
 
         let result = Lexer::lex(input);
 
-        assert_eq!(result, vec![Select, IntLiteral(1), Ident("abc".into()), From, Ident("asdf".into())]);
+        assert_eq!(
+            result,
+            vec![
+                Select,
+                IntLiteral(1),
+                Ident("abc".into()),
+                From,
+                Ident("asdf".into()),
+                Eof,
+            ]
+        );
     }
 
     #[test]
@@ -343,6 +359,7 @@ mod tests {
                 Plus,
                 Minus,
                 Slash,
+                Eof,
             ]
         );
     }
@@ -366,6 +383,7 @@ mod tests {
                 NotEquals,
                 IntLiteral(5),
                 Semicolon,
+                Eof,
             ]
         )
     }
@@ -388,6 +406,7 @@ mod tests {
                 From,
                 Ident("c".into()),
                 Semicolon,
+                Eof,
             ]
         )
     }
@@ -403,6 +422,7 @@ mod tests {
             vec![
                 StrLiteral("asdfghjkl".into()),
                 Semicolon,
+                Eof,
             ]
         );
     }
@@ -412,7 +432,8 @@ mod tests {
         assert_eq!(
             Lexer::lex("&"),
             vec![
-                Invalid("Unknown character '&'".into())
+                Invalid("Unknown character '&'".into()),
+                Eof,
             ]
         );
 
@@ -421,7 +442,8 @@ mod tests {
             vec![
                 IntLiteral(1),
                 DecimalLiteral(1, 2),
-                Invalid("Found 2 decimal separators in number '1.2.3'".into())
+                Invalid("Found 2 decimal separators in number '1.2.3'".into()),
+                Eof,
             ]
         );
     }

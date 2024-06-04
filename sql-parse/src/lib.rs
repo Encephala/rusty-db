@@ -28,7 +28,7 @@ mod tests {
     fn parse_statements_basic() {
         let inputs = [
             ("SELECT * FROM blabla WHERE x = 5;"),
-            ("CREATE TABLE blabla;"),
+            ("CREATE TABLE blabla (INT, BOOl, VARCHAR(10));"),
             ("INSERT INTO blabla VALUES ('a', 'b', 'c');"),
             ("UPDATE tbl SET col1 = 1, col2 = 'bye' WHERE a = b;"),
             ("DELETE FROM tbl WHERE a = 5;"),
