@@ -88,28 +88,28 @@ impl<T: ExpressionParser> Chain for T {}
 #[cfg(test)]
 mod tests {
     use super::Chain;
-    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, Str, Number, Array};
+    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, StrLiteral, NumberLiteral, Array};
     use crate::lexer::Lexer;
 
     #[test]
     fn or_basic() {
         let inputs = [
             (
-                Str.or(Number),
+                StrLiteral.or(NumberLiteral),
                 "'a'",
-                Some(E::Str('a'.into()))
+                Some(E::StrLiteral('a'.into()))
             ),
             (
-                Str.or(Number),
+                StrLiteral.or(NumberLiteral),
                 "5",
-                Some(E::Int(5))
+                Some(E::IntLiteral(5))
             ),
             (
                 Array.or(Identifier),
                 "('asdf', 1)",
                 Some(E::Array(vec![
-                    E::Str("asdf".into()),
-                    E::Int(1),
+                    E::StrLiteral("asdf".into()),
+                    E::IntLiteral(1),
                 ])),
             ),
             (
@@ -140,12 +140,12 @@ mod tests {
                 ]),
             ),
             (
-                Box::new(Identifier.or(Number).multiple()),
+                Box::new(Identifier.or(NumberLiteral).multiple()),
                 "asdf, 1234, 1.2",
                 E::Array(vec![
                     E::Ident("asdf".into()),
-                    E::Int(1234),
-                    E::Decimal(1, 2),
+                    E::IntLiteral(1234),
+                    E::DecimalLiteral(1, 2),
                 ]),
             ),
             (
@@ -153,34 +153,34 @@ mod tests {
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
                     E::Array(vec![
-                        E::Str("asdf".into()),
-                        E::Int(1),
+                        E::StrLiteral("asdf".into()),
+                        E::IntLiteral(1),
                     ]),
                     E::Array(vec![
-                        E::Str("jkl".into()),
-                        E::Int(2),
+                        E::StrLiteral("jkl".into()),
+                        E::IntLiteral(2),
                     ]),
                 ]),
             ),
             // For funsies
             (
-                Box::new(Array.multiple().or(Number)),
+                Box::new(Array.multiple().or(NumberLiteral)),
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
                     E::Array(vec![
-                        E::Str("asdf".into()),
-                        E::Int(1),
+                        E::StrLiteral("asdf".into()),
+                        E::IntLiteral(1),
                     ]),
                     E::Array(vec![
-                        E::Str("jkl".into()),
-                        E::Int(2),
+                        E::StrLiteral("jkl".into()),
+                        E::IntLiteral(2),
                     ]),
                 ]),
             ),
             (
-                Box::new(Array.multiple().or(Number)),
+                Box::new(Array.multiple().or(NumberLiteral)),
                 "1.2",
-                E::Decimal(1, 2),
+                E::DecimalLiteral(1, 2),
             ),
         ];
 

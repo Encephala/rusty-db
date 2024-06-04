@@ -2,6 +2,7 @@ use std::str::Chars;
 
 #[derive(Debug, PartialEq)]
 pub enum Token {
+    // Keywords
     Select,
     From,
     Where,
@@ -16,17 +17,26 @@ pub enum Token {
     Delete,
     Drop,
 
-    Ident(String),
-    Int(usize),
-    Decimal(usize, usize),
-    Str(String),
+    // Types
+    Int,
+    Decimal,
+    VarChar,
+    Bool,
 
+    // Expressions
+    Ident(String),
+    IntLiteral(usize),
+    DecimalLiteral(usize, usize),
+    StrLiteral(String),
+
+    // Symbols
     Asterisk,
     Comma,
     Semicolon,
     LParenthesis,
     RParenthesis,
 
+    // Infix operators
     Equals,
     NotEquals,
     LessThan,
@@ -34,6 +44,7 @@ pub enum Token {
     GreaterThan,
     GreaterThanEqual,
 
+    // Arithmetic operators
     Plus,
     Minus,
     // Multiplication and <all columns> share the same token
@@ -63,6 +74,12 @@ impl From<String> for Token {
             "SET" => Set,
             "DELETE" => Delete,
             "DROP" => Drop,
+            "INT" => Int,
+            "INTEGER" => Int,
+            "DECIMAL" => Decimal,
+            "VARCHAR" => VarChar,
+            "BOOL" => Bool,
+            "BOOLEAN" => Bool,
             _ => Ident(value),
         };
     }
@@ -140,7 +157,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                 }
 
-                Str(result)
+                StrLiteral(result)
             },
             '<' => {
                 match self.next_char {
@@ -217,11 +234,11 @@ impl<'a> Lexer<'a> {
         let number_of_dots = result.chars().filter(|char| char == &'.').count();
 
         return match number_of_dots {
-            0 => Token::Int(result.parse().unwrap()),
+            0 => Token::IntLiteral(result.parse().unwrap()),
             1 => {
                 let (whole, fractional) = result.split_once('.').unwrap();
 
-                Token::Decimal(whole.parse().unwrap(), fractional.parse().unwrap())
+                Token::DecimalLiteral(whole.parse().unwrap(), fractional.parse().unwrap())
             },
             _ => {
                 Token::Invalid(format!("Found {number_of_dots} decimal separators in number '{result}'"))
@@ -257,6 +274,27 @@ mod tests {
     }
 
     #[test]
+    fn keywords() {
+        let input = "select from table bool boolean int integer varchar";
+
+        let result = Lexer::lex(input);
+
+        assert_eq!(
+            result,
+            vec![
+                Select,
+                From,
+                Table,
+                Bool,
+                Bool,
+                Int,
+                Int,
+                VarChar,
+            ],
+        )
+    }
+
+    #[test]
     fn simple_select_statement() {
         let input = "SELECT blabla FROM asdf WHERE your_mom;";
 
@@ -282,7 +320,7 @@ mod tests {
 
         let result = Lexer::lex(input);
 
-        assert_eq!(result, vec![Select, Int(1), Ident("abc".into()), From, Ident("asdf".into())]);
+        assert_eq!(result, vec![Select, IntLiteral(1), Ident("abc".into()), From, Ident("asdf".into())]);
     }
 
     #[test]
@@ -326,7 +364,7 @@ mod tests {
                 Where,
                 Ident("asdf".into()),
                 NotEquals,
-                Int(5),
+                IntLiteral(5),
                 Semicolon,
             ]
         )
@@ -363,7 +401,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                Str("asdfghjkl".into()),
+                StrLiteral("asdfghjkl".into()),
                 Semicolon,
             ]
         );
@@ -381,8 +419,8 @@ mod tests {
         assert_eq!(
             Lexer::lex("1 1.2 1.2.3"),
             vec![
-                Int(1),
-                Decimal(1, 2),
+                IntLiteral(1),
+                DecimalLiteral(1, 2),
                 Invalid("Found 2 decimal separators in number '1.2.3'".into())
             ]
         );

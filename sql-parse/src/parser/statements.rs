@@ -182,7 +182,6 @@ impl StatementParser for Update {
 }
 
 fn destructure_column_value_pair(pair: Expression) -> (Expression, Expression) {
-    // Will always pass
     if let Expression::ColumnValuePair { column, value } = pair {
         return (*column, *value);
     }

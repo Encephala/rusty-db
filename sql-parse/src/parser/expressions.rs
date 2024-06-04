@@ -4,11 +4,12 @@ use crate::lexer::Token;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
+    Type(ColumnType),
     AllColumns,
     Ident(String),
-    Int(usize),
-    Decimal(usize, usize),
-    Str(String),
+    IntLiteral(usize),
+    DecimalLiteral(usize, usize),
+    StrLiteral(String),
     Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
     Array(Vec<Expression>),
     ColumnValuePair { column: Box<Expression>, value: Box<Expression> },
@@ -24,6 +25,14 @@ pub enum InfixOperator {
     LessThanEqual,
     GreaterThan,
     GreaterThanEqual,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ColumnType {
+    Int,
+    Decimal,
+    VarChar(usize),
+    Bool,
 }
 
 impl InfixOperator {
@@ -55,20 +64,15 @@ pub trait ExpressionParser: std::fmt::Debug {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression>;
 }
 
+
 #[derive(Debug)]
-pub struct Number;
-impl ExpressionParser for Number {
-    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Some(Token::Int(value)) = input.get(0) {
+pub struct IntLiteral;
+impl ExpressionParser for IntLiteral {
+    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+        if let Some(Token::IntLiteral(value)) = input.get(0) {
             *input = &input[1..];
 
-            return Some(E::Int(*value));
-        }
-
-        if let Some(Token::Decimal(whole, fractional)) = input.get(0) {
-            *input = &input[1..];
-
-            return Some(E::Decimal(*whole, *fractional));
+            return Some(E::IntLiteral(*value));
         }
 
         return None;
@@ -76,18 +80,74 @@ impl ExpressionParser for Number {
 }
 
 #[derive(Debug)]
-pub struct Str;
-impl ExpressionParser for Str {
-    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Some(Token::Str(value)) = input.get(0) {
+pub struct DecimalLiteral;
+impl ExpressionParser for DecimalLiteral {
+    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+        if let Some(Token::DecimalLiteral(whole, fractional)) = input.get(0) {
             *input = &input[1..];
 
-            return Some(E::Str(value.clone()));
+            return Some(E::DecimalLiteral(*whole, *fractional));
         }
 
         return None;
     }
 }
+
+#[derive(Debug)]
+pub struct NumberLiteral;
+impl ExpressionParser for NumberLiteral {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        return IntLiteral.or(DecimalLiteral).parse(input);
+    }
+}
+
+#[derive(Debug)]
+pub struct StrLiteral;
+impl ExpressionParser for StrLiteral {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        if let Some(Token::StrLiteral(value)) = input.get(0) {
+            *input = &input[1..];
+
+            return Some(E::StrLiteral(value.clone()));
+        }
+
+        return None;
+    }
+}
+
+
+#[derive(Debug)]
+pub struct Type;
+impl Type {
+    fn parse_varchar(&self, input: &mut &[Token]) -> Option<Expression> {
+        check_and_skip(input, Token::VarChar)?;
+
+        check_and_skip(input, Token::LParenthesis)?;
+
+        let size = IntLiteral.parse(input)?;
+
+        // Will always match
+        if let E::IntLiteral(size) = size {
+            return Some(E::Type(ColumnType::VarChar(size)));
+        }
+
+        check_and_skip(input, Token::RParenthesis)?;
+
+        panic!("IntLiteral parse didn't return an IntLiteral");
+    }
+}
+impl ExpressionParser for Type {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        return match input.get(0)? {
+            Token::Int => Some(E::Type(ColumnType::Int)),
+            Token::Decimal => Some(E::Type(ColumnType::Decimal)),
+            Token::Bool => Some(E::Type(ColumnType::Bool)),
+            Token::VarChar => self.parse_varchar(input),
+            _ => None,
+        };
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Identifier;
@@ -123,7 +183,6 @@ impl ExpressionParser for Column {
 
 #[derive(Debug)]
 pub struct Where;
-
 // TODO: This doesn't differentiate between a failed parsing of `WHERE` clause,
 // and the absence of a `WHERE` clause.
 // Again, have to move to Result<Option> or Option<Result>
@@ -132,7 +191,7 @@ impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;
 
-        let parser = Identifier.or(Number);
+        let parser = Identifier.or(NumberLiteral);
 
         let left = parser.parse(input)?.into();
 
@@ -149,7 +208,7 @@ impl ExpressionParser for Where {
 pub struct Value;
 impl ExpressionParser for Value {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return Str.or(Number).parse(input);
+        return StrLiteral.or(NumberLiteral).parse(input);
     }
 }
 

@@ -82,17 +82,17 @@ fn insert_basic() {
         ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
             into: E::Ident("bla".into()),
             values: E::Array(vec![
-                E::Int(1),
-                E::Str("hey".into()),
-                E::Decimal(420, 69),
+                E::IntLiteral(1),
+                E::StrLiteral("hey".into()),
+                E::DecimalLiteral(420, 69),
             ])
         })),
         ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
             into: E::Ident("bla".into()),
             values: E::Array(vec![
-                E::Int(1),
-                E::Str("hey".into()),
-                E::Decimal(420, 69),
+                E::IntLiteral(1),
+                E::StrLiteral("hey".into()),
+                E::DecimalLiteral(420, 69),
             ])
         })),
         // Can't forget semicolon
@@ -110,17 +110,17 @@ fn update_basic() {
         ("UPDATE tbl SET col = 1;", Some(S::Update {
             from: E::Ident("tbl".into()),
             columns: E::Array(vec![E::Ident("col".into())]),
-            values: E::Array(vec![E::Int(1)]),
+            values: E::Array(vec![E::IntLiteral(1)]),
             where_clause: None,
         })),
         ("update tbl set col = 1 where other = 2;", Some(S::Update {
             from: E::Ident("tbl".into()),
             columns: E::Array(vec![E::Ident("col".into())]),
-            values: E::Array(vec![E::Int(1)]),
+            values: E::Array(vec![E::IntLiteral(1)]),
             where_clause: Some(E::Where {
                 left: E::Ident("other".into()).into(),
                 operator: InfixOperator::Equals,
-                right: E::Int(2).into(),
+                right: E::IntLiteral(2).into(),
             }),
         })),
         ("UPDATE tbl set col1 = 1, col2 = 'value';", Some(S::Update {
@@ -130,8 +130,8 @@ fn update_basic() {
                 E::Ident("col2".into()),
             ]),
             values: E::Array(vec![
-                E::Int(1),
-                E::Str("value".into()),
+                E::IntLiteral(1),
+                E::StrLiteral("value".into()),
             ]),
             where_clause: None,
         })),
@@ -154,7 +154,7 @@ fn delete_basic() {
             where_clause: Some(E::Where {
                 left: E::Ident("col".into()).into(),
                 operator: InfixOperator::Equals,
-                right: E::Int(1).into(),
+                right: E::IntLiteral(1).into(),
             }),
         })),
         // Must end in semicolon
