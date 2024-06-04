@@ -21,6 +21,5 @@ These are the things I could/should do but not unlikely that I never will.
 - JOIN
 - Some builtins like MIN, MAX, and also COUNT
 - GROUP BY? (lot of effort I think)
-- DROP TABLE/DATABASE
 - Constraints
 - INDEX?

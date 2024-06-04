@@ -14,6 +14,7 @@ pub enum Token {
     Update,
     Set,
     Delete,
+    Drop,
 
     Ident(String),
     Int(usize),
@@ -61,6 +62,7 @@ impl From<String> for Token {
             "UPDATE" => Update,
             "SET" => Set,
             "DELETE" => Delete,
+            "DROP" => Drop,
             _ => Ident(value),
         };
     }

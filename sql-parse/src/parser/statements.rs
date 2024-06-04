@@ -27,7 +27,11 @@ pub enum Statement {
     Delete {
         from: Expression,
         where_clause: Option<Expression>,
-    }
+    },
+    Drop {
+        what: CreateType,
+        name: Expression,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -67,14 +71,8 @@ impl StatementParser for Select {
 }
 
 
-pub struct Create;
-impl StatementParser for Create {
-    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
-        let input = &mut input;
-
-        check_and_skip(input, Token::Create)?;
-
-        let creation_type = match input.get(0)? {
+fn parse_table_or_database(input: &mut &[Token]) -> Option<CreateType> {
+        let which = match input.get(0)? {
             Token::Table => Some(CreateType::Table),
             Token::Database => Some(CreateType::Database),
             _ => None,
@@ -82,12 +80,24 @@ impl StatementParser for Create {
 
         *input = &input[1..];
 
+        return Some(which);
+}
+
+pub struct Create;
+impl StatementParser for Create {
+    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
+        let input = &mut input;
+
+        check_and_skip(input, Token::Create)?;
+
+        let what = parse_table_or_database(input)?;
+
         let name = Identifier.parse(input)?;
 
         check_and_skip(input, Token::Semicolon)?;
 
         return Some(Statement::Create {
-            what: creation_type,
+            what,
             name
         });
     }
@@ -200,6 +210,28 @@ impl StatementParser for Delete {
             from,
             where_clause,
         });
+    }
+}
+
+
+#[derive(Debug)]
+pub struct Drop;
+impl StatementParser for Drop {
+    fn parse(&self, mut input: &[Token]) -> Option<Statement> {
+        let input = &mut input;
+
+        check_and_skip(input, Token::Drop)?;
+
+        let what = parse_table_or_database(input)?;
+
+        let name = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::Semicolon)?;
+
+        return Some(Statement::Drop {
+            what,
+            name,
+        })
     }
 }
 
@@ -370,5 +402,23 @@ mod tests {
         ];
 
         test_all_cases(Delete, &inputs);
+    }
+
+    #[test]
+    fn drop_basic() {
+        let inputs = [
+            ("DROP TABLE tbl;", Some(S::Drop {
+                what: CreateType::Table,
+                name: E::Ident("tbl".into()),
+            })),
+            ("DROP DATABASE db;", Some(S::Drop {
+                what: CreateType::Database,
+                name: E::Ident("db".into()),
+            })),
+            // Must end in semicolon
+            ("DROP TABLE tbl", None),
+        ];
+
+        test_all_cases(Drop, &inputs);
     }
 }
