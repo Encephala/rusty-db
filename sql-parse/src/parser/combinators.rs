@@ -99,19 +99,19 @@ mod tests {
             (
                 StrLiteral.or(NumberLiteral),
                 "'a'",
-                Some(E::StrLiteral('a'.into()))
+                Some(E::Str('a'.into()))
             ),
             (
                 StrLiteral.or(NumberLiteral),
                 "5",
-                Some(E::IntLiteral(5))
+                Some(E::Int(5))
             ),
             (
                 Array.or(Identifier),
                 "('asdf', 1)",
                 Some(E::Array(vec![
-                    E::StrLiteral("asdf".into()),
-                    E::IntLiteral(1),
+                    E::Str("asdf".into()),
+                    E::Int(1),
                 ])),
             ),
             (
@@ -146,8 +146,8 @@ mod tests {
                 "asdf, 1234, 1.2",
                 E::Array(vec![
                     E::Ident("asdf".into()),
-                    E::IntLiteral(1234),
-                    E::DecimalLiteral(1, 2),
+                    E::Int(1234),
+                    E::Decimal(1, 2),
                 ]),
             ),
             (
@@ -155,12 +155,12 @@ mod tests {
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
                     E::Array(vec![
-                        E::StrLiteral("asdf".into()),
-                        E::IntLiteral(1),
+                        E::Str("asdf".into()),
+                        E::Int(1),
                     ]),
                     E::Array(vec![
-                        E::StrLiteral("jkl".into()),
-                        E::IntLiteral(2),
+                        E::Str("jkl".into()),
+                        E::Int(2),
                     ]),
                 ]),
             ),
@@ -170,19 +170,19 @@ mod tests {
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
                     E::Array(vec![
-                        E::StrLiteral("asdf".into()),
-                        E::IntLiteral(1),
+                        E::Str("asdf".into()),
+                        E::Int(1),
                     ]),
                     E::Array(vec![
-                        E::StrLiteral("jkl".into()),
-                        E::IntLiteral(2),
+                        E::Str("jkl".into()),
+                        E::Int(2),
                     ]),
                 ]),
             ),
             (
                 Box::new(Array.multiple().or(NumberLiteral)),
                 "1.2",
-                E::DecimalLiteral(1, 2),
+                E::Decimal(1, 2),
             ),
         ];
 

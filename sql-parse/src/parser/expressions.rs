@@ -7,10 +7,10 @@ pub enum Expression {
     Type(ColumnType),
     AllColumns,
     Ident(String),
-    IntLiteral(usize),
-    DecimalLiteral(usize, usize),
-    StrLiteral(String),
-    BoolLiteral(bool),
+    Int(usize),
+    Decimal(usize, usize),
+    Str(String),
+    Bool(bool),
     Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
     Array(Vec<Expression>),
     ColumnValuePair { column: Box<Expression>, value: Box<Expression> },
@@ -42,10 +42,10 @@ impl From<&Expression> for ColumnType {
         use ColumnType as CT;
 
         let result = match value {
-            E::IntLiteral(_) => CT::Int,
-            E::DecimalLiteral(_, _) => CT::Decimal,
-            E::StrLiteral(_) => CT::VarChar(0), // TODO: This is wrong
-            E::BoolLiteral(_) => CT::Bool,
+            E::Int(_) => CT::Int,
+            E::Decimal(_, _) => CT::Decimal,
+            E::Str(_) => CT::VarChar(0), // TODO: This is wrong
+            E::Bool(_) => CT::Bool,
             _ => CT::Invalid,
         };
 
@@ -87,10 +87,10 @@ pub trait ExpressionParser: std::fmt::Debug {
 pub struct IntLiteral;
 impl ExpressionParser for IntLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::IntLiteral(value) = input.get(0)? {
+        if let Token::Int(value) = input.get(0)? {
             *input = &input[1..];
 
-            return Some(E::IntLiteral(*value));
+            return Some(E::Int(*value));
         }
 
         return None;
@@ -101,10 +101,10 @@ impl ExpressionParser for IntLiteral {
 pub struct DecimalLiteral;
 impl ExpressionParser for DecimalLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::DecimalLiteral(whole, fractional) = input.get(0)? {
+        if let Token::Decimal(whole, fractional) = input.get(0)? {
             *input = &input[1..];
 
-            return Some(E::DecimalLiteral(*whole, *fractional));
+            return Some(E::Decimal(*whole, *fractional));
         }
 
         return None;
@@ -123,10 +123,10 @@ impl ExpressionParser for NumberLiteral {
 pub struct StrLiteral;
 impl ExpressionParser for StrLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Token::StrLiteral(value) = input.get(0)? {
+        if let Token::Str(value) = input.get(0)? {
             *input = &input[1..];
 
-            return Some(E::StrLiteral(value.clone()));
+            return Some(E::Str(value.clone()));
         }
 
         return None;
@@ -138,10 +138,10 @@ impl ExpressionParser for StrLiteral {
 pub struct BoolLiteral;
 impl ExpressionParser for BoolLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::BoolLiteral(value) = input.get(0)? {
+        if let Token::Bool(value) = input.get(0)? {
             *input = &input[1..];
 
-            return Some(E::BoolLiteral(*value));
+            return Some(E::Bool(*value));
         }
 
         return None;
@@ -153,14 +153,14 @@ impl ExpressionParser for BoolLiteral {
 pub struct Type;
 impl Type {
     fn parse_varchar(&self, input: &mut &[Token]) -> Option<Expression> {
-        check_and_skip(input, Token::VarChar)?;
+        check_and_skip(input, Token::TypeVarChar)?;
 
         check_and_skip(input, Token::LParenthesis)?;
 
         let size = IntLiteral.parse(input)?;
 
         // Will always match
-        if let E::IntLiteral(size) = size {
+        if let E::Int(size) = size {
             return Some(E::Type(ColumnType::VarChar(size)));
         }
 
@@ -172,10 +172,10 @@ impl Type {
 impl ExpressionParser for Type {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         let result = match input.get(0)? {
-            Token::Int => Some(E::Type(ColumnType::Int)),
-            Token::Decimal => Some(E::Type(ColumnType::Decimal)),
-            Token::Bool => Some(E::Type(ColumnType::Bool)),
-            Token::VarChar => self.parse_varchar(input),
+            Token::TypeInt => Some(E::Type(ColumnType::Int)),
+            Token::TypeDecimal => Some(E::Type(ColumnType::Decimal)),
+            Token::TypeBool => Some(E::Type(ColumnType::Bool)),
+            Token::TypeVarChar => self.parse_varchar(input),
             _ => None,
         };
 

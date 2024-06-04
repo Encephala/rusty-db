@@ -71,12 +71,12 @@ mod tests {
         ]);
 
         let row1 = Row::new(vec![
-            Expression::IntLiteral(5),
-            Expression::BoolLiteral(true),
+            Expression::Int(5),
+            Expression::Bool(true),
         ]);
         let row2 = Row::new(vec![
-            Expression::IntLiteral(6),
-            Expression::BoolLiteral(false),
+            Expression::Int(6),
+            Expression::Bool(false),
         ]);
 
         if let Err(message) = table.insert_multiple(vec![row1.clone(), row2.clone()]) {
@@ -97,13 +97,13 @@ mod tests {
         ]);
 
         let row1 = Row::new(vec![
-            Expression::BoolLiteral(true),
-            Expression::IntLiteral(5),
+            Expression::Bool(true),
+            Expression::Int(5),
         ]);
 
         let row2 = Row::new(vec![
-            Expression::IntLiteral(6),
-            Expression::StrLiteral("false".into()),
+            Expression::Int(6),
+            Expression::Str("false".into()),
         ]);
 
         let result1 = table.insert(row1);

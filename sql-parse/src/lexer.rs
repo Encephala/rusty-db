@@ -18,17 +18,17 @@ pub enum Token {
     Drop,
 
     // Types
-    Int,
-    Decimal,
-    VarChar,
-    Bool,
+    TypeInt,
+    TypeDecimal,
+    TypeVarChar,
+    TypeBool,
 
-    // Expressions
+    // Literals
     Ident(String),
-    IntLiteral(usize),
-    DecimalLiteral(usize, usize),
-    StrLiteral(String),
-    BoolLiteral(bool),
+    Int(usize),
+    Decimal(usize, usize),
+    Str(String),
+    Bool(bool),
 
     // Symbols
     Asterisk,
@@ -77,15 +77,15 @@ impl From<String> for Token {
             "SET" => Set,
             "DELETE" => Delete,
             "DROP" => Drop,
-            "INT" => Int,
-            "INTEGER" => Int,
-            "DECIMAL" => Decimal,
-            "VARCHAR" => VarChar,
-            "BOOL" => Bool,
-            "BOOLEAN" => Bool,
+            "INT" => TypeInt,
+            "INTEGER" => TypeInt,
+            "DECIMAL" => TypeDecimal,
+            "VARCHAR" => TypeVarChar,
+            "BOOL" => TypeBool,
+            "BOOLEAN" => TypeBool,
             // Hijacking from_identifier to parse boolean literals
-            "TRUE" => BoolLiteral(true),
-            "FALSE" => BoolLiteral(false),
+            "TRUE" => Bool(true),
+            "FALSE" => Bool(false),
             _ => Ident(value),
         };
     }
@@ -165,7 +165,7 @@ impl<'a> Lexer<'a> {
                     self.advance();
                 }
 
-                StrLiteral(result)
+                Str(result)
             },
             '<' => {
                 match self.next_char {
@@ -242,11 +242,11 @@ impl<'a> Lexer<'a> {
         let number_of_dots = result.chars().filter(|char| char == &'.').count();
 
         return match number_of_dots {
-            0 => Token::IntLiteral(result.parse().unwrap()),
+            0 => Token::Int(result.parse().unwrap()),
             1 => {
                 let (whole, fractional) = result.split_once('.').unwrap();
 
-                Token::DecimalLiteral(whole.parse().unwrap(), fractional.parse().unwrap())
+                Token::Decimal(whole.parse().unwrap(), fractional.parse().unwrap())
             },
             _ => {
                 Token::Invalid(format!("Found {number_of_dots} decimal separators in number '{result}'"))
@@ -293,11 +293,11 @@ mod tests {
                 Select,
                 From,
                 Table,
-                Bool,
-                Bool,
-                Int,
-                Int,
-                VarChar,
+                TypeBool,
+                TypeBool,
+                TypeInt,
+                TypeInt,
+                TypeVarChar,
                 Eof,
             ],
         )
@@ -334,7 +334,7 @@ mod tests {
             result,
             vec![
                 Select,
-                IntLiteral(1),
+                Int(1),
                 Ident("abc".into()),
                 From,
                 Ident("asdf".into()),
@@ -385,7 +385,7 @@ mod tests {
                 Where,
                 Ident("asdf".into()),
                 NotEquals,
-                IntLiteral(5),
+                Int(5),
                 Semicolon,
                 Eof,
             ]
@@ -424,7 +424,7 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                StrLiteral("asdfghjkl".into()),
+                Str("asdfghjkl".into()),
                 Semicolon,
                 Eof,
             ]
@@ -444,8 +444,8 @@ mod tests {
         assert_eq!(
             Lexer::lex("1 1.2 1.2.3"),
             vec![
-                IntLiteral(1),
-                DecimalLiteral(1, 2),
+                Int(1),
+                Decimal(1, 2),
                 Invalid("Found 2 decimal separators in number '1.2.3'".into()),
                 Eof,
             ]

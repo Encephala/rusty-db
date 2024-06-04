@@ -17,10 +17,10 @@ pub fn test_all_cases(parser: impl ExpressionParser, inputs: &[(&str, Option<Exp
 #[test]
 fn number_parser_basic() {
     let inputs = [
-        ("1", Some(E::IntLiteral(1))),
-        ("69420", Some(E::IntLiteral(69420))),
+        ("1", Some(E::Int(1))),
+        ("69420", Some(E::Int(69420))),
         ("asdf", None),
-        ("5.321", Some(E::DecimalLiteral(5, 321))),
+        ("5.321", Some(E::Decimal(5, 321))),
         ("5.3.2.1", None),
     ];
 
@@ -30,10 +30,10 @@ fn number_parser_basic() {
 #[test]
 fn string_parser_basic() {
     let inputs = [
-        ("'asdf'", Some(E::StrLiteral("asdf".into()))),
-        ("'hey hi_hello'", Some(E::StrLiteral("hey hi_hello".into()))),
+        ("'asdf'", Some(E::Str("asdf".into()))),
+        ("'hey hi_hello'", Some(E::Str("hey hi_hello".into()))),
         ("c", None),
-        ("'c'", Some(E::StrLiteral("c".into()))),
+        ("'c'", Some(E::Str("c".into()))),
         ("1", None),
     ];
 
@@ -43,9 +43,9 @@ fn string_parser_basic() {
 #[test]
 fn bool_parser_basic() {
     let inputs = [
-        ("true", Some(E::BoolLiteral(true))),
+        ("true", Some(E::Bool(true))),
         ("tru", None),
-        ("false", Some(E::BoolLiteral(false))),
+        ("false", Some(E::Bool(false))),
         ("truefalse", None),
     ];
 
@@ -130,7 +130,7 @@ fn where_parser_basic() {
         ("WHERE a = 5", Some(E::Where {
             left: E::Ident("a".into()).into(),
             operator: InfixOperator::Equals,
-            right: E::IntLiteral(5).into()
+            right: E::Int(5).into()
         })),
         ("WHERE column >= other_column", Some(E::Where {
             left: E::Ident("column".into()).into(),
@@ -138,9 +138,9 @@ fn where_parser_basic() {
             right: E::Ident("other_column".into()).into()
         })),
         ("WHERE 10 <> 5", Some(E::Where {
-            left: E::IntLiteral(10).into(),
+            left: E::Int(10).into(),
             operator: InfixOperator::NotEqual,
-            right: E::IntLiteral(5).into()
+            right: E::Int(5).into()
         })),
         ("WHERE column", None),
         ("column <> other_column", None),
@@ -154,14 +154,14 @@ fn where_parser_basic() {
 fn array_basic() {
     let inputs = [
         ("(1, 2.3, 'hey', 4)", Some(E::Array(vec![
-            E::IntLiteral(1),
-            E::DecimalLiteral(2, 3),
-            E::StrLiteral("hey".into()),
-            E::IntLiteral(4),
+            E::Int(1),
+            E::Decimal(2, 3),
+            E::Str("hey".into()),
+            E::Int(4),
         ]))),
         // Allow trailing commas
         ("(1,)", Some(E::Array(vec![
-            E::IntLiteral(1),
+            E::Int(1),
         ]))),
     ];
 
