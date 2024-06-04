@@ -14,3 +14,20 @@ pub fn check_and_skip(input: &mut &[Token], equals: Token) -> Option<()> {
 
     return Some(());
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer::{Lexer, Token};
+    use super::check_and_skip;
+
+    #[test]
+    fn check_and_skip_basic() {
+        let input = Lexer::lex("DROP TABLE bla;");
+        let input = &mut input.as_slice();
+
+        assert_ne!(check_and_skip(input, Token::Drop), None);
+        assert_ne!(check_and_skip(input, Token::Table), None);
+        assert_ne!(check_and_skip(input, Token::Ident("bla".into())), None);
+        assert_ne!(check_and_skip(input, Token::Semicolon), None);
+    }
+}
