@@ -6,6 +6,8 @@ pub mod parser;
 use lexer::{Token, Lexer};
 use parser::{Statement, StatementParser, Create, Insert, Select, Update, Delete};
 
+pub use parser::{Expression, ColumnType};
+
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);
 

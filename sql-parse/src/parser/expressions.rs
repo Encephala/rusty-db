@@ -2,7 +2,7 @@ use super::combinators::Chain;
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Type(ColumnType),
     AllColumns,
@@ -10,6 +10,7 @@ pub enum Expression {
     IntLiteral(usize),
     DecimalLiteral(usize, usize),
     StrLiteral(String),
+    BoolLiteral(bool),
     Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
     Array(Vec<Expression>),
     ColumnValuePair { column: Box<Expression>, value: Box<Expression> },
@@ -17,7 +18,7 @@ pub enum Expression {
 use Expression as E;
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum InfixOperator {
     Equals,
     NotEqual,
@@ -27,12 +28,29 @@ pub enum InfixOperator {
     GreaterThanEqual,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ColumnType {
     Int,
     Decimal,
     VarChar(usize),
     Bool,
+    Invalid,
+}
+
+impl From<&Expression> for ColumnType {
+    fn from(value: &Expression) -> Self {
+        use ColumnType as CT;
+
+        let result = match value {
+            E::IntLiteral(_) => CT::Int,
+            E::DecimalLiteral(_, _) => CT::Decimal,
+            E::StrLiteral(_) => CT::VarChar(0), // TODO: This is wrong
+            E::BoolLiteral(_) => CT::Bool,
+            _ => CT::Invalid,
+        };
+
+        return result;
+    }
 }
 
 impl InfixOperator {
@@ -69,7 +87,7 @@ pub trait ExpressionParser: std::fmt::Debug {
 pub struct IntLiteral;
 impl ExpressionParser for IntLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Some(Token::IntLiteral(value)) = input.get(0) {
+        if let Token::IntLiteral(value) = input.get(0)? {
             *input = &input[1..];
 
             return Some(E::IntLiteral(*value));
@@ -83,7 +101,7 @@ impl ExpressionParser for IntLiteral {
 pub struct DecimalLiteral;
 impl ExpressionParser for DecimalLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Some(Token::DecimalLiteral(whole, fractional)) = input.get(0) {
+        if let Token::DecimalLiteral(whole, fractional) = input.get(0)? {
             *input = &input[1..];
 
             return Some(E::DecimalLiteral(*whole, *fractional));
@@ -105,10 +123,25 @@ impl ExpressionParser for NumberLiteral {
 pub struct StrLiteral;
 impl ExpressionParser for StrLiteral {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Some(Token::StrLiteral(value)) = input.get(0) {
+        if let Token::StrLiteral(value) = input.get(0)? {
             *input = &input[1..];
 
             return Some(E::StrLiteral(value.clone()));
+        }
+
+        return None;
+    }
+}
+
+
+#[derive(Debug)]
+pub struct BoolLiteral;
+impl ExpressionParser for BoolLiteral {
+    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+        if let Token::BoolLiteral(value) = input.get(0)? {
+            *input = &input[1..];
+
+            return Some(E::BoolLiteral(*value));
         }
 
         return None;

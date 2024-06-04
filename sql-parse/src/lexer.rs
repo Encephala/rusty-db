@@ -28,6 +28,7 @@ pub enum Token {
     IntLiteral(usize),
     DecimalLiteral(usize, usize),
     StrLiteral(String),
+    BoolLiteral(bool),
 
     // Symbols
     Asterisk,
@@ -82,6 +83,9 @@ impl From<String> for Token {
             "VARCHAR" => VarChar,
             "BOOL" => Bool,
             "BOOLEAN" => Bool,
+            // Hijacking from_identifier to parse boolean literals
+            "TRUE" => BoolLiteral(true),
+            "FALSE" => BoolLiteral(false),
             _ => Ident(value),
         };
     }

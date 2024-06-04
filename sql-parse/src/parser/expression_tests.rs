@@ -41,6 +41,18 @@ fn string_parser_basic() {
 }
 
 #[test]
+fn bool_parser_basic() {
+    let inputs = [
+        ("true", Some(E::BoolLiteral(true))),
+        ("tru", None),
+        ("false", Some(E::BoolLiteral(false))),
+        ("truefalse", None),
+    ];
+
+    test_all_cases(BoolLiteral, &inputs);
+}
+
+#[test]
 fn type_parser_basic() {
     let inputs = [
         ("INT", Some(E::Type(ColumnType::Int))),
