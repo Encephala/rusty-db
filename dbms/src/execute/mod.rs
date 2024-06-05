@@ -23,11 +23,17 @@ impl RuntimeEnvironment {
         return Ok(());
     }
 
-    pub fn insert(&mut self, table_name: &str, values: Vec<ColumnValue>) -> Result<(), SqlError> {
+    pub fn insert(&mut self, table_name: &str, values: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
         let table = self.0.get_mut(table_name);
 
         if let Some(table) = table {
-            return table.insert(values);
+            table.insert_multiple(values)?;
+
+            return Ok(());
+        } else {
+            return Err(SqlError::TableDoesNotExist(table_name.to_string()));
+        }
+    }
         } else {
             return Err(SqlError::TableDoesNotExist(table_name.to_string()));
         }
