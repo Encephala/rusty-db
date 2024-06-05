@@ -2,7 +2,7 @@
 mod tests;
 
 use super::{SqlError, Expression, ColumnType, InfixOperator};
-use super::types::{ColumnName, ColumnSelector, ColumnValue, Where};
+use super::types::{ColumnName, TableName, ColumnSelector, ColumnValue, Where};
 
 #[derive(Debug, Clone)]
 pub struct Row {
@@ -120,35 +120,39 @@ impl Row {
 
 #[derive(Debug)]
 pub struct Table {
-    types: Vec<ColumnType>,
-    names: Vec<ColumnName>,
-    values: Vec<Row>,
+    pub name: TableName,
+    pub types: Vec<ColumnType>,
+    pub column_names: Vec<ColumnName>,
+    pub values: Vec<Row>,
 }
 
 impl Table {
-    pub fn new(names: Vec<Expression>, types: Vec<ColumnType>) -> Result<Self, SqlError> {
-        if names.len() != types.len() {
-            return Err(SqlError::UnequalLengths(names.len(), types.len()));
-        }
+    pub fn new(name: Expression, columns: Vec<Expression>) -> Result<Self, SqlError> {
+        let name = if let Expression::Ident(name) = name {
+            TableName(name)
+        } else {
+            panic!("Creating table with name {name:?} that isn't an identifier")
+        };
 
-        let names: Vec<_> = names.into_iter().map(|identifier| {
-            if let Expression::Ident(name) = identifier {
-                ColumnName(name)
+        let (column_names, types):  (Vec<_>, Vec<_>) = columns.into_iter().map(|identifier| {
+            if let Expression::ColumnDefinition(name, column_type) = identifier {
+                (ColumnName(name), column_type)
             } else {
-                panic!("Creating table with column name {identifier:?} that isn't an identifier")
+                panic!("Creating table with column definition {identifier:?} that isn't a definition")
             }
-        }).collect();
+        }).unzip();
 
         let mut unique_names = std::collections::HashSet::new();
-        for name in names.iter() {
+        for name in column_names.iter() {
             if !unique_names.insert(name) {
-                return Err(SqlError::NameNotUnique(name.clone()));
+                return Err(SqlError::ColumnNameNotUnique(name.clone()));
             }
         }
 
         return Ok(Table {
+            name,
             types,
-            names,
+            column_names,
             values: vec![],
         });
     }
@@ -162,7 +166,7 @@ impl Table {
             return Err(SqlError::IncompatibleTypes(types, self.types.clone()));
         }
 
-        self.values.push(Row::new(self.names.clone(), row)?);
+        self.values.push(Row::new(self.column_names.clone(), row)?);
 
         return Ok(());
     }
@@ -182,7 +186,7 @@ impl Table {
             ColumnSelector::AllColumns => (0..self.types.len()).collect(),
             ColumnSelector::Name(names) => {
                 names.iter().flat_map(|name| {
-                    self.names.iter().position(|self_name| self_name == name)
+                    self.column_names.iter().position(|self_name| self_name == name)
                 }).collect()
             }
         };
@@ -206,7 +210,7 @@ impl Table {
         let new_types: Vec<ColumnType> = new_values.iter().map(|value| value.into()).collect();
 
         let column_indices = columns.iter().flat_map(|name| {
-            self.names.iter().position(|self_name| self_name == name)
+            self.column_names.iter().position(|self_name| self_name == name)
         }).collect::<Vec<_>>();
 
 

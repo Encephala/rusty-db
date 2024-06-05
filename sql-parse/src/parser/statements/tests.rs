@@ -62,14 +62,14 @@ fn create_basic() {
         ("CREATE DATABASE epic_db;", Some(S::Create {
             what: CreateType::Database,
             name: E::Ident("epic_db".into()),
-            types: None,
+            columns: None,
         })),
-        ("CREATE TABLE name (bool, int);", Some(S::Create{
+        ("CREATE TABLE name (a bool, b int);", Some(S::Create{
             what: CreateType::Table,
             name: E::Ident("name".into()),
-            types: Some(E::Array(vec![
-                E::Type(ColumnType::Bool),
-                E::Type(ColumnType::Int),
+            columns: Some(E::Array(vec![
+                E::ColumnDefinition("a".into(), ColumnType::Bool),
+                E::ColumnDefinition("b".into(), ColumnType::Int),
             ]))
         })),
         ("CREATE TABLE name;", None),

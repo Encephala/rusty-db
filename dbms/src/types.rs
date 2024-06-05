@@ -33,6 +33,10 @@ impl TryFrom<&Expression> for ColumnName {
 
 impl_owned!(ColumnName);
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableName(pub String);
+
+
 #[derive(Debug, PartialEq)]
 pub enum ColumnSelector {
     AllColumns,

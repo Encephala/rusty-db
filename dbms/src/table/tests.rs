@@ -2,27 +2,21 @@ use super::*;
 
 fn test_table() -> Table {
     return Table::new(
+        Expression::Ident("test_table".into()),
         vec![
-            Expression::Ident("first".into()),
-            Expression::Ident("second".into()),
+            Expression::ColumnDefinition("first".into(), ColumnType::Int),
+            Expression::ColumnDefinition("second".into(), ColumnType::Bool),
         ],
-        vec![
-            ColumnType::Int,
-            ColumnType::Bool,
-        ]
     ).unwrap();
 }
 
 fn test_table_with_values() -> (Table, (Vec<ColumnValue>, Vec<ColumnValue>)) {
     let mut result = Table::new(
+        Expression::Ident("test_table".into()),
         vec![
-            Expression::Ident("first".into()),
-            Expression::Ident("second".into()),
+            Expression::ColumnDefinition("first".into(), ColumnType::Int),
+            Expression::ColumnDefinition("second".into(), ColumnType::Bool),
         ],
-        vec![
-            ColumnType::Int,
-            ColumnType::Bool,
-        ]
     ).unwrap();
 
     let row1 = vec![
@@ -113,7 +107,7 @@ fn select_basic() {
 
     assert_eq!(
         all,
-        vec![Row::new(table.names.clone(), row1.clone()).unwrap(), Row::new(table.names.clone(), row2).unwrap()]
+        vec![Row::new(table.column_names.clone(), row1.clone()).unwrap(), Row::new(table.column_names.clone(), row2).unwrap()]
     );
 
     let where_bool_true = table.select(
@@ -127,7 +121,7 @@ fn select_basic() {
 
     assert_eq!(
         where_bool_true,
-        vec![Row::new(table.names.clone(), row1).unwrap()]
+        vec![Row::new(table.column_names.clone(), row1).unwrap()]
     );
 
     let only_int_five = table.select(

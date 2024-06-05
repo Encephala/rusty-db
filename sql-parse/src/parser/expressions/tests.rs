@@ -95,6 +95,16 @@ fn identifier_parser_basic() {
 }
 
 #[test]
+fn column_definition_parser_basic() {
+    let inputs = [
+        ("asdf INT", Some(E::ColumnDefinition("asdf".into(), ColumnType::Int))),
+        ("jkl TEXT", Some(E::ColumnDefinition("jkl".into(), ColumnType::Text))),
+    ];
+
+    test_all_cases(ColumnDefinition, &inputs);
+}
+
+#[test]
 fn parse_all_columns_character() {
     let inputs = [
         ("*", Some(E::AllColumns)),

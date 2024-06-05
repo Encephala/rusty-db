@@ -8,6 +8,7 @@ use crate::lexer::Token;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Type(ColumnType),
+    ColumnDefinition(String, ColumnType),
     AllColumns,
     Ident(String),
     Int(usize),
@@ -168,6 +169,25 @@ impl ExpressionParser for Identifier {
         }
 
         return None;
+    }
+}
+
+#[derive(Debug)]
+pub struct ColumnDefinition;
+impl ExpressionParser for ColumnDefinition {
+    fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
+        let name = Identifier.parse(input)?;
+
+        let column_type = Type.parse(input)?;
+
+        if let (E::Ident(name), E::Type(column_type)) = (name, column_type) {
+            return Some(E::ColumnDefinition(
+                name,
+                column_type,
+            ));
+        } else {
+            return None;
+        }
     }
 }
 

@@ -2,7 +2,7 @@
 mod tests;
 
 use super::combinators::Chain;
-use super::expressions::{AllColumn, Array, Expression, ExpressionParser, Type, Identifier, Where, Value};
+use super::expressions::{AllColumn, Array, ColumnDefinition, Expression, ExpressionParser, Identifier, Type, Value, Where};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
@@ -16,7 +16,7 @@ pub enum Statement {
     Create {
         what: CreateType,
         name: Expression,
-        types: Option<Expression>, // Array, only if creating table
+        columns: Option<Expression>, // Array, only if creating table
     },
     Insert {
         into: Expression,
@@ -98,30 +98,20 @@ impl StatementParser for Create {
 
         let name = Identifier.parse(input)?;
 
-        let mut types = None;
+        let mut columns = None;
 
         if what == CreateType::Table {
-            // println!("0");
-            // dbg!(&input);
             check_and_skip(input, Token::LParenthesis)?;
-            // println!("1");
-            // dbg!(&input);
 
-            types = Type.multiple().parse(input);
+            columns = ColumnDefinition.multiple().parse(input);
 
-            // println!("2");
-            // dbg!(&input);
             check_and_skip(input, Token::RParenthesis)?;
         }
-
-        dbg!(&types);
-
-        check_and_skip(input, Token::Semicolon)?;
 
         return Some(Statement::Create {
             what,
             name,
-            types,
+            columns,
         });
     }
 }
