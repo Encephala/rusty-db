@@ -113,7 +113,6 @@ fn select_basic() {
 
     let all = table.select(ColumnSelector::AllColumns, None).unwrap();
 
-    // Janky comparison to not have to move row1 and row2
     assert_eq!(
         all,
         vec![Row::new(table.names.clone(), row1.clone()).unwrap(), Row::new(table.names.clone(), row2).unwrap()]

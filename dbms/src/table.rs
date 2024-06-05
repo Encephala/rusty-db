@@ -115,7 +115,6 @@ impl Row {
 }
 
 
-
 #[derive(Debug)]
 pub struct Table {
     types: Vec<ColumnType>,
@@ -231,8 +230,16 @@ impl Table {
     }
 
     pub fn delete(&mut self, condition: Option<Expression>) -> Result<(), SqlError> {
-        for row in &mut self.values {
-            row.delete(condition)?;
+        let mut remove_indices = vec![];
+
+        for (index, row) in self.values.iter().enumerate() {
+            if row.matches(&condition)? {
+                remove_indices.push(index);
+            }
+        }
+
+        for index in remove_indices.into_iter().rev() {
+            self.values.remove(index);
         }
 
         return Ok(());
