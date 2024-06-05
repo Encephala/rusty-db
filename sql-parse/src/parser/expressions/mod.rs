@@ -72,8 +72,8 @@ pub trait ExpressionParser: std::fmt::Debug {
 
 
 #[derive(Debug)]
-pub struct IntLiteral;
-impl ExpressionParser for IntLiteral {
+pub struct Int;
+impl ExpressionParser for Int {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
         if let Token::Int(value) = input.get(0)? {
             *input = &input[1..];
@@ -86,8 +86,8 @@ impl ExpressionParser for IntLiteral {
 }
 
 #[derive(Debug)]
-pub struct DecimalLiteral;
-impl ExpressionParser for DecimalLiteral {
+pub struct Decimal;
+impl ExpressionParser for Decimal {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
         if let Token::Decimal(whole, fractional) = input.get(0)? {
             *input = &input[1..];
@@ -100,16 +100,16 @@ impl ExpressionParser for DecimalLiteral {
 }
 
 #[derive(Debug)]
-pub struct NumberLiteral;
-impl ExpressionParser for NumberLiteral {
+pub struct Number;
+impl ExpressionParser for Number {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return IntLiteral.or(DecimalLiteral).parse(input);
+        return Int.or(Decimal).parse(input);
     }
 }
 
 #[derive(Debug)]
-pub struct StrLiteral;
-impl ExpressionParser for StrLiteral {
+pub struct Str;
+impl ExpressionParser for Str {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         if let Token::Str(value) = input.get(0)? {
             *input = &input[1..];
@@ -123,8 +123,8 @@ impl ExpressionParser for StrLiteral {
 
 
 #[derive(Debug)]
-pub struct BoolLiteral;
-impl ExpressionParser for BoolLiteral {
+pub struct Bool;
+impl ExpressionParser for Bool {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
         if let Token::Bool(value) = input.get(0)? {
             *input = &input[1..];
@@ -219,7 +219,7 @@ impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;
 
-        let parser = Identifier.or(NumberLiteral);
+        let parser = Identifier.or(Number);
 
         let left = parser.parse(input)?.into();
 
@@ -236,7 +236,7 @@ impl ExpressionParser for Where {
 pub struct Value;
 impl ExpressionParser for Value {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return StrLiteral.or(NumberLiteral).parse(input);
+        return Str.or(Number).parse(input);
     }
 }
 
