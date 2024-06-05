@@ -20,6 +20,7 @@ pub enum Statement {
     },
     Insert {
         into: Expression,
+        columns: Option<Expression>, // Expression::Array
         values: Expression, // Expression::Array
     },
     Update {
@@ -128,6 +129,18 @@ impl StatementParser for Insert {
 
         let into = Identifier.parse(input)?;
 
+        // TODO: Make this optional to conform with SQL spec
+        // for what that's worth I guess
+        let mut columns = None;
+
+        if input.get(0)? != &Token::Values {
+            check_and_skip(input, Token::LParenthesis)?;
+
+            columns = Some(Identifier.multiple().parse(input)?);
+
+            check_and_skip(input, Token::RParenthesis)?;
+        }
+
         check_and_skip(input, Token::Values)?;
 
         let values = Array.multiple().parse(input)?;
@@ -136,7 +149,8 @@ impl StatementParser for Insert {
 
         return Some(Statement::Insert {
            into,
-           values
+           columns,
+           values,
         });
     }
 }

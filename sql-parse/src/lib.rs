@@ -3,7 +3,8 @@
 mod lexer;
 pub mod parser;
 
-use lexer::{Token, Lexer};
+use lexer::Token;
+pub use lexer::Lexer;
 pub use parser::{StatementParser, Create, Insert, Select, Update, Delete};
 
 pub use parser::{Statement, CreateType, Expression, ColumnType, InfixOperator};
@@ -31,7 +32,7 @@ mod tests {
         let inputs = [
             ("SELECT * FROM blabla WHERE x = 5;"),
             ("CREATE TABLE blabla (a INT, b BOOl, c TEXT);"),
-            ("INSERT INTO blabla VALUES ('a', 'b', 'c');"),
+            ("INSERT INTO blabla (a, b, c) VALUES ('a', 'b', 'c');"),
             ("UPDATE tbl SET col1 = 1, col2 = 'bye' WHERE a = b;"),
             ("DELETE FROM tbl WHERE a = 5;"),
         ];

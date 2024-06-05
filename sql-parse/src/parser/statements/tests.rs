@@ -85,16 +85,13 @@ fn create_basic() {
 #[test]
 fn insert_basic() {
     let inputs = [
-        ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
+        ("INSERT INTO bla (a, b, c) VALUES (1, 'hey', 420.69);", Some(S::Insert {
             into: E::Ident("bla".into()),
-            values: E::Array(vec![E::Array(vec![
-                E::Int(1),
-                E::Str("hey".into()),
-                E::Decimal(420, 69),
-            ])])
-        })),
-        ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
-            into: E::Ident("bla".into()),
+            columns: Some(E::Array(vec![
+                E::Ident("a".into()),
+                E::Ident("b".into()),
+                E::Ident("c".into()),
+            ])),
             values: E::Array(vec![E::Array(vec![
                 E::Int(1),
                 E::Str("hey".into()),
@@ -111,10 +108,32 @@ fn insert_basic() {
 }
 
 #[test]
+fn insert_all_columns() {
+    let inputs = [
+        ("INSERT INTO tbl VALUES (1, 420.69);", Some(S::Insert {
+            into: E::Ident("tbl".into()),
+            columns: None,
+            values: E::Array(vec![E::Array(vec![
+                E::Int(1),
+                E::Decimal(420, 69),
+            ])])
+        }))
+    ];
+
+
+    test_all_cases(Insert, &inputs);
+}
+
+#[test]
 fn insert_multiple_simultaneously() {
     let inputs = [
-        ("INSERT INTO bla VALUES (1, 420.69), (2, 69.420);", Some(S::Insert {
+        ("INSERT INTO bla(a, b, c)VALUES (1, 420.69), (2, 69.420);", Some(S::Insert {
             into: E::Ident("bla".into()),
+            columns: Some(E::Array(vec![
+                E::Ident("a".into()),
+                E::Ident("b".into()),
+                E::Ident("c".into()),
+            ])),
             values: E::Array(vec![
                 E::Array(vec![
                     E::Int(1), E::Decimal(420, 69)
