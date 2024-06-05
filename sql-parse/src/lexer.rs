@@ -20,7 +20,7 @@ pub enum Token {
     // Types
     TypeInt,
     TypeDecimal,
-    TypeVarChar,
+    TypeText,
     TypeBool,
 
     // Literals
@@ -80,7 +80,7 @@ impl From<String> for Token {
             "INT" => TypeInt,
             "INTEGER" => TypeInt,
             "DECIMAL" => TypeDecimal,
-            "VARCHAR" => TypeVarChar,
+            "TEXT" => TypeText,
             "BOOL" => TypeBool,
             "BOOLEAN" => TypeBool,
             // Hijacking from_identifier to parse boolean literals
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn keywords() {
-        let input = "select from table bool boolean int integer varchar";
+        let input = "select from table bool boolean int integer text";
 
         let result = Lexer::lex(input);
 
@@ -297,7 +297,7 @@ mod tests {
                 TypeBool,
                 TypeInt,
                 TypeInt,
-                TypeVarChar,
+                TypeText,
                 Eof,
             ],
         )

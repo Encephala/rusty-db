@@ -26,3 +26,11 @@ Useless DBMS, just to learn the following:
 Guess I'll have to use `Result<Option>` or `Option<Result>`.
 
 ### DBMS
+
+#### Notes
+
+- I really need to fix the way WHERE is handled, it's wack to work with
+
+#### TODO
+
+- Testing `SqlError` gets returned properly

@@ -6,7 +6,7 @@ pub mod parser;
 use lexer::{Token, Lexer};
 use parser::{Statement, StatementParser, Create, Insert, Select, Update, Delete};
 
-pub use parser::{Expression, ColumnType};
+pub use parser::{Expression, ColumnType, InfixOperator};
 
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);
@@ -30,7 +30,7 @@ mod tests {
     fn parse_statements_basic() {
         let inputs = [
             ("SELECT * FROM blabla WHERE x = 5;"),
-            ("CREATE TABLE blabla (INT, BOOl, VARCHAR(10));"),
+            ("CREATE TABLE blabla (INT, BOOl, TEXT);"),
             ("INSERT INTO blabla VALUES ('a', 'b', 'c');"),
             ("UPDATE tbl SET col1 = 1, col2 = 'bye' WHERE a = b;"),
             ("DELETE FROM tbl WHERE a = 5;"),

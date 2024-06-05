@@ -18,7 +18,7 @@ pub enum Expression {
 use Expression as E;
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum InfixOperator {
     Equals,
     NotEqual,
@@ -28,29 +28,13 @@ pub enum InfixOperator {
     GreaterThanEqual,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+// TODO: VarChar would be cool but idk how to handle that
 pub enum ColumnType {
     Int,
     Decimal,
-    VarChar(usize),
+    Text,
     Bool,
-    Invalid,
-}
-
-impl From<&Expression> for ColumnType {
-    fn from(value: &Expression) -> Self {
-        use ColumnType as CT;
-
-        let result = match value {
-            E::Int(_) => CT::Int,
-            E::Decimal(_, _) => CT::Decimal,
-            E::Str(_) => CT::VarChar(0), // TODO: This is wrong
-            E::Bool(_) => CT::Bool,
-            _ => CT::Invalid,
-        };
-
-        return result;
-    }
 }
 
 impl InfixOperator {
@@ -151,31 +135,13 @@ impl ExpressionParser for BoolLiteral {
 
 #[derive(Debug)]
 pub struct Type;
-impl Type {
-    fn parse_varchar(&self, input: &mut &[Token]) -> Option<Expression> {
-        check_and_skip(input, Token::TypeVarChar)?;
-
-        check_and_skip(input, Token::LParenthesis)?;
-
-        let size = IntLiteral.parse(input)?;
-
-        // Will always match
-        if let E::Int(size) = size {
-            return Some(E::Type(ColumnType::VarChar(size)));
-        }
-
-        check_and_skip(input, Token::RParenthesis)?;
-
-        panic!("IntLiteral parse didn't return an IntLiteral");
-    }
-}
 impl ExpressionParser for Type {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         let result = match input.get(0)? {
             Token::TypeInt => Some(E::Type(ColumnType::Int)),
             Token::TypeDecimal => Some(E::Type(ColumnType::Decimal)),
             Token::TypeBool => Some(E::Type(ColumnType::Bool)),
-            Token::TypeVarChar => self.parse_varchar(input),
+            Token::TypeText => Some(E::Type(ColumnType::Text)),
             _ => None,
         };
 

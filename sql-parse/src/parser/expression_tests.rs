@@ -59,8 +59,7 @@ fn type_parser_basic() {
         ("INTeger", Some(E::Type(ColumnType::Int))),
         ("bool", Some(E::Type(ColumnType::Bool))),
         ("decimal", Some(E::Type(ColumnType::Decimal))),
-        ("Varchar(10)", Some(E::Type(ColumnType::VarChar(10)))),
-        ("Varchar", None),
+        ("text", Some(E::Type(ColumnType::Text))),
         ("asdf", None),
     ];
 
@@ -69,7 +68,7 @@ fn type_parser_basic() {
 
 #[test]
 fn type_parser_list() {
-    let input = "bool, int, integer, varchar(10)";
+    let input = "bool, int, integer, text";
 
     let result = Type.multiple().parse(
         &mut Lexer::lex(input).as_slice()
@@ -81,7 +80,7 @@ fn type_parser_list() {
             E::Type(ColumnType::Bool),
             E::Type(ColumnType::Int),
             E::Type(ColumnType::Int),
-            E::Type(ColumnType::VarChar(10)),
+            E::Type(ColumnType::Text),
         ]))
     )
 }
