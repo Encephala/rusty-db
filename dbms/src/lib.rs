@@ -6,7 +6,7 @@ mod types;
 mod execute;
 mod utils;
 
-use types::{ColumnName, ColumnValue};
+pub use types::{ColumnName, ColumnValue};
 use sql_parse::{Statement, Expression, ColumnType, CreateType};
 
 pub use sql_parse::InfixOperator;

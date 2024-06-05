@@ -22,7 +22,7 @@ fn number_parser_basic() {
         ("5.3.2.1", None),
     ];
 
-    test_all_cases(NumberLiteral, &inputs);
+    test_all_cases(Number, &inputs);
 }
 
 #[test]
@@ -35,7 +35,7 @@ fn string_parser_basic() {
         ("1", None),
     ];
 
-    test_all_cases(StrLiteral, &inputs);
+    test_all_cases(Str, &inputs);
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn bool_parser_basic() {
         ("truefalse", None),
     ];
 
-    test_all_cases(BoolLiteral, &inputs);
+    test_all_cases(Bool, &inputs);
 }
 
 #[test]

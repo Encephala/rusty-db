@@ -88,19 +88,19 @@ impl<T: ExpressionParser> Chain for T {}
 #[cfg(test)]
 mod tests {
     use super::Chain;
-    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, StrLiteral, NumberLiteral, Array};
+    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, Str, Number, Array};
     use crate::lexer::Lexer;
 
     #[test]
     fn or_basic() {
         let inputs = [
             (
-                StrLiteral.or(NumberLiteral),
+                Str.or(Number),
                 "'a'",
                 Some(E::Str('a'.into()))
             ),
             (
-                StrLiteral.or(NumberLiteral),
+                Str.or(Number),
                 "5",
                 Some(E::Int(5))
             ),
@@ -140,7 +140,7 @@ mod tests {
                 ]),
             ),
             (
-                Box::new(Identifier.or(NumberLiteral).multiple()),
+                Box::new(Identifier.or(Number).multiple()),
                 "asdf, 1234, 1.2",
                 E::Array(vec![
                     E::Ident("asdf".into()),
@@ -164,7 +164,7 @@ mod tests {
             ),
             // For funsies
             (
-                Box::new(Array.multiple().or(NumberLiteral)),
+                Box::new(Array.multiple().or(Number)),
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
                     E::Array(vec![
@@ -178,7 +178,7 @@ mod tests {
                 ]),
             ),
             (
-                Box::new(Array.multiple().or(NumberLiteral)),
+                Box::new(Array.multiple().or(Number)),
                 "1.2",
                 E::Decimal(1, 2),
             ),

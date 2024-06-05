@@ -3,7 +3,7 @@ mod tests;
 
 use std::collections::HashMap;
 
-use super::{CreateType, Expression, SqlError, Statement, Table, ColumnValue};
+use super::{CreateType, Expression, SqlError, Statement, Table, ColumnValue, ColumnName};
 
 
 #[derive(Debug, Default)]
@@ -35,8 +35,16 @@ impl RuntimeEnvironment {
         }
     }
 
-    pub fn update(&mut self) -> Result<(), SqlError> {
-        todo!();
+    pub fn update(&mut self,
+        table_name: &str,
+        column_names: Vec<ColumnName>,
+        new_values: Vec<ColumnValue>,
+        condition: Option<Expression>,
+    ) -> Result<(), SqlError> {
+        let table = self.0.get_mut(table_name)
+            .ok_or(SqlError::TableDoesNotExist(table_name.to_string()))?;
+
+        return table.update(column_names, new_values, condition);
     }
 
     pub fn delete(&mut self, table_name: &str, condition: Option<Expression>) -> Result<(), SqlError> {
@@ -114,6 +122,34 @@ impl Execute for Statement {
                 }
             },
             Statement::Update { from, columns, values, where_clause } => {
+                if let Expression::Ident(from) = from {
+                    if let Expression::Array(columns) = columns {
+                        let mut column_names = vec![];
+
+                        for column in columns {
+                            if let Expression::Ident(column_name) = column {
+                                column_names.push(ColumnName(column_name));
+                            } else {
+                                panic!("Tried updating table but column name wasn't an Ident")
+                            }
+                        }
+
+                        if let Expression::Array(values) = values {
+                            let mut column_values = vec![];
+
+                            for value in values {
+                                column_values.push(value.try_into()?);
+                            }
+
+                            return environment.update(&from, column_names, column_values, where_clause);
+                        }
+                    } else {
+                        panic!("Tried updating table but columns wasn't an Array");
+                    }
+                } else {
+                    panic!("Tried updating table but name wasn't an Ident");
+                }
+
                 todo!();
             },
             Statement::Delete { from, where_clause } => {
