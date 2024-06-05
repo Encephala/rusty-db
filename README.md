@@ -34,3 +34,4 @@ Guess I'll have to use `Result<Option>` or `Option<Result>`.
 #### TODO
 
 - Testing `SqlError` gets returned properly
+- Update multiple columns simultaneously (I think this breaks at parser level but I did implement it in the runtime? xd)

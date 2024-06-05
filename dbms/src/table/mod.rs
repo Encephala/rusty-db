@@ -157,7 +157,7 @@ impl Table {
         });
     }
 
-    pub fn insert(&mut self, row: Vec<ColumnValue>) -> Result<(), SqlError> {
+    pub fn insert(&mut self, columns: &Option<Vec<ColumnName>>, row: Vec<ColumnValue>) -> Result<(), SqlError> {
         let types = row.iter()
             .map(|row| row.into())
             .collect::<Vec<_>>();
@@ -166,14 +166,27 @@ impl Table {
             return Err(SqlError::IncompatibleTypes(types, self.types.clone()));
         }
 
+        // TODO: Check that all non-nullable columns were passed
+        // But that implies first implementing nullable
+        if let Some(columns) = columns {
+            if columns.len() != row.len() {
+                return Err(SqlError::UnequalLengths(columns.len(), row.len()));
+            }
+        }
+
+
         self.values.push(Row::new(self.column_names.clone(), row)?);
 
         return Ok(());
     }
 
-    pub fn insert_multiple(&mut self, rows: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
+    pub fn insert_multiple(
+        &mut self,
+        columns: &Option<Vec<ColumnName>>,
+        rows: Vec<Vec<ColumnValue>>
+    ) -> Result<(), SqlError> {
         for row in rows {
-            self.insert(row)?;
+            self.insert(columns, row)?;
         }
 
         return Ok(());
@@ -205,7 +218,7 @@ impl Table {
     pub fn update(&mut self,
         columns: Vec<ColumnName>,
         new_values: Vec<ColumnValue>,
-        condition: Option<Expression>
+        condition: &Option<Expression>
     ) -> Result<(), SqlError> {
         let new_types: Vec<ColumnType> = new_values.iter().map(|value| value.into()).collect();
 
@@ -230,7 +243,7 @@ impl Table {
 
 
         for row in &mut self.values {
-            row.update(&column_indices, new_values.clone(), &condition)?;
+            row.update(&column_indices, new_values.clone(), condition)?;
         }
 
         return Ok(());

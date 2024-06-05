@@ -23,11 +23,11 @@ impl RuntimeEnvironment {
         return Ok(());
     }
 
-    pub fn insert(&mut self, table_name: &str, values: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
+    pub fn insert(&mut self, table_name: &str, columns: Option<Vec<ColumnName>>, values: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
         let table = self.0.get_mut(table_name)
             .ok_or(SqlError::TableDoesNotExist(table_name.to_string()))?;
 
-        return table.insert_multiple(values);
+        return table.insert_multiple(&columns, values);
     }
 
     pub fn select(&mut self, table_name: &str, columns: ColumnSelector, condition: Option<Expression>) -> Result<Vec<Row>, SqlError> {
@@ -46,7 +46,7 @@ impl RuntimeEnvironment {
         let table = self.0.get_mut(table_name)
             .ok_or(SqlError::TableDoesNotExist(table_name.to_string()))?;
 
-        return table.update(column_names, new_values, condition);
+        return table.update(column_names, new_values, &condition);
     }
 
     pub fn delete(&mut self, table_name: &str, condition: Option<Expression>) -> Result<(), SqlError> {
@@ -123,7 +123,7 @@ impl Execute for Statement {
                     },
                 };
             },
-            Statement::Insert { into, values } => {
+            Statement::Insert { into, columns,  values } => {
                 if let Expression::Ident(name) = into {
                     if let Expression::Array(values) = values {
                         let mut result = vec![];
@@ -142,7 +142,25 @@ impl Execute for Statement {
                             }
                         }
 
-                        return environment.insert(&name, result)
+                        let columns = columns.map(|expression| {
+                            if let Expression::Array(columns) = expression {
+                                let mut result = vec![];
+
+                                for column in columns {
+                                    if let Expression::Ident(column_name) = column {
+                                        result.push(ColumnName(column_name));
+                                    } else {
+                                        panic!("Tried to insert specific columns but column name wasn't an Ident");
+                                    }
+                                }
+
+                                result
+                            } else {
+                                panic!("Tried to insert specific columns but column names wasn't an Array");
+                            }
+                        });
+
+                        return environment.insert(&name, columns, result)
                             .map(|_| ExecutionResult::None);
                     } else {
                         panic!("Tried inserting into tables but values wasn't an array");
