@@ -36,7 +36,7 @@ fn repl() {
                 println!("Got execution error: {error:?}");
             }
         } else {
-            println!("Failed to parse '{input}'");
+            println!("Failed to parse {input}");
         }
     }
 }

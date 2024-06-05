@@ -2,7 +2,7 @@
 mod tests;
 
 use super::combinators::Chain;
-use super::expressions::{AllColumn, Array, ColumnDefinition, Expression, ExpressionParser, Identifier, Type, Value, Where};
+use super::expressions::{AllColumn, Array, ColumnDefinition, Expression, ExpressionParser, Identifier, Value, Where};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 

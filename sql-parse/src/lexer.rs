@@ -126,23 +126,27 @@ impl<'a> Lexer<'a> {
     pub fn lex(input: &'a str) -> Vec<Token> {
         let mut lexer = Lexer::new(input);
 
-        let mut result = vec![];
+        let mut tokens = vec![];
+
+        // Skip leading whitespace
+        lexer.skip_whitespace();
 
         while lexer.current_char.is_some() {
-            lexer.skip_whitespace();
+            tokens.push(lexer.next_token());
 
-            result.push(lexer.next_token());
+            // Skip intermediate/trailing whitespace
+            lexer.skip_whitespace();
         }
 
-        result.push(Token::Eof);
+        tokens.push(Token::Eof);
 
-        return result;
+        return tokens;
     }
 
     fn next_token(&mut self) -> Token {
         use Token::*;
 
-        // Can unwrap because self.lex() checks for is_some
+        // Can unwrap because lex() checks is_some
         let token = match self.current_char.unwrap() {
             ',' => Comma,
             ';' => Semicolon,
@@ -283,7 +287,7 @@ mod tests {
 
     #[test]
     fn keywords() {
-        let input = "select from table bool boolean int integer text";
+        let input = " select from table bool boolean int integer text ";
 
         let result = Lexer::lex(input);
 
@@ -300,6 +304,18 @@ mod tests {
                 TypeText,
                 Eof,
             ],
+        )
+    }
+
+    #[test]
+    fn handles_leading_and_trailing_whitespace() {
+        let input = " select ";
+
+        let result = Lexer::lex(input);
+
+        assert_eq!(
+            result,
+            vec![Select, Eof]
         )
     }
 

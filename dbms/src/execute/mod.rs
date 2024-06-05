@@ -7,6 +7,7 @@ use super::{Statement, Expression, SqlError};
 use super::{Table, CreateType};
 
 
+#[derive(Debug, Default)]
 pub struct RuntimeEnvironment(pub HashMap<String, Table>);
 impl RuntimeEnvironment {
     pub fn new() -> Self {
