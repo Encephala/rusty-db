@@ -87,24 +87,43 @@ fn insert_basic() {
     let inputs = [
         ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
             into: E::Ident("bla".into()),
-            values: E::Array(vec![
+            values: E::Array(vec![E::Array(vec![
                 E::Int(1),
                 E::Str("hey".into()),
                 E::Decimal(420, 69),
-            ])
+            ])])
         })),
         ("INSERT INTO bla VALUES (1, 'hey', 420.69);", Some(S::Insert {
             into: E::Ident("bla".into()),
-            values: E::Array(vec![
+            values: E::Array(vec![E::Array(vec![
                 E::Int(1),
                 E::Str("hey".into()),
                 E::Decimal(420, 69),
-            ])
+            ])])
         })),
         // Can't forget semicolon
         ("INSERT INTO bla VALUES ()", None),
         // Can't forget `INTO`
         ("INSERT bla VALUES ();", None),
+    ];
+
+    test_all_cases(Insert, &inputs);
+}
+
+#[test]
+fn insert_multiple_simultaneously() {
+    let inputs = [
+        ("INSERT INTO bla VALUES (1, 420.69), (2, 69.420);", Some(S::Insert {
+            into: E::Ident("bla".into()),
+            values: E::Array(vec![
+                E::Array(vec![
+                    E::Int(1), E::Decimal(420, 69)
+                ]),
+                E::Array(vec![
+                    E::Int(2), E::Decimal(69, 420)
+                ]),
+            ])
+        }))
     ];
 
     test_all_cases(Insert, &inputs);

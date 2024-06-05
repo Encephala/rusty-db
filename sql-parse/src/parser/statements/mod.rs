@@ -130,7 +130,7 @@ impl StatementParser for Insert {
 
         check_and_skip(input, Token::Values)?;
 
-        let values = Array.parse(input)?;
+        let values = Array.multiple().parse(input)?;
 
         check_and_skip(input, Token::Semicolon)?;
 
