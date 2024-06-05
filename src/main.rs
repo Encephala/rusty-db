@@ -2,8 +2,8 @@
 
 use std::io::Write;
 
-use sql_parse::parse_statement;
-use dbms::{Execute, RuntimeEnvironment};
+use sql_parse::{Lexer, parse_statement};
+use dbms::{Execute, RuntimeEnvironment, ExecutionResult};
 
 fn repl() {
     let stdin = std::io::stdin();
@@ -27,16 +27,40 @@ fn repl() {
             break;
         }
 
+        if input.starts_with("\\l") {
+            let tokens = Lexer::lex(input.strip_prefix("\\l").unwrap());
+
+            println!("Lexed: {tokens:?}");
+
+            continue;
+        }
+
         let statement = parse_statement(&input);
+
+        if input.starts_with("\\p") {
+            let statement = parse_statement(&input);
+
+            println!("Parsed: {statement:?}");
+
+            continue;
+        }
 
         if let Some(statement) = statement {
             let result = statement.execute(&mut environment);
 
-            if let Err(error) = result {
-                println!("Got execution error: {error:?}");
+            match result {
+                Ok(result) => {
+                    match result {
+                        ExecutionResult::None => (),
+                        an_actual_result => println!("Executed:\n{an_actual_result:?}"),
+                    }
+                },
+                Err(error) => {
+                    println!("Got execution error: {error:?}");
+                }
             }
         } else {
-            println!("Failed to parse {input}");
+            println!("Failed to parse: {input}");
         }
     }
 }
