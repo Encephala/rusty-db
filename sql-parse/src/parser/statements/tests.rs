@@ -1,6 +1,6 @@
+use super::*;
+use super::super::expressions::{ColumnType, InfixOperator};
 use crate::lexer::Lexer;
-use super::expressions::*;
-use super::statements::*;
 
 use {Expression as E, Statement as S};
 

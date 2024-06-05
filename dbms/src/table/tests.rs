@@ -1,6 +1,4 @@
 use super::*;
-use super::table::*;
-use crate::InfixOperator;
 
 fn test_table() -> Table {
     return Table::new(

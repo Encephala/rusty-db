@@ -1,10 +1,13 @@
+#[cfg(test)]
+mod tests;
+
 use super::{SqlError, Expression, ColumnType, InfixOperator};
-pub use super::types::{ColumnName, ColumnSelector, ColumnValue, Where};
+use super::types::{ColumnName, ColumnSelector, ColumnValue, Where};
 
 #[derive(Debug, Clone)]
 pub struct Row {
-    pub names: Vec<ColumnName>,
-    pub values: Vec<ColumnValue>,
+    names: Vec<ColumnName>,
+    values: Vec<ColumnValue>,
 }
 
 // Ignore name of columns when comparing rows
@@ -118,8 +121,8 @@ impl Row {
 #[derive(Debug)]
 pub struct Table {
     types: Vec<ColumnType>,
-    pub names: Vec<ColumnName>,
-    pub values: Vec<Row>,
+    names: Vec<ColumnName>,
+    values: Vec<Row>,
 }
 
 impl Table {

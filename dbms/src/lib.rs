@@ -6,8 +6,6 @@ use sql_parse::{Expression, ColumnType, InfixOperator};
 
 mod table;
 mod types;
-#[cfg(test)]
-mod tests_table;
 
 
 pub use table::Table;

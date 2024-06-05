@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use super::combinators::Chain;
 use super::utils::check_and_skip;
 use crate::lexer::Token;

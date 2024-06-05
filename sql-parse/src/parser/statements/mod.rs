@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use super::combinators::Chain;
 use super::expressions::{AllColumn, Array, Expression, ExpressionParser, Type, Identifier, Where, Value};
 use super::utils::check_and_skip;
