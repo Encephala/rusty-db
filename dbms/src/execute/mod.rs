@@ -3,8 +3,7 @@ mod tests;
 
 use std::collections::HashMap;
 
-use super::{Statement, Expression, SqlError};
-use super::{Table, CreateType};
+use super::{CreateType, Expression, SqlError, Statement, Table, ColumnValue};
 
 
 #[derive(Debug, Default)]
@@ -14,7 +13,7 @@ impl RuntimeEnvironment {
         return Self(HashMap::new());
     }
 
-    pub fn insert(&mut self, table: Table) -> Result<(), SqlError> {
+    pub fn create(&mut self, table: Table) -> Result<(), SqlError> {
         if self.0.contains_key(&table.name.0) {
             return Err(SqlError::DuplicateTable(table.name.0.clone()));
         }
@@ -22,6 +21,16 @@ impl RuntimeEnvironment {
         self.0.insert(table.name.0.clone(), table);
 
         return Ok(());
+    }
+
+    pub fn insert(&mut self, table_name: &str, values: Vec<ColumnValue>) -> Result<(), SqlError> {
+        let table = self.0.get_mut(table_name);
+
+        if let Some(table) = table {
+            return table.insert(values);
+        } else {
+            return Err(SqlError::TableDoesNotExist(table_name.to_string()));
+        }
     }
 
     pub fn drop(&mut self, table_name: &str) -> Result<(), SqlError> {
@@ -49,7 +58,7 @@ impl Execute for Statement {
                     },
                     CreateType::Table => {
                         if let Expression::Array(columns) = columns.ok_or(SqlError::InvalidParameter)? {
-                            return environment.insert(Table::new(
+                            return environment.create(Table::new(
                                 name,
                                 columns
                             )?);
@@ -60,7 +69,20 @@ impl Execute for Statement {
                 };
             },
             Statement::Insert { into, values } => {
-                todo!();
+                if let Expression::Ident(name) = into {
+                    if let Expression::Array(array) = values {
+                        let mut values = vec![];
+                        for expression in array {
+                            values.push(expression.try_into()?);
+                        }
+
+                        return environment.insert(&name, values);
+                    } else {
+                        panic!("Tried inserting into tables but values wasn't an array");
+                    }
+                } else {
+                    panic!("Tried inserting into table but name wasn't an Ident");
+                }
             },
             Statement::Update { from, columns, values, where_clause } => {
                 todo!();

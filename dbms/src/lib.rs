@@ -4,12 +4,13 @@
 mod table;
 mod types;
 mod execute;
+mod utils;
 
-use types::ColumnName;
+use types::{ColumnName, ColumnValue};
 use sql_parse::{Statement, Expression, ColumnType, InfixOperator, CreateType};
 
 
-pub use table::Table;
+pub use table::{Table, Row};
 pub use execute::{Execute, RuntimeEnvironment};
 
 

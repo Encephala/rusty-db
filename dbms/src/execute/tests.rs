@@ -1,5 +1,6 @@
 use super::*;
 use crate::ColumnType;
+use crate::utils::tests::{test_row, test_table};
 
 // Pretty nice for testing
 impl Clone for Table {
@@ -15,7 +16,7 @@ impl PartialEq for Table {
 }
 
 #[test]
-fn insert_and_drop_tables() {
+fn create_and_drop_tables_basic() {
     let mut env = RuntimeEnvironment::new();
 
     let table = Table::new(
@@ -26,7 +27,7 @@ fn insert_and_drop_tables() {
         ],
     ).unwrap();
 
-    env.insert(table.clone()).unwrap();
+    env.create(table.clone()).unwrap();
 
     assert_eq!(
         env.0.len(),
@@ -48,5 +49,29 @@ fn insert_and_drop_tables() {
     assert_eq!(
         env.0.get(&table.name.0),
         None
+    );
+}
+
+#[test]
+fn insert_into_table_basic() {
+    let mut env = RuntimeEnvironment::new();
+
+    env.create(test_table()).unwrap();
+
+    assert_eq!(
+        env.0.get("test_table").unwrap().values,
+        vec![],
+    );
+
+    env.insert("test_table", vec![
+        ColumnValue::Int(69),
+        ColumnValue::Bool(false),
+    ]).unwrap();
+
+    assert_eq!(
+        env.0.get("test_table").unwrap().values,
+        vec![
+            test_row(vec![ColumnValue::Int(69), ColumnValue::Bool(false)]),
+        ]
     );
 }
