@@ -3,7 +3,7 @@ mod tests;
 
 use std::collections::HashMap;
 
-use super::{CreateType, Expression, SqlError, Statement, Table, ColumnValue, ColumnName};
+use super::{CreateType, Expression, SqlError, Statement, Table, Row, ColumnValue, ColumnName, ColumnSelector};
 
 
 #[derive(Debug, Default)]
@@ -24,15 +24,17 @@ impl RuntimeEnvironment {
     }
 
     pub fn insert(&mut self, table_name: &str, values: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
-        let table = self.0.get_mut(table_name);
+        let table = self.0.get_mut(table_name)
+            .ok_or(SqlError::TableDoesNotExist(table_name.to_string()))?;
 
-        if let Some(table) = table {
-            table.insert_multiple(values)?;
+        return table.insert_multiple(values);
+    }
 
-            return Ok(());
-        } else {
-            return Err(SqlError::TableDoesNotExist(table_name.to_string()));
-        }
+    pub fn select(&mut self, table_name: &str, columns: ColumnSelector, condition: Option<Expression>) -> Result<Vec<Row>, SqlError> {
+        let table = self.0.get(table_name)
+            .ok_or(SqlError::TableDoesNotExist(table_name.into()))?;
+
+        return table.select(columns, condition);
     }
 
     pub fn update(&mut self,
@@ -48,34 +50,61 @@ impl RuntimeEnvironment {
     }
 
     pub fn delete(&mut self, table_name: &str, condition: Option<Expression>) -> Result<(), SqlError> {
-        let table = self.0.get_mut(table_name);
+        let table = self.0.get_mut(table_name)
+            .ok_or(SqlError::TableDoesNotExist(table_name.to_string()))?;
 
-        if let Some(table) = table {
-            return table.delete(condition);
-        } else {
-            return Err(SqlError::TableDoesNotExist(table_name.to_string()));
-        }
+        return table.delete(condition);
     }
 
-    pub fn drop(&mut self, table_name: &str) -> Result<(), SqlError> {
-        match self.0.remove(table_name) {
-            Some(table) => Ok(()),
-            None => Err(SqlError::TableDoesNotExist(table_name.to_string()))
-        }
+    pub fn drop(&mut self, table_name: &str) -> Result<Table, SqlError> {
+        return self.0.remove(table_name)
+            .ok_or(SqlError::TableDoesNotExist(table_name.to_string()));
     }
 }
 
+#[derive(Debug)]
+pub enum ExecutionResult {
+    None,
+    Table(Table),
+    Select(Vec<Row>),
+}
+
 pub trait Execute {
-    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<(), SqlError>;
+    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError>;
 }
 
 // Todo: I need a better way of converting these stupid ass types
 // rather than all these if let statements
 impl Execute for Statement {
-    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<(), SqlError> {
+    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError> {
         match self {
-            Statement::Select { columns, table, where_clause } => {
-                todo!();
+            Statement::Select { table, columns, where_clause } => {
+                if let Expression::Ident(table) = table {
+                    let columns = match columns {
+                        Expression::Array(columns) => {
+                            let mut column_names = vec![];
+
+                            for column in columns {
+                                if let Expression::Ident(column_name) = column {
+                                    column_names.push(ColumnName(column_name));
+                                } else {
+                                    panic!("Tried selecting columns but column wasn't an Ident");
+                                }
+                            }
+
+                            ColumnSelector::Name(column_names)
+                        },
+                        Expression::AllColumns => {
+                            ColumnSelector::AllColumns
+                        },
+                        _ => panic!("Tried selecting from table but columns wasn't an Array")
+                    };
+
+                    return environment.select(&table, columns, where_clause)
+                        .map(ExecutionResult::Select);
+                } else {
+                    panic!("Tried selecting from table but table name wasn't an Ident");
+                }
             },
             Statement::Create { what, name, columns } => {
                 match what {
@@ -87,7 +116,7 @@ impl Execute for Statement {
                             return environment.create(Table::new(
                                 name,
                                 columns
-                            )?);
+                            )?).map(|_| ExecutionResult::None);
                         } else {
                             panic!("Tried creating table but columns wasn't an Array");
                         }
@@ -113,7 +142,8 @@ impl Execute for Statement {
                             }
                         }
 
-                        return environment.insert(&name, result);
+                        return environment.insert(&name, result)
+                            .map(|_| ExecutionResult::None);
                     } else {
                         panic!("Tried inserting into tables but values wasn't an array");
                     }
@@ -141,7 +171,8 @@ impl Execute for Statement {
                                 column_values.push(value.try_into()?);
                             }
 
-                            return environment.update(&from, column_names, column_values, where_clause);
+                            return environment.update(&from, column_names, column_values, where_clause)
+                                .map(|_| ExecutionResult::None);
                         }
                     } else {
                         panic!("Tried updating table but columns wasn't an Array");
@@ -154,7 +185,8 @@ impl Execute for Statement {
             },
             Statement::Delete { from, where_clause } => {
                 if let Expression::Ident(name) = from {
-                    return environment.delete(&name, where_clause);
+                    return environment.delete(&name, where_clause)
+                        .map(|_| ExecutionResult::None);
                 } else {
                     panic!("Tried deleting from table but name wasn't an Ident");
                 }
@@ -166,7 +198,8 @@ impl Execute for Statement {
                     },
                     CreateType::Table => {
                         if let Expression::Ident(name) = name {
-                            return environment.drop(&name);
+                            return environment.drop(&name)
+                                .map(ExecutionResult::Table);
                         } else {
                             panic!("Tried dropping table but name wasn't an Ident");
                         }

@@ -6,17 +6,17 @@ mod types;
 mod execute;
 mod utils;
 
-pub use types::{ColumnName, ColumnValue};
+pub use types::{ColumnName, ColumnValue, ColumnSelector};
 use sql_parse::{Statement, Expression, ColumnType, CreateType};
 
 pub use sql_parse::InfixOperator;
 
 
 pub use table::{Table, Row};
-pub use execute::{Execute, RuntimeEnvironment};
+pub use execute::{Execute, RuntimeEnvironment, ExecutionResult};
 
 
-pub fn execute_statement(statement: Statement, env: &mut RuntimeEnvironment) -> Result<(), SqlError> {
+pub fn execute_statement(statement: Statement, env: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError> {
     return statement.execute(env);
 }
 

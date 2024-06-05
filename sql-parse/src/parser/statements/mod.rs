@@ -9,8 +9,8 @@ use crate::lexer::Token;
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Select {
-        columns: Expression,
         table: Expression,
+        columns: Expression,
         where_clause: Option<Expression>,
     },
     Create {
