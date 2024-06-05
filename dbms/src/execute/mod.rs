@@ -34,6 +34,16 @@ impl RuntimeEnvironment {
             return Err(SqlError::TableDoesNotExist(table_name.to_string()));
         }
     }
+
+    pub fn update(&mut self) -> Result<(), SqlError> {
+        todo!();
+    }
+
+    pub fn delete(&mut self, table_name: &str, condition: Option<Expression>) -> Result<(), SqlError> {
+        let table = self.0.get_mut(table_name);
+
+        if let Some(table) = table {
+            return table.delete(condition);
         } else {
             return Err(SqlError::TableDoesNotExist(table_name.to_string()));
         }
@@ -51,6 +61,8 @@ pub trait Execute {
     fn execute(self, environment: &mut RuntimeEnvironment) -> Result<(), SqlError>;
 }
 
+// Todo: I need a better way of converting these stupid ass types
+// rather than all these if let statements
 impl Execute for Statement {
     fn execute(self, environment: &mut RuntimeEnvironment) -> Result<(), SqlError> {
         match self {
@@ -76,13 +88,24 @@ impl Execute for Statement {
             },
             Statement::Insert { into, values } => {
                 if let Expression::Ident(name) = into {
-                    if let Expression::Array(array) = values {
-                        let mut values = vec![];
-                        for expression in array {
-                            values.push(expression.try_into()?);
+                    if let Expression::Array(values) = values {
+                        let mut result = vec![];
+
+                        for row in values {
+                            if let Expression::Array(row) = row {
+                                let mut row_values = vec![];
+
+                                for value in row {
+                                    row_values.push(value.try_into()?);
+                                }
+
+                                result.push(row_values);
+                            } else {
+                                panic!("Tried inserting into tables but values wasn't an array")
+                            }
                         }
 
-                        return environment.insert(&name, values);
+                        return environment.insert(&name, result);
                     } else {
                         panic!("Tried inserting into tables but values wasn't an array");
                     }
@@ -94,7 +117,11 @@ impl Execute for Statement {
                 todo!();
             },
             Statement::Delete { from, where_clause } => {
-                todo!();
+                if let Expression::Ident(name) = from {
+                    return environment.delete(&name, where_clause);
+                } else {
+                    panic!("Tried deleting from table but name wasn't an Ident");
+                }
             },
             Statement::Drop { what, name } => {
                 match what {

@@ -1,6 +1,6 @@
 use super::*;
-use crate::ColumnType;
-use crate::utils::tests::{test_row, test_table};
+use crate::{ColumnType, InfixOperator};
+use crate::utils::tests::{test_row, test_table, test_table_with_values};
 
 // Pretty nice for testing
 impl Clone for Table {
@@ -63,15 +63,53 @@ fn insert_into_table_basic() {
         vec![],
     );
 
-    env.insert("test_table", vec![
+    env.insert("test_table", vec![vec![
         ColumnValue::Int(69),
         ColumnValue::Bool(false),
-    ]).unwrap();
+    ]]).unwrap();
 
     assert_eq!(
         env.0.get("test_table").unwrap().values,
         vec![
             test_row(vec![ColumnValue::Int(69), ColumnValue::Bool(false)]),
         ]
+    );
+}
+
+#[test]
+fn delete_from_table_basic() {
+    let mut env = RuntimeEnvironment::new();
+
+    let (table, (row1, row2)) = test_table_with_values();
+    env.create(table).unwrap();
+
+    env.delete("test_table", None).unwrap();
+
+    assert_eq!(
+        env.0.len(),
+        1
+    );
+
+    assert_eq!(
+        env.0.get("test_table").unwrap().values,
+        vec![]
+    );
+
+    env.insert("test_table", vec![row1.clone(), row2.clone()]).unwrap();
+
+    assert_eq!(
+        env.0.get("test_table").unwrap().values,
+        vec![test_row(row1.clone()), test_row(row2.clone())]
+    );
+
+    env.delete("test_table", Some(Expression::Where {
+        left: Expression::Ident("second".into()).into(),
+        operator: InfixOperator::Equals,
+        right: Expression::Bool(false).into(),
+    })).unwrap();
+
+    assert_eq!(
+        env.0.get("test_table").unwrap().values,
+        vec![test_row(row1)]
     );
 }
