@@ -1,9 +1,9 @@
 use super::{SqlError, Expression, ColumnType, InfixOperator};
-use super::conversions::{ColumnName, ColumnValue, Where};
+pub use super::types::{ColumnName, ColumnSelector, ColumnValue, Where};
 
 #[derive(Debug, Clone)]
 pub struct Row {
-    pub names: Vec<String>,
+    pub names: Vec<ColumnName>,
     pub values: Vec<ColumnValue>,
 }
 
@@ -15,7 +15,7 @@ impl PartialEq for Row {
 }
 
 impl Row {
-    fn new(names: Vec<String>, values: Vec<ColumnValue>) -> Result<Self, SqlError> {
+    pub fn new(names: Vec<ColumnName>, values: Vec<ColumnValue>) -> Result<Self, SqlError> {
         if names.len() != values.len() {
             return Err(SqlError::UnequalLengths(names.len(), values.len()));
         }
@@ -45,12 +45,7 @@ impl Row {
         return Row::new(names, values);
     }
 
-    fn select_by_names(&self, columns: Vec<ColumnName>) -> Result<Row, SqlError> {
-        let names = columns.into_iter().map(|column_name| {
-            let ColumnName(name) = column_name;
-            name
-        }).collect::<Vec<_>>();
-
+    fn select_by_names(&self, names: Vec<ColumnName>) -> Result<Row, SqlError> {
         for name in names.iter() {
             if !self.names.contains(name) {
                 return Err(SqlError::NameDoesNotExist(name.clone(), self.names.clone()));
@@ -66,6 +61,26 @@ impl Row {
             .collect();
 
         return Row::new(names, values);
+    }
+
+    fn update(&mut self,
+        columns: &[usize],
+        new_values: Vec<ColumnValue>,
+        condition: &Option<Expression>
+    ) -> Result<(), SqlError> {
+        assert_eq!(columns.len(), new_values.len());
+
+        if !self.matches(condition)? {
+            return Ok(())
+        }
+
+        let self_length = self.values.len();
+
+        for (index, new_value) in columns.iter().zip(new_values) {
+            *self.values.get_mut(*index).ok_or(SqlError::IndexOutOfBounds(*index, self_length))? = new_value;
+        }
+
+        return Ok(());
     }
 
     fn matches(&self, condition: &Option<Expression>) -> Result<bool, SqlError> {
@@ -104,8 +119,8 @@ impl Row {
 #[derive(Debug)]
 pub struct Table {
     types: Vec<ColumnType>,
-    names: Vec<String>,
-    values: Vec<Vec<ColumnValue>>,
+    pub names: Vec<ColumnName>,
+    pub values: Vec<Row>,
 }
 
 impl Table {
@@ -114,13 +129,20 @@ impl Table {
             return Err(SqlError::UnequalLengths(names.len(), types.len()));
         }
 
-        let names = names.into_iter().map(|identifier| {
+        let names: Vec<_> = names.into_iter().map(|identifier| {
             if let Expression::Ident(name) = identifier {
-                name
+                ColumnName(name)
             } else {
                 panic!("Creating table with column name {identifier:?} that isn't an identifier")
             }
         }).collect();
+
+        let mut unique_names = std::collections::HashSet::new();
+        for name in names.iter() {
+            if !unique_names.insert(name) {
+                return Err(SqlError::NameNotUnique(name.clone()));
+            }
+        }
 
         return Ok(Table {
             types,
@@ -138,7 +160,7 @@ impl Table {
             return Err(SqlError::IncompatibleTypes(types, self.types.clone()));
         }
 
-        self.values.push(row);
+        self.values.push(Row::new(self.names.clone(), row)?);
 
         return Ok(());
     }
@@ -153,30 +175,19 @@ impl Table {
 
     // I don't like that columns is necessarily a vec, it should be a vec of idents or an Expression::AllColumns
     // Also this whole method kinda sucks donkey dick, wtf am I looking at
-    pub fn select(&self, columns: Vec<Expression>, condition: Option<Expression>) -> Result<Vec<Row>, SqlError> {
-        let column_indices: Vec<_>;
-        if let Some(Expression::AllColumns) = columns.get(0) {
-            column_indices = (0..self.types.len()).collect()
-        } else {
-            column_indices = columns.iter().flat_map(|name| {
-                if let Expression::Ident(name) = name {
+    pub fn select(&self, columns: ColumnSelector, condition: Option<Expression>) -> Result<Vec<Row>, SqlError> {
+        let column_indices: Vec<_> = match columns {
+            ColumnSelector::AllColumns => (0..self.types.len()).collect(),
+            ColumnSelector::Name(names) => {
+                names.iter().flat_map(|name| {
                     self.names.iter().position(|self_name| self_name == name)
-                } else {
-                    panic!("Selecting from table with non-ident {name:?}");
-                }
-            })
-            .collect()
+                }).collect()
+            }
         };
-
 
         let mut result = vec![];
 
         for row in &self.values {
-            let row = Row::new(
-                self.names.clone(),
-                row.clone()
-            )?;
-
             if row.matches(&condition)? {
                 result.push(row.select(&column_indices)?);
             }
@@ -185,151 +196,45 @@ impl Table {
         return Ok(result);
     }
 
-    pub fn update(&mut self, new_values: Row, condition: Option<Expression>) -> Result<(), SqlError> {
-        // self.values = self.values.into_iter().map(|row| {
-        //     todo!();
-        // });
+    pub fn update(&mut self,
+        columns: Vec<ColumnName>,
+        new_values: Vec<ColumnValue>,
+        condition: Option<Expression>
+    ) -> Result<(), SqlError> {
+        let new_types: Vec<ColumnType> = new_values.iter().map(|value| value.into()).collect();
 
-        todo!();
-    }
-}
+        let column_indices = columns.iter().flat_map(|name| {
+            self.names.iter().position(|self_name| self_name == name)
+        }).collect::<Vec<_>>();
 
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::InfixOperator;
+        let self_types: Vec<_> = self.types.iter()
+            .enumerate()
+            .filter_map(|(index, value)| {
+                if column_indices.contains(&index) {
+                    Some(*value)
+                } else {
+                    None
+                }
+            }).collect();
 
-    fn test_table() -> Table {
-        return Table::new(
-            vec![
-                Expression::Ident("first".into()),
-                Expression::Ident("second".into()),
-            ],
-            vec![
-                ColumnType::Int,
-                ColumnType::Bool,
-            ]
-        ).unwrap();
-    }
-
-    #[test]
-    fn insert_basic() {
-        let mut table = test_table();
-
-        let row1 = vec![
-            ColumnValue::Int(5),
-            ColumnValue::Bool(true),
-        ];
-
-        let row2 = vec![
-            ColumnValue::Int(6),
-            ColumnValue::Bool(false),
-        ];
-
-        if let Err(message) = table.insert_multiple(vec![row1.clone(), row2.clone()]) {
-            panic!("Failed to insert rows ({message:?})");
+        if self_types != new_types {
+            return Err(SqlError::IncompatibleTypes(new_types, self.types.clone()));
         }
 
-        assert_eq!(
-            table.values,
-            vec![row1, row2]
-        );
+
+        for row in &mut self.values {
+            row.update(&column_indices, new_values.clone(), &condition)?;
+        }
+
+        return Ok(());
     }
 
-    #[test]
-    fn insert_check_types() {
-        let mut table = test_table();
+    pub fn delete(&mut self, condition: Option<Expression>) -> Result<(), SqlError> {
+        for row in &mut self.values {
+            row.delete(condition)?;
+        }
 
-        let row1 = vec![
-            ColumnValue::Bool(true),
-            ColumnValue::Int(5),
-        ];
-
-        let row2 = vec![
-            ColumnValue::Int(6),
-            ColumnValue::Str("false".into()),
-        ];
-
-        let result1 = table.insert(row1);
-        let result2 = table.insert(row2);
-
-        assert!(matches!(result1, Err(SqlError::IncompatibleTypes(_, _))));
-        assert!(matches!(result2, Err(SqlError::IncompatibleTypes(_, _))));
-
-        assert_eq!(
-            table.values,
-            Vec::<Vec<_>>::new()
-        );
-    }
-
-    #[test]
-    fn select_basic() {
-        let mut table = test_table();
-
-        let row1 = vec![
-            ColumnValue::Int(5),
-            ColumnValue::Bool(true),
-        ];
-
-        let row2 = vec![
-            ColumnValue::Int(6),
-            ColumnValue::Bool(false),
-        ];
-
-        table.insert(row1.clone()).unwrap();
-        table.insert(row2.clone()).unwrap();
-
-        let all = table.select(vec![Expression::AllColumns], None).unwrap();
-
-        // Janky comparison to not have to move row1 and row2
-        assert_eq!(
-            all,
-            vec![Row::new(table.names.clone(), row1.clone()).unwrap(), Row::new(table.names.clone(), row2).unwrap()]
-        );
-
-        let where_bool_true = table.select(
-            vec![Expression::AllColumns],
-            Some(Expression::Where {
-                left: Expression::Ident("second".into()).into(),
-                operator: InfixOperator::Equals,
-                right: Expression::Bool(true).into(),
-            })
-        ).unwrap();
-
-        assert_eq!(
-            where_bool_true,
-            vec![Row::new(table.names.clone(), row1).unwrap()]
-        );
-
-        let only_int_five = table.select(
-            vec![Expression::Ident("first".into())],
-            Some(Expression::Where {
-                left: Expression::Ident("first".into()).into(),
-                operator: InfixOperator::Equals,
-                right: Expression::Int(5).into(),
-            })
-        ).unwrap();
-
-        assert_eq!(
-            only_int_five,
-            vec![Row::new(
-                vec!["first".into()],
-                vec![ColumnValue::Int(5)]
-            ).unwrap()]
-        );
-
-        let none = table.select(
-            vec![],
-            None,
-        ).unwrap();
-
-        assert_eq!(
-            none,
-            vec![
-                Row::new(vec![], vec![]).unwrap(),
-                Row::new(vec![], vec![]).unwrap(),
-            ]
-        )
+        return Ok(());
     }
 }

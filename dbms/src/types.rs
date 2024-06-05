@@ -18,7 +18,7 @@ macro_rules! impl_owned {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnName(pub String);
 impl TryFrom<&Expression> for ColumnName {
     type Error = SqlError;
@@ -32,6 +32,12 @@ impl TryFrom<&Expression> for ColumnName {
 }
 
 impl_owned!(ColumnName);
+
+#[derive(Debug, PartialEq)]
+pub enum ColumnSelector {
+    AllColumns,
+    Name(Vec<ColumnName>),
+}
 
 
 #[derive(Debug, PartialEq, Clone)]
