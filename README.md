@@ -19,6 +19,8 @@ Useless DBMS, just to learn the following:
 - GROUP BY? (lot of effort I think)
 - Constraints
 - INDEX?
+- FOREIGN KEY
+- JOIN
 
 #### Notes
 
