@@ -4,9 +4,9 @@ mod lexer;
 pub mod parser;
 
 use lexer::Token;
-pub use lexer::Lexer;
-pub use parser::{StatementParser, Create, Insert, Select, Update, Delete};
+use parser::{StatementParser, Create, Insert, Select, Update, Delete};
 
+pub use lexer::Lexer;
 pub use parser::{Statement, CreateType, Expression, ColumnType, InfixOperator};
 
 pub fn parse_statement(input: &str) -> Option<Statement> {

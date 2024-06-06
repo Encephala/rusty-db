@@ -1,6 +1,7 @@
 use super::*;
+use super::super::types::ColumnDefinition;
 use crate::{ColumnType, InfixOperator};
-use crate::utils::tests::{test_row, test_table, test_table_with_values};
+use crate::utils::tests::*;
 
 // Pretty nice for testing
 impl Clone for Table {
@@ -20,10 +21,10 @@ fn create_and_drop_tables_basic() {
     let mut env = RuntimeEnvironment::new();
 
     let table = Table::new(
-        Expression::Ident("test_table".into()),
+        "test_table".into(),
         vec![
-            Expression::ColumnDefinition("a".into(), ColumnType::Int),
-            Expression::ColumnDefinition("b".into(), ColumnType::Decimal),
+            ColumnDefinition("a".into(), ColumnType::Int),
+            ColumnDefinition("b".into(), ColumnType::Decimal),
         ],
     ).unwrap();
 
@@ -39,7 +40,7 @@ fn create_and_drop_tables_basic() {
         Some(&table)
     );
 
-    env.drop(&table.name.0).unwrap();
+    env.drop(table.name.clone()).unwrap();
 
     assert_eq!(
         env.0.len(),
@@ -63,7 +64,7 @@ fn insert_into_table_basic() {
         vec![],
     );
 
-    env.insert("test_table", vec![vec![
+    env.insert("test_table".into(), None, vec![vec![
         ColumnValue::Int(69),
         ColumnValue::Bool(false),
     ]]).unwrap();
@@ -85,13 +86,13 @@ fn select_from_table_basic() {
     env.create(table).unwrap();
 
     assert_eq!(
-        env.select("test_table", ColumnSelector::AllColumns, None).unwrap(),
+        env.select("test_table".into(), ColumnSelector::AllColumns, None).unwrap(),
         vec![test_row(row1.clone()), test_row(row2.clone())]
     );
 
     assert_eq!(
         env.select(
-            "test_table",
+            "test_table".into(),
             ColumnSelector::Name(vec![ColumnName("first".into())]),
             None
         ).unwrap(),
@@ -103,12 +104,12 @@ fn select_from_table_basic() {
 
     assert_eq!(
         env.select(
-            "test_table",
+            "test_table".into(),
             ColumnSelector::AllColumns,
-            Some(Expression::Where {
-                left: Expression::Ident("second".into()).into(),
+            Some(Where {
+                left: "second".into(),
                 operator: InfixOperator::Equals,
-                right: Expression::Bool(true).into(),
+                right: true.into(),
             })
         ).unwrap(),
         vec![
@@ -118,12 +119,12 @@ fn select_from_table_basic() {
 
     assert_eq!(
         env.select(
-            "test_table",
+            "test_table".into(),
             ColumnSelector::Name(vec![ColumnName("first".into())]),
-            Some(Expression::Where {
-                left: Expression::Ident("second".into()).into(),
+            Some(Where {
+                left: "second".into(),
                 operator: InfixOperator::Equals,
-                right: Expression::Bool(true).into(),
+                right: true.into(),
             })
         ).unwrap(),
         vec![
@@ -139,7 +140,7 @@ fn delete_from_table_basic() {
     let (table, (row1, row2)) = test_table_with_values();
     env.create(table).unwrap();
 
-    env.delete("test_table", None).unwrap();
+    env.delete("test_table".into(), None).unwrap();
 
     assert_eq!(
         env.0.len(),
@@ -151,17 +152,17 @@ fn delete_from_table_basic() {
         vec![]
     );
 
-    env.insert("test_table", vec![row1.clone(), row2.clone()]).unwrap();
+    env.insert("test_table".into(), None, vec![row1.clone(), row2.clone()]).unwrap();
 
     assert_eq!(
         env.0.get("test_table").unwrap().values,
         vec![test_row(row1.clone()), test_row(row2.clone())]
     );
 
-    env.delete("test_table", Some(Expression::Where {
-        left: Expression::Ident("second".into()).into(),
+    env.delete("test_table".into(), Some(Where {
+        left: "second".into(),
         operator: InfixOperator::Equals,
-        right: Expression::Bool(false).into(),
+        right: false.into(),
     })).unwrap();
 
     assert_eq!(
@@ -179,7 +180,7 @@ fn update_table_basic() {
     env.create(table.clone()).unwrap();
 
     env.update(
-        "test_table",
+        "test_table".into(),
         vec![ColumnName("first".into())],
         vec![ColumnValue::Int(69)],
         None
@@ -200,7 +201,7 @@ fn update_table_basic() {
     );
 
     env.update(
-        "test_table",
+        "test_table".into(),
         vec![ColumnName("first".into()), ColumnName("second".into())],
         vec![ColumnValue::Int(420), ColumnValue::Bool(true)],
         None
@@ -221,11 +222,11 @@ fn update_table_basic() {
     );
 
     // Reset table
-    env.drop("test_table").unwrap();
+    env.drop("test_table".into()).unwrap();
     env.create(table).unwrap();
 
     env.update(
-        "test_table",
+        "test_table".into(),
         vec![],
         vec![],
         None,
@@ -237,13 +238,13 @@ fn update_table_basic() {
     );
 
     env.update(
-        "test_table",
+        "test_table".into(),
         vec![ColumnName("first".into())],
         vec![ColumnValue::Int(0)],
-        Some(Expression::Where {
-            left: Expression::Ident("second".into()).into(),
+        Some(Where {
+            left: "second".into(),
             operator: InfixOperator::Equals,
-            right: Expression::Bool(false).into(),
+            right: false.into(),
         })
     ).unwrap();
 

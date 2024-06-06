@@ -1,28 +1,28 @@
 use super::*;
-use crate::utils::tests::{test_table, test_table_with_values, test_row};
+use crate::utils::tests::*;
 
 #[test]
 fn insert_basic() {
     let mut table = test_table();
 
     let row1 = vec![
-        ColumnValue::Int(5),
-        ColumnValue::Bool(true),
+        5.into(),
+        true.into(),
     ];
 
     let row2 = vec![
-        ColumnValue::Int(6),
-        ColumnValue::Bool(false),
+        6.into(),
+        false.into(),
     ];
 
-    table.insert(row1.clone()).unwrap();
+    table.insert(&None, row1.clone()).unwrap();
 
     assert_eq!(
         table.values,
         vec![test_row(row1.clone())]
     );
 
-    table.insert_multiple(vec![row1.clone(), row2.clone()]).unwrap();
+    table.insert_multiple(&None, vec![row1.clone(), row2.clone()]).unwrap();
 
     assert_eq!(
         table.values,
@@ -34,18 +34,19 @@ fn insert_basic() {
 fn insert_check_types() {
     let mut table = test_table();
 
+    // Wrong order
     let row1 = vec![
-        ColumnValue::Bool(true),
-        ColumnValue::Int(5),
+        true.into(),
+        5.into(),
     ];
 
     let row2 = vec![
-        ColumnValue::Int(6),
-        ColumnValue::Str("false".into()),
+        6.into(),
+        "false".into(), // Wrong type
     ];
 
-    let result1 = table.insert(row1);
-    let result2 = table.insert(row2);
+    let result1 = table.insert(&None, row1);
+    let result2 = table.insert(&None, row2);
 
     assert!(matches!(result1, Err(SqlError::IncompatibleTypes(_, _))));
     assert!(matches!(result2, Err(SqlError::IncompatibleTypes(_, _))));
@@ -69,10 +70,10 @@ fn select_basic() {
 
     let where_bool_true = table.select(
         ColumnSelector::AllColumns,
-        Some(Expression::Where {
-            left: Expression::Ident("second".into()).into(),
+        Some(Where {
+            left: "second".into(),
             operator: InfixOperator::Equals,
-            right: Expression::Bool(true).into(),
+            right: true.into(),
         })
     ).unwrap();
 
@@ -83,16 +84,16 @@ fn select_basic() {
 
     let only_int_five = table.select(
         ColumnSelector::Name(vec![ColumnName("first".into())]),
-        Some(Expression::Where {
-            left: Expression::Ident("first".into()).into(),
+        Some(Where {
+            left: "first".into(),
             operator: InfixOperator::Equals,
-            right: Expression::Int(5).into(),
+            right: 5.into(),
         })
     ).unwrap();
 
     assert_eq!(
         only_int_five,
-        vec![test_row(vec![ColumnValue::Int(5)])]
+        vec![test_row(vec![5.into()])]
     );
 
     let none = table.select(
@@ -117,15 +118,15 @@ fn update_basic() {
         vec![
             ColumnName("first".into()),
         ],
-        vec![ColumnValue::Int(69)],
-        None
+        vec![69.into()],
+        &None
     ).unwrap();
 
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![ColumnValue::Int(69), ColumnValue::Bool(true)]),
-            test_row(vec![ColumnValue::Int(69), ColumnValue::Bool(false)]),
+            test_row(vec![69.into(), true.into()]),
+            test_row(vec![69.into(), false.into()]),
         ]
     );
 
@@ -133,19 +134,19 @@ fn update_basic() {
         vec![
             ColumnName("first".into()),
         ],
-        vec![ColumnValue::Int(420)],
-        Some(Expression::Where {
-            left: Expression::Ident("second".into()).into(),
+        vec![420.into()],
+        &Some(Where {
+            left: "second".into(),
             operator: InfixOperator::Equals,
-            right: Expression::Bool(true).into(),
+            right: true.into(),
         })
     ).unwrap();
 
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![ColumnValue::Int(420), ColumnValue::Bool(true)]),
-            test_row(vec![ColumnValue::Int(69), ColumnValue::Bool(false)]),
+            test_row(vec![420.into(), true.into()]),
+            test_row(vec![69.into(), false.into()]),
         ]
     );
 }
@@ -163,16 +164,16 @@ fn delete_basic() {
 
     let (mut table, _) = test_table_with_values();
 
-    table.delete(Some(Expression::Where {
-        left: Expression::Ident("second".into()).into(),
+    table.delete(Some(Where {
+        left: "second".into(),
         operator: InfixOperator::Equals,
-        right: Expression::Bool(false).into(),
+        right: false.into(),
     })).unwrap();
 
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![ColumnValue::Int(5), ColumnValue::Bool(true)])
+            test_row(vec![5.into(), true.into()])
         ]
     )
 }

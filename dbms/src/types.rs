@@ -1,10 +1,17 @@
 //! Helpers to convert from Expressions to various types that are more convenient to use.
+//!
+//! The helper `impl_owned` makes it so conversion might require cloning, even if converting owned expression,
+//! but fuck it it's easier to write this way and converting statements isn't going to be the bottleneck, executing is
+//! (hopefully).
 use std::any::type_name;
 
 use sql_parse::{ColumnType, InfixOperator};
 
 use super::{Expression, SqlError};
 
+// Implement owned conversion with macro rather than borrowed conversion,
+// because an owned value can be borrowed but a borrowed value can't be owned.
+// Well I guess you could clone it but ah well, would rather clone a String than an Expression I guess
 macro_rules! impl_owned {
     ($t:ty) => {
         impl TryFrom<Expression> for $t {
@@ -36,12 +43,45 @@ impl_owned!(ColumnName);
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableName(pub String);
 
+impl TryFrom<&Expression> for TableName {
+    type Error = SqlError;
+
+    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+        return match value {
+            Expression::Ident(name) => Ok(TableName(name.clone())),
+            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<TableName>())),
+        };
+    }
+}
+
+impl_owned!(TableName);
+
 
 #[derive(Debug, PartialEq)]
 pub enum ColumnSelector {
     AllColumns,
     Name(Vec<ColumnName>),
 }
+
+impl TryFrom<&Expression> for ColumnSelector {
+    type Error = SqlError;
+
+    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+        return match value {
+            Expression::AllColumns => Ok(ColumnSelector::AllColumns),
+            Expression::Array(columns) => {
+                let columns: Vec<ColumnName> = columns.iter()
+                    .map(|column| column.try_into())
+                    .collect::<Result<Vec<_>, SqlError>>()?;
+
+                Ok(ColumnSelector::Name(columns))
+            }
+            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnSelector>())),
+        };
+    }
+}
+
+impl_owned!(ColumnSelector);
 
 
 #[derive(Debug, PartialEq, Clone)]
@@ -86,6 +126,24 @@ impl From<&ColumnValue> for ColumnType {
     }
 }
 
+#[derive(Debug)]
+pub struct ColumnDefinition(pub ColumnName, pub ColumnType);
+
+impl TryFrom<&Expression> for ColumnDefinition {
+    type Error = SqlError;
+
+    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+        return match value {
+            Expression::ColumnDefinition(name, column_type) => {
+                Ok(Self(ColumnName(name.clone()), *column_type))
+            },
+            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnDefinition>()))
+        };
+    }
+}
+
+impl_owned!(ColumnDefinition);
+
 
 #[derive(Debug)]
 // TODO: this is janky and hacky to only support column = value comparisons
@@ -94,6 +152,7 @@ pub struct Where {
     pub operator: InfixOperator,
     pub right: ColumnValue,
 }
+
 impl TryFrom<&Expression> for Where {
     type Error = SqlError;
 

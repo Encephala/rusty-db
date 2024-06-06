@@ -6,13 +6,12 @@ mod types;
 mod execute;
 mod utils;
 
-pub use types::{ColumnName, ColumnValue, ColumnSelector};
-use sql_parse::{Statement, Expression, ColumnType, CreateType};
+use types::{ColumnName, TableName};
+use sql_parse::{Statement, Expression, CreateType};
+pub use sql_parse::{InfixOperator, ColumnType};
 
-pub use sql_parse::InfixOperator;
 
-
-pub use table::{Table, Row};
+use table::{Table, Row};
 pub use execute::{Execute, RuntimeEnvironment, ExecutionResult};
 
 
@@ -32,5 +31,5 @@ pub enum SqlError {
     ColumnNameNotUnique(ColumnName),
     InvalidParameter,
     DuplicateTable(String),
-    TableDoesNotExist(String),
+    TableDoesNotExist(TableName),
 }
