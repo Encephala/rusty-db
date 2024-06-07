@@ -173,7 +173,7 @@ impl Table {
         return Ok(PreparedWhere { left: left_index, operator, right });
     }
 
-    // I don't like that columns is necessarily a vec, it should be a vec of idents or an Expression::AllColumns
+    // I don't like that columns is necessarily a vec, it should be a vec of identifiers or an Expression::AllColumns
     // Also this whole method kinda sucks donkey dick, wtf am I looking at
     pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
         let column_indices: Vec<_> = match columns {

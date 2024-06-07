@@ -62,7 +62,7 @@ mod serialisation {
     }
 
     #[test]
-    fn serialiase_column_names() {
+    fn serialise_column_names() {
         let names: Vec<ColumnName> = vec![
             "asdf".into(),
             "hello".into(),
