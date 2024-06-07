@@ -3,7 +3,8 @@ mod tests;
 
 use std::collections::HashMap;
 
-use super::{CreateType, Expression, SqlError, Statement, Table, Row};
+use sql_parse::CreateType;
+use super::{Expression, SqlError, Statement, Table, Row};
 use super::types::{TableName, ColumnValue, ColumnName, Where, ColumnSelector};
 
 

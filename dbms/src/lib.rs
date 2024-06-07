@@ -5,10 +5,10 @@ mod table;
 mod types;
 mod execute;
 mod utils;
+mod persistence;
 
 use types::{ColumnName, TableName};
-use sql_parse::{Statement, Expression, CreateType};
-pub use sql_parse::{InfixOperator, ColumnType};
+use sql_parse::{ColumnType, Expression, InfixOperator, Statement};
 
 
 use table::{Table, Row};

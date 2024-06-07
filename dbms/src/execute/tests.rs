@@ -1,6 +1,6 @@
 use super::*;
 use super::super::types::ColumnDefinition;
-use crate::{ColumnType, InfixOperator};
+use sql_parse::{InfixOperator, ColumnType};
 use crate::utils::tests::*;
 
 // Pretty nice for testing

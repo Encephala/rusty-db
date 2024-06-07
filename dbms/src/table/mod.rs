@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests;
 
-use super::{SqlError, ColumnType, InfixOperator};
+use sql_parse::{ColumnType, InfixOperator};
+use super::SqlError;
 use super::types::{ColumnName, TableName, ColumnSelector, ColumnValue, ColumnDefinition, Where};
 
 #[derive(Debug, Clone)]
