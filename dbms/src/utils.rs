@@ -1,8 +1,8 @@
 #[cfg(test)]
 pub mod tests {
     use sql_parse::ColumnType;
-    use super::super::table::{Table, Row};
-    use super::super::types::{TableName, ColumnName, ColumnValue, ColumnDefinition};
+    use super::super::database::{Table, Row, RowSet};
+    use super::super::types::{TableName, ColumnName, DatabaseName, ColumnValue, ColumnDefinition};
 
     impl From<&str> for TableName {
         fn from(value: &str) -> Self {
@@ -11,6 +11,12 @@ pub mod tests {
     }
 
     impl From<&str> for ColumnName {
+        fn from(value: &str) -> Self {
+            return Self(value.into());
+        }
+    }
+
+    impl From<&str> for DatabaseName {
         fn from(value: &str) -> Self {
             return Self(value.into());
         }
@@ -77,13 +83,15 @@ pub mod tests {
         return (result, (row1, row2));
     }
 
-    pub fn test_row(values: Vec<ColumnValue>) -> Row {
-        let (names, values)  = values.into_iter()
-            .map(|row| {
-                ("test_name".into(), row)
-            })
-            .unzip();
+    pub fn test_row_set(values: Vec<Row>) -> RowSet {
+        let names = std::iter::repeat("test_column_name".to_owned())
+            .map(ColumnName)
+            .take(values.len())
+            .collect();
 
-        return Row::new(names, values).unwrap();
+        return RowSet {
+            names,
+            values,
+        };
     }
 }

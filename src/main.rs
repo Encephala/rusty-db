@@ -3,13 +3,13 @@
 use std::io::Write;
 
 use sql_parse::{Lexer, parse_statement};
-use dbms::{Execute, RuntimeEnvironment, ExecutionResult};
+use dbms::{Execute, Database, ExecutionResult, DatabaseName};
 
 fn repl() {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
-    let mut environment = RuntimeEnvironment::new();
+    let mut database = Database::new(DatabaseName("temp".into()));
 
     loop {
         print!(">> ");
@@ -46,7 +46,7 @@ fn repl() {
         }
 
         if let Some(statement) = statement {
-            let result = statement.execute(&mut environment);
+            let result = statement.execute(&mut database);
 
             match result {
                 Ok(result) => {

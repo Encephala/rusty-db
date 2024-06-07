@@ -1,78 +1,44 @@
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+
 use sql_parse::{ColumnType, InfixOperator};
+
 use super::SqlError;
-use super::types::{ColumnName, TableName, ColumnSelector, ColumnValue, ColumnDefinition, Where};
+use super::types::{ColumnName, TableName, DatabaseName, ColumnSelector, ColumnValue, ColumnDefinition, Where, PreparedWhere};
 
-#[derive(Debug, Clone)]
-pub struct Row {
-    names: Vec<ColumnName>,
-    values: Vec<ColumnValue>,
-}
-
-// Ignore name of columns when comparing rows
-impl PartialEq for Row {
-    fn eq(&self, other: &Self) -> bool {
-        return self.values == other.values;
-    }
-}
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone, PartialEq))]
+pub struct Row(pub Vec<ColumnValue>);
 
 impl Row {
-    pub fn new(names: Vec<ColumnName>, values: Vec<ColumnValue>) -> Result<Self, SqlError> {
-        if names.len() != values.len() {
-            return Err(SqlError::UnequalLengths(names.len(), values.len()));
-        }
-
-        return Ok(Row {
-            names,
-            values,
-        });
-    }
-
-    fn select(&self, columns: &[usize]) -> Result<Row, SqlError> {
+    fn select(&self, columns: &[usize]) -> Result<Row, SqlError>{
         for index in columns {
-            if *index >= self.values.len() {
-                return Err(SqlError::IndexOutOfBounds(*index, self.values.len()));
+            if *index >= self.0.len() {
+                return Err(SqlError::IndexOutOfBounds(*index, self.0.len()));
             }
         };
 
-        let (names, values): (Vec<_>, Vec<_>) = self.names.iter()
-            .zip(&self.values)
+        let values = self.0.iter()
             .enumerate()
-            .filter(|(index, _)| {
-                columns.contains(index)
+            .filter_map(|(index, values)| {
+                if columns.contains(&index) {
+                    Some(values)
+                } else {
+                    None
+                }
             })
-            .map(|(_, pair)| (pair.0.clone(), pair.1.clone()))
-            .unzip();
-
-        return Row::new(names, values);
-    }
-
-    fn select_by_names(&self, names: Vec<&ColumnName>) -> Result<Row, SqlError> {
-        for name in names.iter() {
-            if !self.names.contains(name) {
-                return Err(SqlError::NameDoesNotExist(ColumnName(name.0.clone()), self.names.clone()));
-            }
-        }
-
-        let values = self.names.iter()
-            .zip(&self.values)
-            .filter(|(name, _)| {
-                names.contains(name)
-            })
-            .map(|(_, value)| value.clone())
+            .cloned()
             .collect();
 
-        let names = names.into_iter().cloned().collect();
-
-        return Row::new(names, values);
+        return Ok(Row(values));
     }
 
     fn update(&mut self,
         columns: &[usize],
         new_values: Vec<ColumnValue>,
-        condition: &Option<Where>
+        condition: &Option<PreparedWhere>
     ) -> Result<(), SqlError> {
         assert_eq!(columns.len(), new_values.len());
 
@@ -80,25 +46,25 @@ impl Row {
             return Ok(())
         }
 
-        let self_length = self.values.len();
+        let self_length = self.0.len();
 
         for (index, new_value) in columns.iter().zip(new_values) {
-            *self.values.get_mut(*index).ok_or(SqlError::IndexOutOfBounds(*index, self_length))? = new_value;
+            *self.0.get_mut(*index).ok_or(SqlError::IndexOutOfBounds(*index, self_length))? = new_value;
         }
 
         return Ok(());
     }
 
-    fn matches(&self, condition: &Option<Where>) -> Result<bool, SqlError> {
-        if let Some(expression) = condition {
-            let Where { left, operator, right } = expression;
+    fn matches(&self, condition: &Option<PreparedWhere>) -> Result<bool, SqlError> {
+        if let Some(where_clause) = condition {
+            let PreparedWhere { left, operator, right } = where_clause;
 
             // TODO: All the other comparisons
             // But should probably come after properly implementing:
             // - parsing expressions recursively
             // - then evaluating expressions properly
             return match operator {
-                InfixOperator::Equals => self.evaluate_equals(left, right),
+                InfixOperator::Equals => self.evaluate_equals(*left, right),
                 InfixOperator::NotEqual => todo!(),
                 InfixOperator::LessThan => todo!(),
                 InfixOperator::LessThanEqual => todo!(),
@@ -110,18 +76,31 @@ impl Row {
         }
     }
 
-    fn evaluate_equals(&self, left: &ColumnName, right: &ColumnValue) -> Result<bool, SqlError> {
-        let Row { values, ..  } = self.select_by_names(vec![left])?;
+    fn evaluate_equals(&self, left: usize, right: &ColumnValue) -> Result<bool, SqlError> {
+        let result = self.select(&[left])?;
 
-        // Values will always have length 1
-        let value = values.get(0).unwrap();
+        // Result will always have length one
+        let value = result.0.get(0).unwrap();
 
         return Ok(value == right);
     }
 }
 
+#[derive(Debug)]
+pub struct RowSet {
+    pub names: Vec<ColumnName>,
+    pub values: Vec<Row>
+}
+#[cfg(test)]
+// Ignore column names when comparing RowSets
+impl PartialEq for RowSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.values == other.values
+    }
+}
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Table {
     pub name: TableName,
     pub types: Vec<ColumnType>,
@@ -167,8 +146,7 @@ impl Table {
             }
         }
 
-
-        self.values.push(Row::new(self.column_names.clone(), row)?);
+        self.values.push(Row(row));
 
         return Ok(());
     }
@@ -185,9 +163,19 @@ impl Table {
         return Ok(());
     }
 
+    fn prepare_where_clause(&self, clause: Where) -> Result<PreparedWhere, SqlError> {
+        let Where { left, operator, right } = clause;
+
+        let left_index = self.column_names.iter()
+            .position(|self_name| self_name == &left)
+            .ok_or(SqlError::NameDoesNotExist(left, self.column_names.clone()))?;
+
+        return Ok(PreparedWhere { left: left_index, operator, right });
+    }
+
     // I don't like that columns is necessarily a vec, it should be a vec of idents or an Expression::AllColumns
     // Also this whole method kinda sucks donkey dick, wtf am I looking at
-    pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<Vec<Row>, SqlError> {
+    pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
         let column_indices: Vec<_> = match columns {
             ColumnSelector::AllColumns => (0..self.types.len()).collect(),
             ColumnSelector::Name(names) => {
@@ -197,21 +185,30 @@ impl Table {
             }
         };
 
-        let mut result = vec![];
+        let prepared_condition = if let Some(condition) = condition {
+            Some(self.prepare_where_clause(condition)?)
+        } else {
+            None
+        };
+
+        let mut rows = vec![];
 
         for row in &self.values {
-            if row.matches(&condition)? {
-                result.push(row.select(&column_indices)?);
+            if row.matches(&prepared_condition)? {
+                rows.push(row.select(&column_indices)?);
             }
         }
 
-        return Ok(result);
+        return Ok(RowSet {
+            names: self.column_names.clone(),
+            values: rows,
+        });
     }
 
     pub fn update(&mut self,
         columns: Vec<ColumnName>,
         new_values: Vec<ColumnValue>,
-        condition: &Option<Where>
+        condition: Option<Where>
     ) -> Result<(), SqlError> {
         let new_types: Vec<ColumnType> = new_values.iter().map(|value| value.into()).collect();
 
@@ -234,9 +231,14 @@ impl Table {
             return Err(SqlError::IncompatibleTypes(new_types, self.types.clone()));
         }
 
+        let prepared_condition = if let Some(condition) = condition {
+            Some(self.prepare_where_clause(condition)?)
+        } else {
+            None
+        };
 
         for row in &mut self.values {
-            row.update(&column_indices, new_values.clone(), condition)?;
+            row.update(&column_indices, new_values.clone(), &prepared_condition)?;
         }
 
         return Ok(());
@@ -245,8 +247,14 @@ impl Table {
     pub fn delete(&mut self, condition: Option<Where>) -> Result<(), SqlError> {
         let mut remove_indices = vec![];
 
+        let prepared_condition = if let Some(condition) = condition {
+            Some(self.prepare_where_clause(condition)?)
+        } else {
+            None
+        };
+
         for (index, row) in self.values.iter().enumerate() {
-            if row.matches(&condition)? {
+            if row.matches(&prepared_condition)? {
                 remove_indices.push(index);
             }
         }
@@ -256,5 +264,20 @@ impl Table {
         }
 
         return Ok(());
+    }
+}
+
+#[derive(Debug)]
+pub struct Database {
+    pub name: DatabaseName,
+    pub tables: HashMap<String, Table>,
+}
+
+impl Database {
+    pub fn new(name: DatabaseName) -> Self {
+        return Self {
+            name,
+            tables: HashMap::new(),
+        };
     }
 }

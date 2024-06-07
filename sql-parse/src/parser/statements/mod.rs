@@ -6,7 +6,8 @@ use super::expressions::{AllColumn, Array, ColumnDefinition, Expression, Express
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Statement {
     Select {
         table: Expression,

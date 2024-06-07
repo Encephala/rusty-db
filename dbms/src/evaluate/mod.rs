@@ -1,39 +1,33 @@
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use sql_parse::{Expression, Statement, CreateType};
 
-use sql_parse::CreateType;
-use super::{Expression, SqlError, Statement, Table, Row};
+use super::SqlError;
+use super::database::{Database, Table, RowSet};
 use super::types::{TableName, ColumnValue, ColumnName, Where, ColumnSelector};
 
 
-#[derive(Debug, Default)]
-pub struct RuntimeEnvironment(pub HashMap<String, Table>);
-impl RuntimeEnvironment {
-    pub fn new() -> Self {
-        return Self(HashMap::new());
-    }
-
+impl Database {
     pub fn create(&mut self, table: Table) -> Result<(), SqlError> {
-        if self.0.contains_key(&table.name.0) {
+        if self.tables.contains_key(&table.name.0) {
             return Err(SqlError::DuplicateTable(table.name.0.clone()));
         }
 
-        self.0.insert(table.name.0.clone(), table);
+        self.tables.insert(table.name.0.clone(), table);
 
         return Ok(());
     }
 
     pub fn insert(&mut self, table_name: TableName, columns: Option<Vec<ColumnName>>, values: Vec<Vec<ColumnValue>>) -> Result<(), SqlError> {
-        let table = self.0.get_mut(&table_name.0)
+        let table = self.tables.get_mut(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name))?;
 
         return table.insert_multiple(&columns, values);
     }
 
-    pub fn select(&mut self, table_name: TableName, columns: ColumnSelector, condition: Option<Where>) -> Result<Vec<Row>, SqlError> {
-        let table = self.0.get(&table_name.0)
+    pub fn select(&mut self, table_name: TableName, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
+        let table = self.tables.get(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name))?;
 
         return table.select(columns, condition);
@@ -45,21 +39,21 @@ impl RuntimeEnvironment {
         new_values: Vec<ColumnValue>,
         condition: Option<Where>,
     ) -> Result<(), SqlError> {
-        let table = self.0.get_mut(&table_name.0)
+        let table = self.tables.get_mut(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name))?;
 
-        return table.update(column_names, new_values, &condition);
+        return table.update(column_names, new_values, condition);
     }
 
     pub fn delete(&mut self, table_name: TableName, condition: Option<Where>) -> Result<(), SqlError> {
-        let table = self.0.get_mut(&table_name.0)
+        let table = self.tables.get_mut(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name))?;
 
         return table.delete(condition);
     }
 
     pub fn drop(&mut self, table_name: TableName) -> Result<Table, SqlError> {
-        return self.0.remove(&table_name.0)
+        return self.tables.remove(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name));
     }
 }
@@ -68,11 +62,11 @@ impl RuntimeEnvironment {
 pub enum ExecutionResult {
     None,
     Table(Table),
-    Select(Vec<Row>),
+    Select(RowSet),
 }
 
 pub trait Execute {
-    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError>;
+    fn execute(self, database: &mut Database) -> Result<ExecutionResult, SqlError>;
 }
 
 // Helper to destructure Array expressions
@@ -95,7 +89,7 @@ fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>, S
 // Todo: I need a better way of converting these stupid ass types
 // rather than all these if let statements
 impl Execute for Statement {
-    fn execute(self, environment: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError> {
+    fn execute(self, database: &mut Database) -> Result<ExecutionResult, SqlError> {
         match self {
             Statement::Select { table, columns, where_clause } => {
                 let table: TableName = table.try_into()?;
@@ -104,7 +98,7 @@ impl Execute for Statement {
 
                 let where_clause = map_option_where_clause(where_clause)?;
 
-                return environment.select(table, columns, where_clause)
+                return database.select(table, columns, where_clause)
                     .map(ExecutionResult::Select);
             },
 
@@ -120,7 +114,7 @@ impl Execute for Statement {
                             .map(|column_definition| column_definition.try_into())
                             .collect::<Result<Vec<_>, SqlError>>()?;
 
-                        return environment.create(Table::new(
+                        return database.create(Table::new(
                             name.try_into()?,
                             columns
                         )?).map(|_| ExecutionResult::None);
@@ -160,7 +154,7 @@ impl Execute for Statement {
                     None => None,
                 };
 
-                return environment.insert(into, columns, result)
+                return database.insert(into, columns, result)
                     .map(|_| ExecutionResult::None);
             },
 
@@ -184,7 +178,7 @@ impl Execute for Statement {
 
                 let where_clause = map_option_where_clause(where_clause)?;
 
-                return environment.update(from, column_names, values, where_clause)
+                return database.update(from, column_names, values, where_clause)
                     .map(|_| ExecutionResult::None);
             },
 
@@ -193,7 +187,7 @@ impl Execute for Statement {
 
                 let where_clause = map_option_where_clause(where_clause)?;
 
-                return environment.delete(from, where_clause)
+                return database.delete(from, where_clause)
                     .map(|_| ExecutionResult::None);
             },
 
@@ -205,7 +199,7 @@ impl Execute for Statement {
                     CreateType::Table => {
                         let name: TableName = name.try_into()?;
 
-                        return environment.drop(name)
+                        return database.drop(name)
                             .map(ExecutionResult::Table);
                     }
                 }

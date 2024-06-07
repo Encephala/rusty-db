@@ -19,14 +19,14 @@ fn insert_basic() {
 
     assert_eq!(
         table.values,
-        vec![test_row(row1.clone())]
+        vec![Row(row1.clone())]
     );
 
     table.insert_multiple(&None, vec![row1.clone(), row2.clone()]).unwrap();
 
     assert_eq!(
         table.values,
-        vec![test_row(row1.clone()), test_row(row1), test_row(row2)]
+        vec![Row(row1.clone()), Row(row1), Row(row2)]
     );
 }
 
@@ -65,7 +65,7 @@ fn select_basic() {
 
     assert_eq!(
         all,
-        vec![Row::new(table.column_names.clone(), row1.clone()).unwrap(), Row::new(table.column_names.clone(), row2).unwrap()]
+        test_row_set(vec![Row(row1.clone()), Row(row2)])
     );
 
     let where_bool_true = table.select(
@@ -79,7 +79,7 @@ fn select_basic() {
 
     assert_eq!(
         where_bool_true,
-        vec![Row::new(table.column_names.clone(), row1).unwrap()]
+        test_row_set(vec![Row(row1)])
     );
 
     let only_int_five = table.select(
@@ -93,7 +93,7 @@ fn select_basic() {
 
     assert_eq!(
         only_int_five,
-        vec![test_row(vec![5.into()])]
+        test_row_set(vec![Row(vec![5.into()])])
     );
 
     let none = table.select(
@@ -103,10 +103,10 @@ fn select_basic() {
 
     assert_eq!(
         none,
-        vec![
-            Row::new(vec![], vec![]).unwrap(),
-            Row::new(vec![], vec![]).unwrap(),
-        ]
+        test_row_set(vec![
+            Row(vec![]),
+            Row(vec![]),
+        ])
     )
 }
 
@@ -119,14 +119,14 @@ fn update_basic() {
             ColumnName("first".into()),
         ],
         vec![69.into()],
-        &None
+        None
     ).unwrap();
 
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![69.into(), true.into()]),
-            test_row(vec![69.into(), false.into()]),
+            Row(vec![69.into(), true.into()]),
+            Row(vec![69.into(), false.into()]),
         ]
     );
 
@@ -135,7 +135,7 @@ fn update_basic() {
             ColumnName("first".into()),
         ],
         vec![420.into()],
-        &Some(Where {
+        Some(Where {
             left: "second".into(),
             operator: InfixOperator::Equals,
             right: true.into(),
@@ -145,8 +145,8 @@ fn update_basic() {
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![420.into(), true.into()]),
-            test_row(vec![69.into(), false.into()]),
+            Row(vec![420.into(), true.into()]),
+            Row(vec![69.into(), false.into()]),
         ]
     );
 }
@@ -173,7 +173,7 @@ fn delete_basic() {
     assert_eq!(
         table.values,
         vec![
-            test_row(vec![5.into(), true.into()])
+            Row(vec![5.into(), true.into()])
         ]
     )
 }

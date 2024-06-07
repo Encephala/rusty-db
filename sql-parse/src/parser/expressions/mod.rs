@@ -5,7 +5,8 @@ use super::combinators::Chain;
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Expression {
     Type(ColumnType),
     ColumnDefinition(String, ColumnType),
@@ -22,7 +23,8 @@ pub enum Expression {
 use Expression as E;
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum InfixOperator {
     Equals,
     NotEqual,
@@ -35,10 +37,10 @@ pub enum InfixOperator {
 #[derive(Debug, PartialEq, Clone, Copy)]
 // TODO: VarChar would be cool but idk how to handle that
 pub enum ColumnType {
-    Int,
-    Decimal,
-    Text,
-    Bool,
+    Int = 0,
+    Decimal = 1,
+    Text = 2,
+    Bool = 3,
 }
 
 impl InfixOperator {

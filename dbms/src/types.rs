@@ -40,7 +40,8 @@ impl TryFrom<&Expression> for ColumnName {
 
 impl_owned!(ColumnName);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct TableName(pub String);
 
 impl TryFrom<&Expression> for TableName {
@@ -57,7 +58,24 @@ impl TryFrom<&Expression> for TableName {
 impl_owned!(TableName);
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone)]
+pub struct DatabaseName(pub String);
+
+impl TryFrom<&Expression> for DatabaseName {
+    type Error = SqlError;
+
+    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+        return match value {
+            Expression::Ident(name) => Ok(DatabaseName(name.clone())),
+            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<DatabaseName>())),
+        };
+    }
+}
+
+impl_owned!(DatabaseName);
+
+
+#[derive(Debug)]
 pub enum ColumnSelector {
     AllColumns,
     Name(Vec<ColumnName>),
@@ -146,7 +164,7 @@ impl_owned!(ColumnDefinition);
 
 
 #[derive(Debug)]
-// TODO: this is janky and hacky to only support column = value comparisons
+// TODO: this is janky and hacky to only support <column> <op> <value> comparisons
 pub struct Where {
     pub left: ColumnName,
     pub operator: InfixOperator,
@@ -176,3 +194,10 @@ impl TryFrom<&Expression> for Where {
 }
 
 impl_owned!(Where);
+
+#[derive(Debug)]
+pub struct PreparedWhere {
+    pub left: usize,
+    pub operator: InfixOperator,
+    pub right: ColumnValue,
+}

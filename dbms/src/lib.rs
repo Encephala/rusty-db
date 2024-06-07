@@ -1,22 +1,24 @@
 #![warn(missing_debug_implementations)]
 #![allow(clippy::needless_return)]
 
-mod table;
+mod database;
 mod types;
-mod execute;
+mod evaluate;
 mod utils;
 mod persistence;
 
 use types::{ColumnName, TableName};
+// TODO: remove this when repl is implemented properly
+pub use types::DatabaseName;
 use sql_parse::{ColumnType, Expression, InfixOperator, Statement};
 
 
-use table::{Table, Row};
-pub use execute::{Execute, RuntimeEnvironment, ExecutionResult};
+pub use database::Database;
+pub use evaluate::{Execute, ExecutionResult};
 
 
-pub fn execute_statement(statement: Statement, env: &mut RuntimeEnvironment) -> Result<ExecutionResult, SqlError> {
-    return statement.execute(env);
+pub fn execute_statement(statement: Statement, database: &mut Database) -> Result<ExecutionResult, SqlError> {
+    return statement.execute(database);
 }
 
 
@@ -32,4 +34,8 @@ pub enum SqlError {
     InvalidParameter,
     DuplicateTable(String),
     TableDoesNotExist(TableName),
+    CouldNotStoreDatabase(DatabaseName, std::io::Error),
+    CouldNotRemoveDatabase(DatabaseName, std::io::Error),
+    CouldNotStoreTable(TableName, std::io::Error),
+    CouldNotRemoveTable(TableName, std::io::Error),
 }
