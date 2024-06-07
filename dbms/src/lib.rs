@@ -42,4 +42,5 @@ pub enum SqlError {
     InputTooShort(usize, usize),
     InvalidStringEncoding(std::string::FromUtf8Error),
     NotATypeDiscriminator(u8),
+    NotABoolean(u8),
 }

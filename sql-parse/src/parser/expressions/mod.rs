@@ -37,10 +37,10 @@ pub enum InfixOperator {
 #[derive(Debug, PartialEq, Clone, Copy)]
 // TODO: VarChar would be cool but idk how to handle that
 pub enum ColumnType {
-    Int = 0,
-    Decimal = 1,
-    Text = 2,
-    Bool = 3,
+    Int,
+    Decimal,
+    Text,
+    Bool,
 }
 
 impl InfixOperator {
