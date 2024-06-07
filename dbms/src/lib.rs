@@ -38,4 +38,8 @@ pub enum SqlError {
     CouldNotRemoveDatabase(DatabaseName, std::io::Error),
     CouldNotStoreTable(TableName, std::io::Error),
     CouldNotRemoveTable(TableName, std::io::Error),
+    SliceConversionError(std::array::TryFromSliceError),
+    InputTooShort(usize, usize),
+    InvalidStringEncoding(std::string::FromUtf8Error),
+    NotATypeDiscriminator(u8),
 }

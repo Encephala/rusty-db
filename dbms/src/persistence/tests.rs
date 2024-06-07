@@ -38,10 +38,14 @@ fn create_table_path_basic() {
     )
 }
 
+// TODO: testing that files actually get saved to disk and stuff
+// I mean idk is kinda like testing the OS but I think there's something to be gained there
+
 mod serialisation {
     use super::*;
 
-    use super::super::serialisation::{SIZEOF_USIZE, usize_to_bytes};
+    use super::super::serialisation::{SIZEOF_USIZE, usize_to_bytes, DeserialisationOptions as DO};
+    use crate::persistence::serialisation::Deserialise;
     use crate::utils::tests::test_table;
 
     #[test]
@@ -163,5 +167,104 @@ mod serialisation {
             serialised,
             expected
         );
+    }
+
+    #[test]
+    fn deserialise_usize() {
+        let input = &mut [
+            1, 0, 0, 0, 0, 0, 0, 0,
+            164, 1, 0, 0, 0, 0, 0, 0,
+            0, // Too few bytes
+        ].as_slice();
+
+        assert_eq!(
+            usize::deserialise(input, None.into()).unwrap(),
+            1,
+        );
+
+        assert_eq!(
+            usize::deserialise(input, None.into()).unwrap(),
+            420,
+        );
+
+        assert!(
+            usize::deserialise(input, None.into()).is_err()
+        );
+    }
+
+    #[test]
+    fn deserialise_column_type() {
+        let input = &mut [
+            0, 3, 2,
+        ].as_slice();
+
+        assert_eq!(
+            ColumnType::deserialise(input, None.into()).unwrap(),
+            ColumnType::Int,
+        );
+
+        assert_eq!(
+            ColumnType::deserialise(input, None.into()).unwrap(),
+            ColumnType::Bool,
+        );
+
+        assert_eq!(
+            ColumnType::deserialise(input, None.into()).unwrap(),
+            ColumnType::Text,
+        );
+    }
+
+    #[test]
+    fn deserialise_column_type_vector() {
+        let input = &mut [
+            0, 3, 2, 1
+        ].as_slice();
+
+        // Ignores fourth byte
+        assert_eq!(
+            Vec::<ColumnType>::deserialise(input, DO::Length(3)).unwrap(),
+            vec![
+                ColumnType::Int,
+                ColumnType::Bool,
+                ColumnType::Text,
+            ]
+        );
+
+        let input = &mut [
+            0, 3, 2, 1
+        ].as_slice();
+
+        assert_eq!(
+            Vec::<ColumnType>::deserialise(input, DO::Length(4)).unwrap(),
+            vec![
+                ColumnType::Int,
+                ColumnType::Bool,
+                ColumnType::Text,
+                ColumnType::Decimal,
+            ]
+        );
+
+        // Invalid type
+        let input = &mut [
+            0, 69,
+        ].as_slice();
+
+        assert!(Vec::<ColumnType>::deserialise(input, DO::Length(2)).is_err());
+
+        // Too short
+        let input = &mut [
+            0, 3,
+        ].as_slice();
+
+        assert!(Vec::<ColumnType>::deserialise(input, DO::Length(3)).is_err());
+    }
+
+    #[test]
+    fn deserialise_table() {
+        // We test serialise_table separately, so this is fine I guess
+        let table = test_table().serialise().unwrap();
+        let input = &mut table.as_slice();
+
+        // let result = Table::deserialise(input, None.into()).unwrap();
     }
 }

@@ -42,6 +42,12 @@ impl Serialise for Table {
 
         let values = self.values.serialise()?;
 
+        // TODO: This is no bueno, we don't know the size of each column
+        // Could store it along with columntypes for all except TEXT because TEXT is arbitrary length fuck
+        // maybe I should go uhh varchar xd
+        // wait no that's variable length too so same problem, it's kinda in the name
+        // Can store it with value for text I guess,
+        // and just reconstruct it from column types for others
         result.extend(usize_to_bytes(values.len()));
         result.extend(values);
 
@@ -89,14 +95,13 @@ impl Serialise for ColumnValue {
 
                 Ok(result)
             },
-            ColumnValue::Str(value) => Ok(value.bytes().collect()),
+            ColumnValue::Str(value) => Ok(value.as_bytes().to_vec()),
             ColumnValue::Bool(value) => Ok(vec![*value as u8]),
         }
     }
 }
 
-impl<T> Serialise for Vec<T>
-where T: Serialise {
+impl<T: Serialise> Serialise for Vec<T> {
     fn serialise(&self) -> Result<Vec<u8>, SqlError> {
         let mut result = Vec::new();
 
@@ -110,8 +115,131 @@ where T: Serialise {
     }
 }
 
+pub enum DeserialisationOptions {
+    None,
+    Length(usize), // For TEXT (and other potential variable length types)
+    // lengths of columns, ...
+}
+use DeserialisationOptions as DO;
+
+// Aren't I a clever one
+impl From<Option<DeserialisationOptions>> for DeserialisationOptions {
+    fn from(value: Option<DeserialisationOptions>) -> Self {
+        return match value {
+            Some(params) => params,
+            None => DO::None,
+        }
+    }
+}
+
 pub trait Deserialise {
     type Result;
 
-    fn deserialise(&self) -> Result<Self::Result, SqlError>;
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self::Result, SqlError>;
+}
+
+impl Deserialise for Table {
+    type Result = Self;
+
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self::Result, SqlError> {
+        let name_size = usize::deserialise(input, None.into())?;
+
+        let name = TableName::deserialise(input, DO::Length(name_size))?;
+
+        let types_size = usize::deserialise(input, None.into())?;
+
+        let types = Vec::<ColumnType>::deserialise(input, DO::Length(types_size))?;
+
+
+
+        todo!();
+    }
+}
+
+impl Deserialise for usize {
+    type Result = usize;
+
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self::Result, SqlError> {
+        if input.len() < SIZEOF_USIZE {
+            return Err(SqlError::InputTooShort(input.len(), SIZEOF_USIZE))
+        }
+
+        // try_into to convert length(?)
+        let bytes: [u8; SIZEOF_USIZE] = input[..SIZEOF_USIZE].try_into()
+            .map_err(SqlError::SliceConversionError)?;
+
+        let result = usize::from_le_bytes(bytes);
+
+        *input = &input[SIZEOF_USIZE..];
+
+        return Ok(result);
+    }
+}
+
+impl Deserialise for TableName {
+    type Result = Self;
+
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self::Result, SqlError> {
+        let length = match options {
+            DO::Length(length) => length,
+            _ => return Err(SqlError::InvalidParameter),
+        };
+
+        if input.len() < length {
+            return Err(SqlError::InputTooShort(input.len(), length));
+        }
+
+        let bytes = input[..length].to_vec();
+
+        // https://doc.rust-lang.org/book/ch08-02-strings.html
+        // strings are UTF8 in rust
+        let result = String::from_utf8(bytes)
+            .map_err(SqlError::InvalidStringEncoding)?;
+
+        return Ok(TableName(result));
+    }
+}
+
+impl Deserialise for ColumnType {
+    type Result = Self;
+
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self::Result, SqlError> {
+        // A ColumnType is serialised as one byte
+        if input.is_empty() {
+            return Err(SqlError::InputTooShort(input.len(), 1));
+        }
+
+        let byte = input.first().unwrap();
+
+        *input = &input[1..];
+
+        return match byte {
+            0 => Ok(ColumnType::Int),
+            1 => Ok(ColumnType::Decimal),
+            2 => Ok(ColumnType::Text),
+            3 => Ok(ColumnType::Bool),
+            _ => Err(SqlError::NotATypeDiscriminator(*byte)),
+        };
+    }
+}
+
+impl Deserialise for Vec<ColumnType> {
+    type Result = Self;
+
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self::Result, SqlError> {
+        let length = match options {
+            DO::Length(length) => length,
+            _ => return Err(SqlError::InvalidParameter),
+        };
+
+        let mut result = vec![];
+
+        for _ in 0..length {
+            result.push(
+                ColumnType::deserialise(input, None.into())?
+            );
+        }
+
+        return Ok(result);
+    }
 }

@@ -3,13 +3,13 @@
 use std::io::Write;
 
 use sql_parse::{Lexer, parse_statement};
-use dbms::{Execute, Database, ExecutionResult, DatabaseName};
+use dbms::{Execute, Database, ExecutionResult};
 
 fn repl() {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
-    let mut database = Database::new(DatabaseName("temp".into()));
+    let mut database: Option<Database> = None;
 
     loop {
         print!(">> ");
@@ -38,15 +38,28 @@ fn repl() {
         let statement = parse_statement(&input);
 
         if input.starts_with("\\p") {
-            let statement = parse_statement(&input);
+            let statement = parse_statement(input.strip_prefix("\\p").unwrap());
 
             println!("Parsed: {statement:?}");
 
             continue;
         }
 
+        if input.starts_with("\\c") {
+            println!("todo");
+
+
+            continue;
+        }
+
+        if database.is_none() {
+            println!("No database selected yet");
+
+            continue;
+        }
+
         if let Some(statement) = statement {
-            let result = statement.execute(&mut database);
+            let result = statement.execute(database.as_mut().unwrap());
 
             match result {
                 Ok(result) => {

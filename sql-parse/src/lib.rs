@@ -40,7 +40,6 @@ mod tests {
         inputs.iter().for_each(|test_case| {
             let result = parse_statement(test_case);
 
-            dbg!(*test_case);
             assert!(result.is_some());
         })
     }
