@@ -250,7 +250,14 @@ impl<'a> Lexer<'a> {
             1 => {
                 let (whole, fractional) = result.split_once('.').unwrap();
 
-                Token::Decimal(whole.parse().unwrap(), fractional.parse().unwrap())
+                let whole = whole.parse().unwrap();
+                let fractional = fractional.parse();
+
+                if let Ok(fractional) = fractional {
+                    Token::Decimal(whole, fractional)
+                } else {
+                    Token::Invalid(format!("No number found after decimal dot in {result}"))
+                }
             },
             _ => {
                 Token::Invalid(format!("Found {number_of_dots} decimal separators in number '{result}'"))
