@@ -127,7 +127,7 @@ fn insert_all_columns() {
 #[test]
 fn insert_multiple_simultaneously() {
     let inputs = [
-        ("INSERT INTO bla(a, b, c)VALUES (1, 420.69), (2, 69.420);", Some(S::Insert {
+        ("INSERT INTO bla(a, b)VALUES (true, 420.69), (false, 69.420);", Some(S::Insert {
             into: E::Ident("bla".into()),
             columns: Some(E::Array(vec![
                 E::Ident("a".into()),

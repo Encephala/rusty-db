@@ -432,6 +432,26 @@ mod tests {
     }
 
     #[test]
+    fn bool() {
+        let result = Lexer::lex(
+            "true false true true false though"
+        );
+
+        assert_eq!(
+            result,
+            vec![
+                Bool(true),
+                Bool(false),
+                Bool(true),
+                Bool(true),
+                Bool(false),
+                Ident("though".into()),
+                Eof,
+            ]
+        )
+    }
+
+    #[test]
     fn string() {
         let result = Lexer::lex(
             "'asdfghjkl';"

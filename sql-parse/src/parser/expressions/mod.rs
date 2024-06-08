@@ -238,7 +238,7 @@ impl ExpressionParser for Where {
 pub struct Value;
 impl ExpressionParser for Value {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        return Str.or(Number).parse(input);
+        return Str.or(Number).or(Bool).parse(input);
     }
 }
 
