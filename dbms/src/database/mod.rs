@@ -61,8 +61,6 @@ impl Row {
 
             // TODO: All the other comparisons
             // But should probably come after properly implementing:
-            // - parsing expressions recursively
-            // - then evaluating expressions properly
             return match operator {
                 InfixOperator::Equals => self.evaluate_equals(*left, right),
                 InfixOperator::NotEqual => todo!(),

@@ -8,7 +8,7 @@ use sql_parse::ColumnType;
 fn create_database_path_basic() {
     let database = Database::new("db".into());
 
-    let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database);
+    let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database.name);
 
     assert_eq!(
         path,

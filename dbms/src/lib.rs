@@ -8,18 +8,14 @@ mod utils;
 mod persistence;
 
 use types::{ColumnName, TableName};
-// TODO: remove this when repl is implemented properly
-pub use types::DatabaseName;
-use sql_parse::{ColumnType, Expression, InfixOperator, Statement};
+use sql_parse::{ColumnType, Expression, InfixOperator};
 
 
 pub use database::Database;
+pub use types::DatabaseName;
 pub use evaluate::{Execute, ExecutionResult};
+pub use persistence::{PersistenceManager, FileSystem};
 
-
-pub fn execute_statement(statement: Statement, database: &mut Database) -> Result<ExecutionResult, SqlError> {
-    return statement.execute(database);
-}
 
 
 #[derive(Debug)]
@@ -34,6 +30,9 @@ pub enum SqlError {
     InvalidParameter,
     DuplicateTable(String),
     TableDoesNotExist(TableName),
+    NoDatabaseSelected,
+    DatabaseDoesNotExist(DatabaseName),
+    FSError(std::io::Error),
     CouldNotStoreDatabase(DatabaseName, std::io::Error),
     CouldNotRemoveDatabase(DatabaseName, std::io::Error),
     CouldNotStoreTable(TableName, std::io::Error),

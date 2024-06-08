@@ -5,7 +5,8 @@ use sql_parse::{Expression, Statement, CreateType};
 
 use super::SqlError;
 use super::database::{Database, Table, RowSet};
-use super::types::{TableName, ColumnValue, ColumnName, Where, ColumnSelector};
+use super::persistence::PersistenceManager;
+use super::types::{DatabaseName, TableName, ColumnValue, ColumnName, Where, ColumnSelector};
 
 
 impl Database {
@@ -26,7 +27,7 @@ impl Database {
         return table.insert_multiple(&columns, values);
     }
 
-    pub fn select(&mut self, table_name: TableName, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
+    pub fn select(&self, table_name: TableName, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
         let table = self.tables.get(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name))?;
 
@@ -63,10 +64,11 @@ pub enum ExecutionResult {
     None,
     Table(Table),
     Select(RowSet),
+    CreateDatabase(DatabaseName),
 }
 
 pub trait Execute {
-    fn execute(self, database: &mut Database) -> Result<ExecutionResult, SqlError>;
+    fn execute(self, database: Option<&mut Database>, persistence: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError>;
 }
 
 // Helper to destructure Array expressions
@@ -86,12 +88,18 @@ fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>, S
     };
 }
 
-// Todo: I need a better way of converting these stupid ass types
-// rather than all these if let statements
+// TODO: This receives a database to evaluate in,
+// but uhhh what about creating databases?
 impl Execute for Statement {
-    fn execute(self, database: &mut Database) -> Result<ExecutionResult, SqlError> {
+    fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError> {
         match self {
             Statement::Select { table, columns, where_clause } => {
+                if database.is_none() {
+                    return Err(SqlError::NoDatabaseSelected);
+                }
+
+                let database = &mut database.unwrap();
+
                 let table: TableName = table.try_into()?;
 
                 let columns: ColumnSelector = columns.try_into()?;
@@ -105,9 +113,19 @@ impl Execute for Statement {
             Statement::Create { what, name, columns } => {
                 match what {
                     CreateType::Database => {
-                        todo!();
+                        let database = Database::new(name.try_into()?);
+
+                        persistence_manager.save_database(&database)?;
+
+                        return Ok(ExecutionResult::CreateDatabase(database.name));
                     },
                     CreateType::Table => {
+                        if database.is_none() {
+                            return Err(SqlError::NoDatabaseSelected);
+                        }
+
+                        let database = database.unwrap();
+
                         let columns = try_destructure_array(columns.ok_or(SqlError::InvalidParameter)?)?;
 
                         let columns = columns.into_iter()
@@ -123,6 +141,12 @@ impl Execute for Statement {
             },
 
             Statement::Insert { into, columns,  values } => {
+                if database.is_none() {
+                    return Err(SqlError::NoDatabaseSelected);
+                }
+
+                let database = database.unwrap();
+
                 let into: TableName = into.try_into()?;
 
 
@@ -159,6 +183,12 @@ impl Execute for Statement {
             },
 
             Statement::Update { from, columns, values, where_clause } => {
+                if database.is_none() {
+                    return Err(SqlError::NoDatabaseSelected);
+                }
+
+                let database = database.unwrap();
+
                 let from: TableName = from.try_into()?;
 
 
@@ -183,6 +213,12 @@ impl Execute for Statement {
             },
 
             Statement::Delete { from, where_clause } => {
+                if database.is_none() {
+                    return Err(SqlError::NoDatabaseSelected);
+                }
+
+                let database = database.unwrap();
+
                 let from: TableName = from.try_into()?;
 
                 let where_clause = map_option_where_clause(where_clause)?;
@@ -192,6 +228,12 @@ impl Execute for Statement {
             },
 
             Statement::Drop { what, name } => {
+                if database.is_none() {
+                    return Err(SqlError::NoDatabaseSelected);
+                }
+
+                let database = database.unwrap();
+
                 match what {
                     CreateType::Database => {
                         todo!();
