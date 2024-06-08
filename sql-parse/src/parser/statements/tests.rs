@@ -132,17 +132,16 @@ fn insert_multiple_simultaneously() {
             columns: Some(E::Array(vec![
                 E::Ident("a".into()),
                 E::Ident("b".into()),
-                E::Ident("c".into()),
             ])),
             values: E::Array(vec![
                 E::Array(vec![
-                    E::Int(1), E::Decimal(420, 69)
+                    E::Bool(true), E::Decimal(420, 69)
                 ]),
                 E::Array(vec![
-                    E::Int(2), E::Decimal(69, 420)
+                    E::Bool(false), E::Decimal(69, 420)
                 ]),
             ])
-        }))
+        })),
     ];
 
     test_all_cases(Insert, &inputs);
