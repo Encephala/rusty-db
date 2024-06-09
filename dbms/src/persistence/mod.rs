@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 
+use crate::Result;
 use super::SqlError;
 use super::database::{Database, Table};
 use super::types::DatabaseName;
@@ -16,13 +17,13 @@ pub use serialisation::{Serialiser, SerialisationManager};
 // Love me some premature abstractions
 #[async_trait]
 pub trait PersistenceManager: Sync {
-    async fn save_database(&self, database: &Database) -> Result<(), SqlError>;
-    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName, SqlError>;
+    async fn save_database(&self, database: &Database) -> Result<()>;
+    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName>;
 
-    async fn save_table(&self, database: &Database, table: &Table) -> Result<(), SqlError>;
-    async fn delete_table(&self, database: &Database, table: &Table) -> Result<(), SqlError>;
+    async fn save_table(&self, database: &Database, table: &Table) -> Result<()>;
+    async fn delete_table(&self, database: &Database, table: &Table) -> Result<()>;
 
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database, SqlError>;
+    async fn load_database(&self, database_name: DatabaseName) -> Result<Database>;
 }
 
 #[derive(Debug)]
@@ -36,7 +37,7 @@ impl FileSystem {
 
 #[async_trait]
 impl PersistenceManager for FileSystem {
-    async fn save_database(&self, database: &Database) -> Result<(), SqlError> {
+    async fn save_database(&self, database: &Database) -> Result<()> {
         // TODO: This should error if database already exists
         DirBuilder::new()
             .recursive(true)
@@ -58,7 +59,7 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName, SqlError> {
+    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName> {
         let path = database_path(&self.1, &name);
 
         remove_dir_all(path)
@@ -67,7 +68,7 @@ impl PersistenceManager for FileSystem {
         return Ok(name);
     }
 
-    async fn save_table(&self, database: &Database, table: &Table) -> Result<(), SqlError> {
+    async fn save_table(&self, database: &Database, table: &Table) -> Result<()> {
         let path = table_path(&self.1, database, table);
 
         let data = self.0.serialise_table(table)?;
@@ -78,7 +79,7 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn delete_table(&self, database: &Database, table: &Table) -> Result<(), SqlError> {
+    async fn delete_table(&self, database: &Database, table: &Table) -> Result<()> {
         let path = table_path(&self.1, database, table);
 
         remove_file(path)
@@ -87,7 +88,7 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database, SqlError> {
+    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
         let path = database_path(&self.1, &database_name);
 
         if !path.exists() {

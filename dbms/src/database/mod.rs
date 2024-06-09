@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use sql_parse::{ColumnType, InfixOperator};
 
+use crate::Result;
 use super::SqlError;
 use super::types::{ColumnName, TableName, DatabaseName, ColumnSelector, ColumnValue, ColumnDefinition, Where, PreparedWhere};
 
@@ -13,7 +14,7 @@ use super::types::{ColumnName, TableName, DatabaseName, ColumnSelector, ColumnVa
 pub struct Row(pub Vec<ColumnValue>);
 
 impl Row {
-    fn select(&self, columns: &[usize]) -> Result<Row, SqlError>{
+    fn select(&self, columns: &[usize]) -> Result<Row>{
         for index in columns {
             if *index >= self.0.len() {
                 return Err(SqlError::IndexOutOfBounds(*index, self.0.len()));
@@ -39,7 +40,7 @@ impl Row {
         columns: &[usize],
         new_values: Vec<ColumnValue>,
         condition: &Option<PreparedWhere>
-    ) -> Result<(), SqlError> {
+    ) -> Result<()> {
         assert_eq!(columns.len(), new_values.len());
 
         if !self.matches(condition)? {
@@ -55,7 +56,7 @@ impl Row {
         return Ok(());
     }
 
-    fn matches(&self, condition: &Option<PreparedWhere>) -> Result<bool, SqlError> {
+    fn matches(&self, condition: &Option<PreparedWhere>) -> Result<bool> {
         if let Some(where_clause) = condition {
             let PreparedWhere { left, operator, right } = where_clause;
 
@@ -74,7 +75,7 @@ impl Row {
         }
     }
 
-    fn evaluate_equals(&self, left: usize, right: &ColumnValue) -> Result<bool, SqlError> {
+    fn evaluate_equals(&self, left: usize, right: &ColumnValue) -> Result<bool> {
         let result = self.select(&[left])?;
 
         // Result will always have length one
@@ -107,7 +108,7 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(name: TableName, columns: Vec<ColumnDefinition>) -> Result<Self, SqlError> {
+    pub fn new(name: TableName, columns: Vec<ColumnDefinition>) -> Result<Self> {
         let (column_names, types):  (Vec<_>, Vec<_>) = columns.into_iter()
             .map(|column_definition| (column_definition.0, column_definition.1))
             .unzip();
@@ -127,7 +128,7 @@ impl Table {
         });
     }
 
-    pub fn insert(&mut self, columns: &Option<Vec<ColumnName>>, row: Vec<ColumnValue>) -> Result<(), SqlError> {
+    pub fn insert(&mut self, columns: &Option<Vec<ColumnName>>, row: Vec<ColumnValue>) -> Result<()> {
         let types = row.iter()
             .map(|row| row.into())
             .collect::<Vec<_>>();
@@ -153,7 +154,7 @@ impl Table {
         &mut self,
         columns: &Option<Vec<ColumnName>>,
         values: Vec<Vec<ColumnValue>>
-    ) -> Result<(), SqlError> {
+    ) -> Result<()> {
         for row in values {
             self.insert(columns, row)?;
         }
@@ -161,7 +162,7 @@ impl Table {
         return Ok(());
     }
 
-    fn prepare_where_clause(&self, clause: Where) -> Result<PreparedWhere, SqlError> {
+    fn prepare_where_clause(&self, clause: Where) -> Result<PreparedWhere> {
         let Where { left, operator, right } = clause;
 
         let left_index = self.column_names.iter()
@@ -173,7 +174,7 @@ impl Table {
 
     // I don't like that columns is necessarily a vec, it should be a vec of identifiers or an Expression::AllColumns
     // Also this whole method kinda sucks donkey dick, wtf am I looking at
-    pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet, SqlError> {
+    pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet> {
         let column_indices: Vec<_> = match columns {
             ColumnSelector::AllColumns => (0..self.types.len()).collect(),
             ColumnSelector::Name(names) => {
@@ -207,7 +208,7 @@ impl Table {
         columns: Vec<ColumnName>,
         new_values: Vec<ColumnValue>,
         condition: Option<Where>
-    ) -> Result<(), SqlError> {
+    ) -> Result<()> {
         let new_types: Vec<ColumnType> = new_values.iter().map(|value| value.into()).collect();
 
         let column_indices = columns.iter().flat_map(|name| {
@@ -242,7 +243,7 @@ impl Table {
         return Ok(());
     }
 
-    pub fn delete(&mut self, condition: Option<Where>) -> Result<(), SqlError> {
+    pub fn delete(&mut self, condition: Option<Where>) -> Result<()> {
         let mut remove_indices = vec![];
 
         let prepared_condition = if let Some(condition) = condition {

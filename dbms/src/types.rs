@@ -7,6 +7,7 @@ use std::any::type_name;
 
 use sql_parse::{ColumnType, InfixOperator};
 
+use crate::Result;
 use super::{Expression, SqlError};
 
 // Implement owned conversion with macro rather than borrowed conversion,
@@ -17,7 +18,7 @@ macro_rules! impl_owned {
         impl TryFrom<Expression> for $t {
             type Error = SqlError;
 
-            fn try_from(value: Expression) -> Result<Self, Self::Error> {
+            fn try_from(value: Expression) -> Result<Self> {
                 return (&value).try_into();
             }
         }
@@ -30,7 +31,7 @@ pub struct ColumnName(pub String);
 impl TryFrom<&Expression> for ColumnName {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(ColumnName(name.clone())),
             _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnName>())),
@@ -47,7 +48,7 @@ pub struct TableName(pub String);
 impl TryFrom<&Expression> for TableName {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(TableName(name.clone())),
             _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<TableName>())),
@@ -64,7 +65,7 @@ pub struct DatabaseName(pub String);
 impl TryFrom<&Expression> for DatabaseName {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(DatabaseName(name.clone())),
             _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<DatabaseName>())),
@@ -84,13 +85,13 @@ pub enum ColumnSelector {
 impl TryFrom<&Expression> for ColumnSelector {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::AllColumns => Ok(ColumnSelector::AllColumns),
             Expression::Array(columns) => {
                 let columns: Vec<ColumnName> = columns.iter()
                     .map(|column| column.try_into())
-                    .collect::<Result<Vec<_>, SqlError>>()?;
+                    .collect::<Result<Vec<_>>>()?;
 
                 Ok(ColumnSelector::Name(columns))
             }
@@ -112,7 +113,7 @@ pub enum ColumnValue {
 impl TryFrom<&Expression> for ColumnValue {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         use Expression as E;
         return match value {
             E::Int(value) => Ok(ColumnValue::Int(*value)),
@@ -150,7 +151,7 @@ pub struct ColumnDefinition(pub ColumnName, pub ColumnType);
 impl TryFrom<&Expression> for ColumnDefinition {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::ColumnDefinition(name, column_type) => {
                 Ok(Self(ColumnName(name.clone()), *column_type))
@@ -174,7 +175,7 @@ pub struct Where {
 impl TryFrom<&Expression> for Where {
     type Error = SqlError;
 
-    fn try_from(value: &Expression) -> Result<Self, Self::Error> {
+    fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Where { left, operator, right } => {
                 // TODO: might be a literal. I have to rework this whole Where thingy

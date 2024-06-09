@@ -2,7 +2,10 @@ mod v1;
 mod v2;
 
 use super::SqlError;
-use crate::database::{Table, RowSet};
+use crate::{
+    Result,
+    database::{Table, RowSet}
+};
 
 use v1::V1;
 use v2::V2;
@@ -25,7 +28,7 @@ impl From<Serialiser> for &[u8] {
 impl TryFrom<u8> for Serialiser {
     type Error = SqlError;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u8) -> Result<Self> {
         return match value {
             1 => Ok(Serialiser::V1),
             _ => Err(SqlError::IncompatibleVersion(value)),
@@ -34,38 +37,38 @@ impl TryFrom<u8> for Serialiser {
 }
 
 trait Serialise {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError>;
+    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>>;
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>, SqlError>;
+    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>>;
 
-    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table, SqlError>;
+    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table>;
 
-    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet, SqlError>;
+    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet>;
 }
 
 impl Serialise for Serialiser {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
+    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
         return match self {
             Serialiser::V1 => V1.serialise_table(value),
             Serialiser::V2 => V2.serialise_table(value),
         };
     }
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>, SqlError> {
+    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
         return match self {
             Serialiser::V1 => V1.serialise_rowset(value),
             Serialiser::V2 => V2.serialise_rowset(value),
         };
     }
 
-    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table, SqlError> {
+    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
         return match self {
             Serialiser::V1 => V1.deserialise_table(input),
             Serialiser::V2 => V2.deserialise_table(input),
         };
     }
 
-    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet, SqlError> {
+    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
         return match self {
             Serialiser::V1 => V1.deserialise_rowset(input),
             Serialiser::V2 => V2.deserialise_rowset(input),
@@ -93,7 +96,7 @@ impl SerialisationManager {
         return result;
     }
 
-    pub fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
+    pub fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
         let mut result = self.write_version();
 
         result.extend(self.0.serialise_table(value)?);
@@ -101,7 +104,7 @@ impl SerialisationManager {
         return Ok(result);
     }
 
-    pub fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>, SqlError> {
+    pub fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
         let mut result = self.write_version();
 
         result.extend(self.0.serialise_rowset(value)?);
@@ -109,7 +112,7 @@ impl SerialisationManager {
         return Ok(result);
     }
 
-    fn read_version(&self, input: &mut &[u8]) -> Result<Serialiser, SqlError> {
+    fn read_version(&self, input: &mut &[u8]) -> Result<Serialiser> {
         if input.is_empty() {
             return Err(SqlError::InputTooShort(input.len(), 1));
         }
@@ -121,7 +124,7 @@ impl SerialisationManager {
         return version.try_into();
     }
 
-    pub fn deserialise_table(&self, mut input: &[u8]) -> Result<Table, SqlError> {
+    pub fn deserialise_table(&self, mut input: &[u8]) -> Result<Table> {
         let input = &mut input;
 
         let serialiser = self.read_version(input)?;
@@ -129,7 +132,7 @@ impl SerialisationManager {
         return serialiser.deserialise_table(input);
     }
 
-    pub fn deserialise_rowset(&self, mut input: &[u8]) -> Result<RowSet, SqlError> {
+    pub fn deserialise_rowset(&self, mut input: &[u8]) -> Result<RowSet> {
         let input = &mut input;
 
         let serialiser = self.read_version(input)?;

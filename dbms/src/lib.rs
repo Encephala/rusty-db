@@ -48,3 +48,5 @@ pub enum SqlError {
 
     IncompatibleVersion(u8),
 }
+
+pub type Result<T> = std::result::Result<T, SqlError>;

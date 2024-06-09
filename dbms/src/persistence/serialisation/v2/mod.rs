@@ -4,9 +4,11 @@ mod tests;
 
 use sql_parse::ColumnType;
 
-use crate::SqlError;
-use crate::database::{Table, Row, RowSet};
-use crate::types::{TableName, ColumnName, ColumnValue};
+use crate::{
+    SqlError, Result,
+    database::{Table, Row, RowSet},
+    types::{TableName, ColumnName, ColumnValue},
+};
 
 use super::Serialise;
 
@@ -14,11 +16,11 @@ use super::Serialise;
 pub struct V2;
 
 impl Serialise for V2 {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
+    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
         return value.serialise();
     }
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>, SqlError> {
+    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
         let mut result = value.names.serialise()?;
 
         result.extend(value.values.serialise()?);
@@ -26,11 +28,11 @@ impl Serialise for V2 {
         return Ok(result);
     }
 
-    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table, SqlError> {
+    fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
         return Table::deserialise(input, None.into());
     }
 
-    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet, SqlError> {
+    fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
         let names = Vec::<ColumnName>::deserialise(input, None.into())?;
 
         let values = Vec::<Row>::deserialise(input, None.into())?;
@@ -61,11 +63,11 @@ impl From<Option<DO>> for DO {
 
 
 trait V2Serialise {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError>;
+    fn serialise(&self) -> Result<Vec<u8>>;
 }
 
 trait V2Deserialise {
-    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> where Self: Sized;
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> where Self: Sized;
 }
 
 fn u64_to_bytes(input: usize) -> Vec<u8> {
@@ -80,7 +82,7 @@ fn u64_to_bytes(input: usize) -> Vec<u8> {
 }
 
 impl V2Serialise for Table {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
         let name = self.name.serialise()?;
@@ -107,7 +109,7 @@ impl V2Serialise for Table {
 }
 
 impl V2Serialise for TableName {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = u64_to_bytes(self.0.len());
 
         result.extend(self.0.bytes());
@@ -117,7 +119,7 @@ impl V2Serialise for TableName {
 }
 
 impl V2Serialise for ColumnType {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         // Start counting at 1 to make sure uninitialised data isn't a valid type
         // (for what it's worth)
         return match self {
@@ -130,7 +132,7 @@ impl V2Serialise for ColumnType {
 }
 
 impl V2Serialise for ColumnName {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = u64_to_bytes(self.0.len());
 
         result.extend(self.0.bytes());
@@ -140,7 +142,7 @@ impl V2Serialise for ColumnName {
 }
 
 impl V2Serialise for Row {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         return self.0.serialise();
     }
 }
@@ -158,7 +160,7 @@ impl V2Serialise for Row {
 // see above about negative impl. Doing it now would just be unnecessary complexity
 
 impl V2Serialise for ColumnValue {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         return match self {
             ColumnValue::Int(value) => Ok(u64_to_bytes(*value)),
             ColumnValue::Decimal(whole, fractional) => {
@@ -181,7 +183,7 @@ impl V2Serialise for ColumnValue {
 }
 
 impl<T: V2Serialise> V2Serialise for Vec<T> {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
         // First store total count
@@ -198,7 +200,7 @@ impl<T: V2Serialise> V2Serialise for Vec<T> {
 }
 
 impl V2Serialise for RowSet {
-    fn serialise(&self) -> Result<Vec<u8>, SqlError> {
+    fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = self.names.serialise()?;
 
         result.extend(self.values.serialise()?);
@@ -208,7 +210,7 @@ impl V2Serialise for RowSet {
 }
 
 impl V2Deserialise for Table {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let name = TableName::deserialise(input, None.into())?;
 
         let types = Vec::<ColumnType>::deserialise(input, None.into())?;
@@ -227,7 +229,7 @@ impl V2Deserialise for Table {
 }
 
 impl V2Deserialise for u64 {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         if input.len() < 8 {
             return Err(SqlError::InputTooShort(input.len(), 8))
         }
@@ -245,7 +247,7 @@ impl V2Deserialise for u64 {
 }
 
 impl V2Deserialise for TableName {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let result = String::deserialise(input, None.into())?;
 
         return Ok(TableName(result));
@@ -253,7 +255,7 @@ impl V2Deserialise for TableName {
 }
 
 impl V2Deserialise for ColumnType {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         // A ColumnType is serialised as one byte
         if input.is_empty() {
             return Err(SqlError::InputTooShort(input.len(), 1));
@@ -277,7 +279,7 @@ impl V2Deserialise for ColumnType {
 // is that ColumnValues requires the types to be known
 // I can think of some middle way, but for now it's a TODO
 impl V2Deserialise for Vec<ColumnType> {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let count = u64::deserialise(input, None.into())?;
 
         let mut result = vec![];
@@ -294,7 +296,7 @@ impl V2Deserialise for Vec<ColumnType> {
 
 
 impl V2Deserialise for ColumnName {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let result = String::deserialise(input, None.into())?;
 
         return Ok(ColumnName(result));
@@ -302,7 +304,7 @@ impl V2Deserialise for ColumnName {
 }
 
 impl V2Deserialise for Vec<ColumnName> {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let count = u64::deserialise(input, None.into())?;
 
         let mut result = vec![];
@@ -319,7 +321,7 @@ impl V2Deserialise for Vec<ColumnName> {
 
 
 impl V2Deserialise for String {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let length = u64::deserialise(input, None.into())?;
 
         if input.len() < length as usize {
@@ -338,7 +340,7 @@ impl V2Deserialise for String {
 }
 
 impl V2Deserialise for bool {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         if input.is_empty() {
             return Err(SqlError::InputTooShort(input.len(), 1));
         }
@@ -360,7 +362,7 @@ impl V2Deserialise for bool {
 }
 
 impl V2Deserialise for Row {
-    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let result = Vec::<ColumnValue>::deserialise(input, options)?;
 
         return Ok(Row(result));
@@ -368,7 +370,7 @@ impl V2Deserialise for Row {
 }
 
 impl V2Deserialise for Vec<Row> {
-    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let count = u64::deserialise(input, None.into())?;
 
         let mut result = vec![];
@@ -384,7 +386,7 @@ impl V2Deserialise for Vec<Row> {
 }
 
 impl V2Deserialise for ColumnValue {
-    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let column_type = match options {
             DO::ColumnType(column_type) => Ok(column_type),
             _ => Err(SqlError::InvalidParameter)
@@ -407,7 +409,7 @@ impl V2Deserialise for ColumnValue {
 }
 
 impl V2Deserialise for Vec<ColumnValue> {
-    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> {
+    fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let types = match options {
             DO::ColumnTypes(types) => Ok(types),
             _ => Err(SqlError::InvalidParameter),
@@ -432,7 +434,7 @@ impl V2Deserialise for Vec<ColumnValue> {
 }
 
 impl V2Deserialise for RowSet {
-    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> where Self: Sized {
+    fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> where Self: Sized {
         let names = Vec::<ColumnName>::deserialise(input, None.into())?;
 
         let values = Vec::<Row>::deserialise(input, None.into())?;
