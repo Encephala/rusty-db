@@ -448,3 +448,40 @@ fn deserialise_table() {
         test_table_with_values().0
     );
 }
+
+#[test]
+fn serialise_rowset() {
+    let (table, _) = test_table_with_values();
+
+    let result = table.select(
+        crate::types::ColumnSelector::AllColumns,
+        None,
+    ).unwrap();
+
+    let serialised = result.serialise().unwrap();
+
+    let expected = vec![
+        // Names
+        2, 0, 0, 0, 0, 0, 0, 0,
+        5, 0, 0, 0, 0, 0, 0, 0,
+        102, 105, 114, 115, 116,
+        6, 0, 0, 0, 0, 0, 0, 0,
+        115, 101, 99, 111, 110, 100,
+
+        // Values
+        2, 0, 0, 0, 0, 0, 0, 0,
+
+        2, 0, 0, 0, 0, 0, 0, 0,
+        5, 0, 0, 0, 0, 0, 0, 0,
+        1,
+
+        2, 0, 0, 0, 0, 0, 0, 0,
+        6, 0, 0, 0, 0, 0, 0, 0,
+        0,
+    ];
+
+    assert_eq!(
+        serialised,
+        expected
+    )
+}
