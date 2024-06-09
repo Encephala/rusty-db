@@ -6,14 +6,14 @@ use std::path::PathBuf;
 use sql_parse::{Lexer, parse_statement, Statement, CreateType};
 use dbms::{Execute, Database, DatabaseName, ExecutionResult, PersistenceManager, FileSystem, SerialisationManager, Serialiser};
 
-fn repl() {
+async fn repl() {
     let stdin = std::io::stdin();
     let mut stdout = std::io::stdout();
 
     let mut database: Option<Database> = None;
 
     let persistence_manager: Box<_> = FileSystem::new(
-        SerialisationManager::new(Serialiser::V1),
+        SerialisationManager::new(Serialiser::V2),
         PathBuf::from("/tmp/rusty-db"),
     ).into();
 
@@ -55,7 +55,7 @@ fn repl() {
         if input.starts_with("\\c ") {
             let database_name = input.strip_prefix("\\c ").unwrap().strip_suffix('\n').unwrap();
 
-            database = match persistence_manager.load_database(DatabaseName(database_name.into())) {
+            database = match persistence_manager.load_database(DatabaseName(database_name.into())).await {
                 Ok(db) => {
                     println!("Connected to database {}", db.name.0);
 
@@ -75,7 +75,7 @@ fn repl() {
             let is_create_database = matches!(statement, Statement::Create { what: CreateType::Database, .. });
             let is_drop_database = matches!(statement, Statement::Drop { what: CreateType::Database, .. });
 
-            let result = statement.execute(database.as_mut(), persistence_manager.as_ref());
+            let result = statement.execute(database.as_mut(), persistence_manager.as_ref()).await;
 
             match result {
                 Ok(result) => {
@@ -98,7 +98,7 @@ fn repl() {
 
             // TODO: doing this properly, should only write changed things
             // Also I can probably do better than the `is_drop_database` above
-            match persistence_manager.save_database(database.as_ref().unwrap()) {
+            match persistence_manager.save_database(database.as_ref().unwrap()).await {
                 Ok(_) => (),
                 Err(error) => println!("Failed saving to disk: {error:?}"),
             }
@@ -108,6 +108,7 @@ fn repl() {
     }
 }
 
-fn main() {
-    repl();
+#[tokio::main]
+async fn main() {
+    repl().await;
 }

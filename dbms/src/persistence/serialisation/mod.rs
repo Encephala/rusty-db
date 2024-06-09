@@ -5,16 +5,19 @@ use super::SqlError;
 use crate::database::{Table, RowSet};
 
 use v1::V1;
+use v2::V2;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Serialiser {
     V1,
+    V2,
 }
 
 impl From<Serialiser> for &[u8] {
     fn from(value: Serialiser) -> Self {
         return match value {
             Serialiser::V1 => &[1],
+            Serialiser::V2 => &[2],
         };
     }
 }
@@ -44,24 +47,28 @@ impl Serialise for Serialiser {
     fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
         return match self {
             Serialiser::V1 => V1.serialise_table(value),
+            Serialiser::V2 => V2.serialise_table(value),
         };
     }
 
     fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>, SqlError> {
         return match self {
             Serialiser::V1 => V1.serialise_rowset(value),
+            Serialiser::V2 => V2.serialise_rowset(value),
         };
     }
 
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table, SqlError> {
         return match self {
             Serialiser::V1 => V1.deserialise_table(input),
+            Serialiser::V2 => V2.deserialise_table(input),
         };
     }
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet, SqlError> {
         return match self {
             Serialiser::V1 => V1.deserialise_rowset(input),
+            Serialiser::V2 => V2.deserialise_rowset(input),
         };
     }
 }

@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use async_trait::async_trait;
+
 use sql_parse::{Expression, Statement, CreateType};
 
 use super::SqlError;
@@ -68,8 +70,9 @@ pub enum ExecutionResult {
     DropDatabase(DatabaseName),
 }
 
+#[async_trait]
 pub trait Execute {
-    fn execute(self, database: Option<&mut Database>, persistence: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError>;
+    async fn execute(self, database: Option<&mut Database>, persistence: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError>;
 }
 
 // Helper to destructure Array expressions
@@ -91,8 +94,9 @@ fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>, S
 
 // TODO: This receives a database to evaluate in,
 // but uhhh what about creating databases?
+#[async_trait]
 impl Execute for Statement {
-    fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError> {
+    async fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult, SqlError> {
         match self {
             Statement::Select { table, columns, where_clause } => {
                 if database.is_none() {
@@ -116,7 +120,7 @@ impl Execute for Statement {
                     CreateType::Database => {
                         let database = Database::new(name.try_into()?);
 
-                        persistence_manager.save_database(&database)?;
+                        persistence_manager.save_database(&database).await?;
 
                         return Ok(ExecutionResult::CreateDatabase(database.name));
                     },
@@ -231,7 +235,7 @@ impl Execute for Statement {
             Statement::Drop { what, name } => {
                 match what {
                     CreateType::Database => {
-                        return persistence_manager.delete_database(name.try_into()?)
+                        return persistence_manager.delete_database(name.try_into()?).await
                             .map(ExecutionResult::DropDatabase);
                     },
                     CreateType::Table => {

@@ -8,6 +8,8 @@ description = "A non-production-ready-and-will-never-be database written for my 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tokio = { version = "*", features = ["full"]}
+
 sql-parse.workspace = true
 dbms.workspace = true
 
