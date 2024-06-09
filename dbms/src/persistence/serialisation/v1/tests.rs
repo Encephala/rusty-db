@@ -138,10 +138,6 @@ fn serialise_row() {
     );
 }
 
-// TODO:
-// This isn't testing shit ackshually,
-// as these exact functions in this exact order are being called in the actual code
-// Have to manually calculate the serialised result
 #[test]
 fn serialise_table() {
     let table = test_table();

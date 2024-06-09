@@ -130,8 +130,6 @@ impl StatementParser for Insert {
 
         let into = Identifier.parse(input)?;
 
-        // TODO: Make this optional to conform with SQL spec
-        // for what that's worth I guess
         let mut columns = None;
 
         if input.get(0)? != &Token::Values {

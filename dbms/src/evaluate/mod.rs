@@ -93,8 +93,6 @@ fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>> {
     };
 }
 
-// TODO: This receives a database to evaluate in,
-// but uhhh what about creating databases?
 #[async_trait]
 impl Execute for Statement {
     async fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult> {

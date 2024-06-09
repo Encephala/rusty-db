@@ -35,7 +35,6 @@ pub enum InfixOperator {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-// TODO: VarChar would be cool but idk how to handle that
 pub enum ColumnType {
     Int,
     Decimal,
@@ -249,7 +248,7 @@ impl ExpressionParser for Array {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::LParenthesis)?;
 
-        // TODO: Make this parse any expression rather than hardcoded str or number
+        // TODO: Make this parse any expression rather than hardcoded `Value`
         let expressions = Value.multiple().parse(input)?;
 
         check_and_skip(input, Token::RParenthesis)?;

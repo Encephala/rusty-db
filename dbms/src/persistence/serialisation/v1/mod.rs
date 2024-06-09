@@ -277,7 +277,6 @@ impl V1Deserialise for ColumnType {
 
 // Only reason we can't have a blanket implementation for Vec<T>
 // is that ColumnValues requires the types to be known
-// I can think of some middle way, but for now it's a TODO
 impl V1Deserialise for Vec<ColumnType> {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let count = usize::deserialise(input, None.into())?;

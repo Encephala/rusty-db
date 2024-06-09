@@ -397,7 +397,6 @@ mod tests {
             "SELECT * FROM bla WHERE asdf <> 5;",
         );
 
-        // TODO
         assert_eq!(
             result,
             vec![
