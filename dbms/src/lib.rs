@@ -14,7 +14,7 @@ use sql_parse::{ColumnType, Expression, InfixOperator};
 pub use database::Database;
 pub use types::DatabaseName;
 pub use evaluate::{Execute, ExecutionResult};
-pub use persistence::{PersistenceManager, FileSystem, V1 as Serialisation_V1};
+pub use persistence::{PersistenceManager, FileSystem, SerialisationManager, Serialiser};
 
 
 
@@ -28,18 +28,23 @@ pub enum SqlError {
     InvalidOperation(InfixOperator, &'static str, &'static str),
     ColumnNameNotUnique(ColumnName),
     InvalidParameter,
+
     DuplicateTable(String),
     TableDoesNotExist(TableName),
     NoDatabaseSelected,
     DatabaseDoesNotExist(DatabaseName),
+
     FSError(std::io::Error),
     CouldNotStoreDatabase(DatabaseName, std::io::Error),
     CouldNotRemoveDatabase(DatabaseName, std::io::Error),
     CouldNotStoreTable(TableName, std::io::Error),
     CouldNotRemoveTable(TableName, std::io::Error),
+
     SliceConversionError(std::array::TryFromSliceError),
     InputTooShort(usize, usize),
     InvalidStringEncoding(std::string::FromUtf8Error),
     NotATypeDiscriminator(u8),
     NotABoolean(u8),
+
+    IncompatibleVersion(u8),
 }

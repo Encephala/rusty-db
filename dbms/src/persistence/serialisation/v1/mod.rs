@@ -7,17 +7,16 @@ use crate::SqlError;
 
 use crate::database::{Table, Row};
 use crate::types::{TableName, ColumnName, ColumnValue};
-use super::Serialiser;
 
 #[derive(Debug)]
 pub struct V1;
 
-impl Serialiser for V1 {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
-        return Table::serialise(value);
+impl V1 {
+    pub fn serialise_table(&self, value: &Table) -> Result<Vec<u8>, SqlError> {
+        return value.serialise();
     }
 
-    fn deserialise_table(&self, value: &mut &[u8]) -> Result<Table, SqlError> {
+    pub fn deserialise_table(&self, value: &mut &[u8]) -> Result<Table, SqlError> {
         return Table::deserialise(value, None.into());
     }
 }

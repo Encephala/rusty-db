@@ -4,13 +4,11 @@ use std::fs::{remove_dir_all, remove_file, DirBuilder, write, read_dir};
 use std::os::unix::fs::DirBuilderExt;
 use std::path::{Path, PathBuf};
 
-use serialisation::Serialiser;
-
 use super::SqlError;
 use super::database::{Database, Table};
 use super::types::DatabaseName;
 
-pub use serialisation::V1;
+pub use serialisation::{Serialiser, SerialisationManager};
 
 // Love me some premature abstractions
 pub trait PersistenceManager {
@@ -24,15 +22,15 @@ pub trait PersistenceManager {
 }
 
 #[derive(Debug)]
-pub struct FileSystem<S: Serialiser>(S, PathBuf);
+pub struct FileSystem(SerialisationManager, PathBuf);
 
-impl<S: Serialiser> FileSystem<S> {
-    pub fn new(serialiser: S, path: PathBuf) -> Self {
+impl FileSystem {
+    pub fn new(serialiser: SerialisationManager, path: PathBuf) -> Self {
         return Self(serialiser, path);
     }
 }
 
-impl<S: Serialiser> PersistenceManager for FileSystem<S> {
+impl PersistenceManager for FileSystem {
     fn save_database(&self, database: &Database) -> Result<(), SqlError> {
         DirBuilder::new()
             .recursive(true)
@@ -94,7 +92,7 @@ impl<S: Serialiser> PersistenceManager for FileSystem<S> {
             let data = std::fs::read(file.path())
                 .map_err(SqlError::FSError)?;
 
-            let table = self.0.deserialise_table(&mut data.as_slice())?;
+            let table = self.0.deserialise_table(data.as_slice())?;
 
             database.tables.insert(table.name.0.clone(), table);
         }
