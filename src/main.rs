@@ -3,7 +3,7 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use sql_parse::{Lexer, parse_statement};
+use sql_parse::{Lexer, parse_statement, Statement, CreateType};
 use dbms::{Execute, Database, DatabaseName, ExecutionResult, PersistenceManager, FileSystem, SerialisationManager, Serialiser};
 
 fn repl() {
@@ -72,12 +72,10 @@ fn repl() {
         }
 
         if let Some(statement) = statement {
-            let result = statement.execute(database.as_mut(), persistence_manager.as_ref());
+            let is_create_database = matches!(statement, Statement::Create { what: CreateType::Database, .. });
+            let is_drop_database = matches!(statement, Statement::Drop { what: CreateType::Database, .. });
 
-            match persistence_manager.save_database(database.as_ref().unwrap()) {
-                Ok(_) => (),
-                Err(error) => println!("Failed saving to disk: {error:?}"),
-            }
+            let result = statement.execute(database.as_mut(), persistence_manager.as_ref());
 
             match result {
                 Ok(result) => {
@@ -88,7 +86,21 @@ fn repl() {
                 },
                 Err(error) => {
                     println!("Got execution error: {error:?}");
+
+                    // Don't persist storage if statement failed
+                    continue;
                 }
+            }
+
+            if is_create_database || is_drop_database {
+                continue;
+            }
+
+            // TODO: doing this properly, should only write changed things
+            // Also I can probably do better than the `is_drop_database` above
+            match persistence_manager.save_database(database.as_ref().unwrap()) {
+                Ok(_) => (),
+                Err(error) => println!("Failed saving to disk: {error:?}"),
             }
         } else {
             println!("Failed to parse: {input}");

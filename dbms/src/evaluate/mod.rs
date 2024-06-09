@@ -53,7 +53,7 @@ impl Database {
         return table.delete(condition);
     }
 
-    pub fn drop(&mut self, table_name: TableName) -> Result<Table, SqlError> {
+    pub fn drop_table(&mut self, table_name: TableName) -> Result<Table, SqlError> {
         return self.tables.remove(&table_name.0)
             .ok_or(SqlError::TableDoesNotExist(table_name));
     }
@@ -65,6 +65,7 @@ pub enum ExecutionResult {
     Table(Table),
     Select(RowSet),
     CreateDatabase(DatabaseName),
+    DropDatabase(DatabaseName),
 }
 
 pub trait Execute {
@@ -228,20 +229,21 @@ impl Execute for Statement {
             },
 
             Statement::Drop { what, name } => {
-                if database.is_none() {
-                    return Err(SqlError::NoDatabaseSelected);
-                }
-
-                let database = database.unwrap();
-
                 match what {
                     CreateType::Database => {
-                        todo!();
+                        return persistence_manager.delete_database(name.try_into()?)
+                            .map(ExecutionResult::DropDatabase);
                     },
                     CreateType::Table => {
+                        if database.is_none() {
+                            return Err(SqlError::NoDatabaseSelected);
+                        }
+
+                        let database = database.unwrap();
+
                         let name: TableName = name.try_into()?;
 
-                        return database.drop(name)
+                        return database.drop_table(name)
                             .map(ExecutionResult::Table);
                     }
                 }

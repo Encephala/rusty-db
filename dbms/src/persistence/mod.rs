@@ -13,7 +13,7 @@ pub use serialisation::{Serialiser, SerialisationManager};
 // Love me some premature abstractions
 pub trait PersistenceManager {
     fn save_database(&self, database: &Database) -> Result<(), SqlError>;
-    fn delete_database(&self, database: &Database) -> Result<(), SqlError>;
+    fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName, SqlError>;
 
     fn save_table(&self, database: &Database, table: &Table) -> Result<(), SqlError>;
     fn delete_table(&self, database: &Database, table: &Table) -> Result<(), SqlError>;
@@ -32,6 +32,7 @@ impl FileSystem {
 
 impl PersistenceManager for FileSystem {
     fn save_database(&self, database: &Database) -> Result<(), SqlError> {
+        // TODO: This should error if database already exists
         DirBuilder::new()
             .recursive(true)
             .mode(0o750) // Windows support can get lost byeeeee
@@ -46,13 +47,13 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    fn delete_database(&self, database: &Database) -> Result<(), SqlError> {
-        let path = database_path(&self.1, &database.name);
+    fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName, SqlError> {
+        let path = database_path(&self.1, &name);
 
         remove_dir_all(path)
-            .map_err(|error| SqlError::CouldNotRemoveDatabase(database.name.clone(), error))?;
+            .map_err(|error| SqlError::CouldNotRemoveDatabase(name.clone(), error))?;
 
-        return Ok(());
+        return Ok(name);
     }
 
     fn save_table(&self, database: &Database, table: &Table) -> Result<(), SqlError> {

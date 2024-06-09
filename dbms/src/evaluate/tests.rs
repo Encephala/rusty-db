@@ -28,7 +28,7 @@ fn create_and_drop_tables_basic() {
         Some(&table)
     );
 
-    db.drop(table.name.clone()).unwrap();
+    db.drop_table(table.name.clone()).unwrap();
 
     assert_eq!(
         db.tables.len(),
@@ -210,7 +210,7 @@ fn update_table_basic() {
     );
 
     // Reset table
-    db.drop("test_table".into()).unwrap();
+    db.drop_table("test_table".into()).unwrap();
     db.create(table).unwrap();
 
     db.update(

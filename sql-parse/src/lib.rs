@@ -4,7 +4,7 @@ mod lexer;
 pub mod parser;
 
 use lexer::Token;
-use parser::{StatementParser, Create, Insert, Select, Update, Delete};
+use parser::{StatementParser, Create, Insert, Select, Update, Delete, Drop};
 
 pub use lexer::Lexer;
 pub use parser::{Statement, CreateType, Expression, ColumnType, InfixOperator};
@@ -18,6 +18,7 @@ pub fn parse_statement(input: &str) -> Option<Statement> {
         Token::Select => Select.parse(tokens),
         Token::Update => Update.parse(tokens),
         Token::Delete => Delete.parse(tokens),
+        Token::Drop => Drop.parse(tokens),
         _ => None,
     };
 }
@@ -35,6 +36,7 @@ mod tests {
             ("INSERT INTO blabla (a, b, c) VALUES ('a', 'b', 'c');"),
             ("UPDATE tbl SET col1 = 1, col2 = 'bye' WHERE a = b;"),
             ("DELETE FROM tbl WHERE a = 5;"),
+            ("DROP DATABASE db;"),
         ];
 
         inputs.iter().for_each(|test_case| {
