@@ -14,7 +14,7 @@ use sql_parse::{ColumnType, Expression, InfixOperator};
 pub use database::Database;
 pub use types::DatabaseName;
 pub use evaluate::{Execute, ExecutionResult};
-pub use persistence::{PersistenceManager, FileSystem};
+pub use persistence::{PersistenceManager, FileSystem, V1 as Serialisation_V1};
 
 
 

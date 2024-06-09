@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use sql_parse::{Lexer, parse_statement};
-use dbms::{Execute, Database, DatabaseName, ExecutionResult, PersistenceManager, FileSystem};
+use dbms::{Execute, Database, DatabaseName, ExecutionResult, PersistenceManager, FileSystem, Serialisation_V1};
 
 fn repl() {
     let stdin = std::io::stdin();
@@ -12,7 +12,10 @@ fn repl() {
 
     let mut database: Option<Database> = None;
 
-    let persistence_manager = Box::new(FileSystem::new(PathBuf::from("/tmp/rusty-db")));
+    let persistence_manager: Box<_> = FileSystem::new(
+        Serialisation_V1,
+        PathBuf::from("/tmp/rusty-db"),
+    ).into();
 
     loop {
         print!(">> ");

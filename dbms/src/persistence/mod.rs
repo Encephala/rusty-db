@@ -1,17 +1,16 @@
-#[cfg(test)]
-mod tests;
-
 mod serialisation;
 
 use std::fs::{remove_dir_all, remove_file, DirBuilder, write, read_dir};
 use std::os::unix::fs::DirBuilderExt;
 use std::path::{Path, PathBuf};
 
-use serialisation::{Deserialise, Serialise};
+use serialisation::Serialiser;
 
 use super::SqlError;
 use super::database::{Database, Table};
 use super::types::DatabaseName;
+
+pub use serialisation::V1;
 
 // Love me some premature abstractions
 pub trait PersistenceManager {
@@ -25,20 +24,20 @@ pub trait PersistenceManager {
 }
 
 #[derive(Debug)]
-pub struct FileSystem(PathBuf);
+pub struct FileSystem<S: Serialiser>(S, PathBuf);
 
-impl FileSystem {
-    pub fn new(path: PathBuf) -> Self {
-        return Self(path);
+impl<S: Serialiser> FileSystem<S> {
+    pub fn new(serialiser: S, path: PathBuf) -> Self {
+        return Self(serialiser, path);
     }
 }
 
-impl PersistenceManager for FileSystem {
+impl<S: Serialiser> PersistenceManager for FileSystem<S> {
     fn save_database(&self, database: &Database) -> Result<(), SqlError> {
         DirBuilder::new()
             .recursive(true)
             .mode(0o750) // Windows support can get lost byeeeee
-            .create(database_path(&self.0, &database.name))
+            .create(database_path(&self.1, &database.name))
             .map_err(|error| SqlError::CouldNotStoreDatabase(database.name.clone(), error))?;
 
         for table in database.tables.values() {
@@ -50,7 +49,7 @@ impl PersistenceManager for FileSystem {
     }
 
     fn delete_database(&self, database: &Database) -> Result<(), SqlError> {
-        let path = database_path(&self.0, &database.name);
+        let path = database_path(&self.1, &database.name);
 
         remove_dir_all(path)
             .map_err(|error| SqlError::CouldNotRemoveDatabase(database.name.clone(), error))?;
@@ -59,9 +58,9 @@ impl PersistenceManager for FileSystem {
     }
 
     fn save_table(&self, database: &Database, table: &Table) -> Result<(), SqlError> {
-        let path = table_path(&self.0, database, table);
+        let path = table_path(&self.1, database, table);
 
-        let data = table.serialise()?;
+        let data = self.0.serialise_table(table)?;
 
         write(path, data)
             .map_err(|error| SqlError::CouldNotStoreTable(table.name.clone(), error))?;
@@ -70,7 +69,7 @@ impl PersistenceManager for FileSystem {
     }
 
     fn delete_table(&self, database: &Database, table: &Table) -> Result<(), SqlError> {
-        let path = table_path(&self.0, database, table);
+        let path = table_path(&self.1, database, table);
 
         remove_file(path)
             .map_err(|error| SqlError::CouldNotRemoveTable(table.name.clone(), error))?;
@@ -79,7 +78,7 @@ impl PersistenceManager for FileSystem {
     }
 
     fn load_database(&self, database_name: DatabaseName) -> Result<Database, SqlError> {
-        let path = database_path(&self.0, &database_name);
+        let path = database_path(&self.1, &database_name);
 
         if !path.exists() {
             return Err(SqlError::DatabaseDoesNotExist(database_name));
@@ -95,7 +94,7 @@ impl PersistenceManager for FileSystem {
             let data = std::fs::read(file.path())
                 .map_err(SqlError::FSError)?;
 
-            let table = Table::deserialise(&mut data.as_slice(), None.into())?;
+            let table = self.0.deserialise_table(&mut data.as_slice())?;
 
             database.tables.insert(table.name.0.clone(), table);
         }
@@ -119,4 +118,50 @@ fn table_path(path: &Path, database: &Database, table: &Table) -> PathBuf {
     result.push(&table.name.0);
 
     return result;
+}
+
+#[cfg(test)]
+mod tests{
+    use std::str::FromStr;
+
+    use super::*;
+    use super::super::types::*;
+    use sql_parse::ColumnType;
+
+    #[test]
+    fn create_database_path_basic() {
+        let database = Database::new("db".into());
+
+        let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database.name);
+
+        assert_eq!(
+            path,
+            PathBuf::from_str("/tmp/db").unwrap()
+        )
+    }
+
+    #[test]
+    fn create_table_path_basic() {
+        let mut database = Database::new("db".into());
+
+        let table = Table::new(
+            "tbl".into(),
+            vec![
+                ColumnDefinition("col1".into(), ColumnType::Int),
+                ColumnDefinition("col2".into(), ColumnType::Bool),
+            ]
+        ).unwrap();
+
+        database.create(table.clone()).unwrap();
+
+        let path = table_path(&PathBuf::from_str("/tmp").unwrap(), &database, &table);
+
+        assert_eq!(
+            path,
+            PathBuf::from_str("/tmp/db/tbl").unwrap()
+        )
+    }
+
+    // TODO: testing that files actually get saved to disk and stuff
+    // I mean idk is kinda like testing the OS but I think there's something to be gained there
 }
