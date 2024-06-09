@@ -1,4 +1,5 @@
 mod v1;
+mod v2;
 
 use super::SqlError;
 use crate::database::{Table, RowSet};
