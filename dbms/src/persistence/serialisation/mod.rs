@@ -31,6 +31,7 @@ impl TryFrom<u8> for Serialiser {
     fn try_from(value: u8) -> Result<Self> {
         return match value {
             1 => Ok(Serialiser::V1),
+            2 => Ok(Serialiser::V2),
             _ => Err(SqlError::IncompatibleVersion(value)),
         }
     }
