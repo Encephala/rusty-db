@@ -101,8 +101,8 @@ impl PartialEq for RowSet {
 #[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Table {
     pub name: TableName,
-    pub types: Vec<ColumnType>,
     pub column_names: Vec<ColumnName>,
+    pub types: Vec<ColumnType>,
     pub values: Vec<Row>,
 }
 
@@ -121,8 +121,8 @@ impl Table {
 
         return Ok(Table {
             name,
-            types,
             column_names,
+            types,
             values: vec![],
         });
     }
