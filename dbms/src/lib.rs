@@ -7,7 +7,7 @@ mod evaluate;
 mod utils;
 mod persistence;
 
-use types::{ColumnName, TableName};
+use types::{ColumnName, ColumnValue, TableName};
 use sql_parse::{ColumnType, Expression, InfixOperator};
 
 
@@ -28,6 +28,8 @@ pub enum SqlError {
     InvalidOperation(InfixOperator, &'static str, &'static str),
     ColumnNameNotUnique(ColumnName),
     InvalidParameter,
+
+    ImpossibleComparison(ColumnValue, ColumnValue),
 
     DuplicateTable(String),
     TableDoesNotExist(TableName),

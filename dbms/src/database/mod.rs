@@ -60,15 +60,14 @@ impl Row {
         if let Some(where_clause) = condition {
             let PreparedWhere { left, operator, right } = where_clause;
 
-            // TODO: All the other comparisons
-            // But should probably come after properly implementing:
+            // TODO: tests for these
             return match operator {
                 InfixOperator::Equals => self.evaluate_equals(*left, right),
-                InfixOperator::NotEqual => todo!(),
-                InfixOperator::LessThan => todo!(),
-                InfixOperator::LessThanEqual => todo!(),
-                InfixOperator::GreaterThan => todo!(),
-                InfixOperator::GreaterThanEqual => todo!(),
+                InfixOperator::NotEqual => self.evaluate_not_equals(*left, right),
+                InfixOperator::LessThan => self.evaluate_less_than(*left, right),
+                InfixOperator::LessThanEqual => self.evaluate_less_than_equal(*left, right),
+                InfixOperator::GreaterThan => self.evaluate_greater_than(*left, right),
+                InfixOperator::GreaterThanEqual => self.evaluate_greater_than_equal(*left, right),
             }
         } else {
             return Ok(true);
@@ -76,12 +75,67 @@ impl Row {
     }
 
     fn evaluate_equals(&self, left: usize, right: &ColumnValue) -> Result<bool> {
-        let result = self.select(&[left])?;
+        let left = self.select(&[left])?;
 
-        // Result will always have length one
-        let value = result.0.get(0).unwrap();
+        // left will always have length one
+        let value = left.0.first().unwrap();
 
         return Ok(value == right);
+    }
+
+    fn evaluate_not_equals(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        let left = self.select(&[left])?;
+
+        let value = left.0.first().unwrap();
+
+        return Ok(value != right);
+    }
+
+    fn evaluate_less_than(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        let less_than_or_equal = self.evaluate_less_than_equal(left, right)?;
+
+        let left = self.select(&[left])?;
+
+        let value = left.0.first().unwrap();
+
+        if value == right {
+            return Ok(false);
+        }
+
+        return Ok(less_than_or_equal);
+    }
+
+    fn evaluate_less_than_equal(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        use ColumnValue::*;
+
+        let left = self.select(&[left])?;
+
+        let value = left.0.first().unwrap();
+
+        let result = match (value, right) {
+            (Int(left), Int(right)) => Ok(left <= right),
+            (Int(left), Decimal(whole, _)) => Ok(left <= whole),
+            (Decimal(whole, _), Int(right)) => Ok(whole <= right),
+            (Decimal(lwhole, lfractional), Decimal(rwhole, rfractional)) => {
+                if lwhole <= rwhole {
+                    Ok(true)
+                } else {
+                    Ok(lfractional <= rfractional)
+                }
+            },
+            (Bool(left), Bool(right)) => Ok(!left && *right),
+            _ => Err(SqlError::ImpossibleComparison(value.clone(), right.clone()))
+        };
+
+        return result;
+    }
+
+    fn evaluate_greater_than(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        return Ok(!self.evaluate_less_than_equal(left, right)?);
+    }
+
+    fn evaluate_greater_than_equal(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        return Ok(!self.evaluate_less_than(left, right)?);
     }
 }
 
