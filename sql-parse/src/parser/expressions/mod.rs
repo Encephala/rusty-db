@@ -221,7 +221,7 @@ impl ExpressionParser for Where {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
         check_and_skip(input, Token::Where)?;
 
-        let parser = Identifier.or(Number);
+        let parser = Identifier.or(Value);
 
         let left = parser.parse(input)?.into();
 
