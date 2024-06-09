@@ -40,7 +40,6 @@ impl Serialise for V1 {
             values,
         });
     }
-
 }
 
 #[derive(Clone)]
@@ -69,7 +68,7 @@ trait V1Deserialise {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self, SqlError> where Self: Sized;
 }
 
-pub const SIZEOF_USIZE: usize = std::mem::size_of::<usize>();
+const SIZEOF_USIZE: usize = std::mem::size_of::<usize>();
 
 fn usize_to_bytes(input: usize) -> Vec<u8> {
     // https://stackoverflow.com/questions/72631065/how-to-convert-a-u32-array-to-a-u8-array-in-place
@@ -249,16 +248,7 @@ impl V1Deserialise for usize {
 
 impl V1Deserialise for TableName {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
-        let length = usize::deserialise(input, None.into())?;
-
-        let bytes = input[..length].to_vec();
-
-        *input = &input[length..];
-
-        // https://doc.rust-lang.org/book/ch08-02-strings.html
-        // strings are UTF8 in rust
-        let result = String::from_utf8(bytes)
-            .map_err(SqlError::InvalidStringEncoding)?;
+        let result = String::deserialise(input, None.into())?;
 
         return Ok(TableName(result));
     }
@@ -307,16 +297,7 @@ impl V1Deserialise for Vec<ColumnType> {
 
 impl V1Deserialise for ColumnName {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self, SqlError> {
-        let length = usize::deserialise(input, None.into())?;
-
-        if input.len() < length {
-            return Err(SqlError::InputTooShort(input.len(), length));
-        }
-
-        let result = String::from_utf8(input[..length].to_vec())
-            .map_err(SqlError::InvalidStringEncoding)?;
-
-        *input = &input[length..];
+        let result = String::deserialise(input, None.into())?;
 
         return Ok(ColumnName(result));
     }
@@ -347,6 +328,8 @@ impl V1Deserialise for String {
             return Err(SqlError::InputTooShort(input.len(), length));
         }
 
+        // https://doc.rust-lang.org/book/ch08-02-strings.html
+        // strings are UTF8 in rust
         let result = String::from_utf8(input[..length].to_vec())
             .map_err(SqlError::InvalidStringEncoding)?;
 

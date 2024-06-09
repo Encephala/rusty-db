@@ -5,6 +5,17 @@ use sql_parse::ColumnType;
 use crate::types::{TableName, ColumnName, ColumnValue};
 use crate::utils::tests::{test_table, test_table_with_values};
 
+
+// value -> [value, 0, 0..] to match length of usize
+fn serialised_usize(value: u8) -> Vec<u8> {
+    let mut result = vec![value];
+
+    result.extend([0; SIZEOF_USIZE - 1]);
+
+    return result;
+}
+
+
 #[test]
 fn serialise_column_types() {
     let types = vec![
@@ -16,12 +27,12 @@ fn serialise_column_types() {
 
     let serialised = types.serialise().unwrap();
 
+    let mut expected = serialised_usize(4);
+    expected.extend([2, 1, 4, 3]);
+
     assert_eq!(
         serialised,
-        vec![
-            4, 0, 0, 0, 0, 0, 0, 0, // Length
-            2, 1, 4, 3
-        ]
+        expected
     )
 }
 
@@ -33,15 +44,16 @@ fn serialise_column_names() {
     ];
 
     let serialised = names.serialise().unwrap();
+
+    let mut expected = serialised_usize(2);
+    expected.extend(serialised_usize(4));
+    expected.extend([97, 115, 100, 102]);
+    expected.extend(serialised_usize(5));
+    expected.extend([104, 101, 108, 108, 111]);
+
     assert_eq!(
         serialised,
-        vec![
-            2, 0, 0, 0, 0, 0, 0, 0, // Length
-            4, 0, 0, 0, 0, 0, 0, 0, // Length
-            97, 115, 100, 102,
-            5, 0, 0, 0, 0, 0, 0, 0, // Length
-            104, 101, 108, 108, 111,
-        ]
+        expected
     );
 }
 
@@ -59,18 +71,9 @@ fn serialise_column_values() {
 
     let buffer = [0_u8; SIZEOF_USIZE];
 
-    let mut expected = vec![
-        5, 0, 0, 0, 0, 0, 0, 0, // Length
-    ];
+    let mut expected = serialised_usize(5);
 
-    expected.extend({
-        let mut result = buffer;
-
-        // Note use of little-endian bytes in serialisation::usize_to_bytes
-        result[0] = 1;
-
-        result.to_vec()
-    });
+    expected.extend(serialised_usize(1));
 
     expected.extend({
         let mut result = buffer;
@@ -82,13 +85,7 @@ fn serialise_column_values() {
         result.to_vec()
     });
 
-    expected.extend({
-        let mut result = buffer;
-
-        result[0] = 69;
-
-        result.to_vec()
-    });
+    expected.extend(serialised_usize(69));
 
     expected.extend({
         let mut result = [0_u8; 11];
@@ -120,7 +117,7 @@ fn serialise_row() {
         Row(row1.clone()), Row(row2.clone())
     ];
 
-    let mut expected = vec![2, 0, 0, 0, 0, 0, 0, 0];
+    let mut expected = serialised_usize(2);
 
     expected.extend(row1.serialise().unwrap());
     expected.extend(row2.serialise().unwrap());
@@ -133,9 +130,7 @@ fn serialise_row() {
     let input: &mut Vec<Row> = &mut vec![];
 
     // Just the length
-    let expected = vec![
-        0, 0, 0, 0, 0, 0, 0, 0,
-    ];
+    let expected = serialised_usize(0);
 
     assert_eq!(
         input.serialise().unwrap(),
@@ -153,25 +148,23 @@ fn serialise_table() {
 
     let serialised = table.serialise().unwrap();
 
-    let expected = vec![
-        // Name
-        10, 0, 0, 0, 0, 0, 0, 0,
-        116, 101, 115, 116, 95, 116, 97, 98, 108, 101,
+    // Names
+    let mut expected = serialised_usize(10);
+    expected.extend([116, 101, 115, 116, 95, 116, 97, 98, 108, 101]);
 
-        // Types
-        2, 0, 0, 0, 0, 0, 0, 0,
-        1, 4,
+    // Types
+    expected.extend(serialised_usize(2));
+    expected.extend([1, 4]);
 
-        // Names
-        2, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0,
-        102, 105, 114, 115, 116,
-        6, 0, 0, 0, 0, 0, 0, 0,
-        115, 101, 99, 111, 110, 100,
+    // Names
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(5));
+    expected.extend([102, 105, 114, 115, 116]);
+    expected.extend(serialised_usize(6));
+    expected.extend([115, 101, 99, 111, 110, 100]);
 
-        // Values
-        0, 0, 0, 0, 0, 0, 0, 0,
-    ];
+    // Values
+    expected.extend(serialised_usize(0));
 
     assert_eq!(
         serialised,
@@ -182,31 +175,15 @@ fn serialise_table() {
 
     let serialised = table.serialise().unwrap();
 
-    let expected = vec![
-        // Name
-        10, 0, 0, 0, 0, 0, 0, 0,
-        116, 101, 115, 116, 95, 116, 97, 98, 108, 101,
+    let mut expected = expected.get(0..expected.len() - 8).unwrap().to_vec();
 
-        // Types
-        2, 0, 0, 0, 0, 0, 0, 0,
-        1, 4,
-
-        // Names
-        2, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0,
-        102, 105, 114, 115, 116,
-        6, 0, 0, 0, 0, 0, 0, 0,
-        115, 101, 99, 111, 110, 100,
-
-        // Values
-        2, 0, 0, 0, 0, 0, 0, 0,
-        2, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0,
-        1,
-        2, 0, 0, 0, 0, 0, 0, 0,
-        6, 0, 0, 0, 0, 0, 0, 0,
-        0,
-    ];
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(5));
+    expected.extend([1]);
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(6));
+    expected.extend([0]);
 
     assert_eq!(
         serialised,
@@ -216,11 +193,18 @@ fn serialise_table() {
 
 #[test]
 fn deserialise_usize() {
-    let input = &mut [
-        1, 0, 0, 0, 0, 0, 0, 0, // 1
-        164, 1, 0, 0, 0, 0, 0, 0, // 420
-        0, // Too few bytes
-    ].as_slice();
+    let mut input = serialised_usize(1);
+    input.extend({
+        let mut buffer = [0; SIZEOF_USIZE];
+
+        buffer[0] = 164;
+        buffer[1] = 1;
+
+        buffer
+    });
+    input.extend([1]);
+
+    let input = &mut input.as_slice();
 
     assert_eq!(
         usize::deserialise(input, None.into()).unwrap(),
@@ -340,13 +324,11 @@ fn deserialise_vector_fixed_length_item() {
     );
 
     // Invalid data
-    let input = &mut [
-        1, 0, 0, 0, 0, 0, 0, 0,
-        69,
-    ].as_slice();
+    let mut input = serialised_usize(1);
+    input.extend([69]);
 
-    let result = Vec::<ColumnType>::deserialise(input, None.into());
-    println!("{:?}", result);
+    let result = Vec::<ColumnType>::deserialise(&mut input.as_slice(), None.into());
+    dbg!(&result);
     assert!(matches!(
         result,
         Err(SqlError::NotATypeDiscriminator(_))
@@ -460,25 +442,21 @@ fn serialise_rowset() {
 
     let serialised = result.serialise().unwrap();
 
-    let expected = vec![
-        // Names
-        2, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0,
-        102, 105, 114, 115, 116,
-        6, 0, 0, 0, 0, 0, 0, 0,
-        115, 101, 99, 111, 110, 100,
+    // Names
+    let mut expected = serialised_usize(2);
+    expected.extend(serialised_usize(5));
+    expected.extend([102, 105, 114, 115, 116]);
+    expected.extend(serialised_usize(6));
+    expected.extend([115, 101, 99, 111, 110, 100]);
 
-        // Values
-        2, 0, 0, 0, 0, 0, 0, 0,
-
-        2, 0, 0, 0, 0, 0, 0, 0,
-        5, 0, 0, 0, 0, 0, 0, 0,
-        1,
-
-        2, 0, 0, 0, 0, 0, 0, 0,
-        6, 0, 0, 0, 0, 0, 0, 0,
-        0,
-    ];
+    // Values
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(5));
+    expected.extend([1]);
+    expected.extend(serialised_usize(2));
+    expected.extend(serialised_usize(6));
+    expected.extend([0]);
 
     assert_eq!(
         serialised,
