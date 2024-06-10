@@ -6,6 +6,7 @@ mod types;
 mod evaluate;
 mod utils;
 mod persistence;
+mod server;
 
 use types::{ColumnName, ColumnValue, TableName};
 use sql_parse::{ColumnType, Expression, InfixOperator};
@@ -15,6 +16,7 @@ pub use database::Database;
 pub use types::DatabaseName;
 pub use evaluate::{Execute, ExecutionResult};
 pub use persistence::{PersistenceManager, FileSystem, SerialisationManager, Serialiser};
+pub use server::handle_connection;
 
 
 
@@ -49,6 +51,9 @@ pub enum SqlError {
     NotABoolean(u8),
 
     IncompatibleVersion(u8),
+
+    CouldNotWriteToConnection(std::io::Error),
+    CouldNotReadFromConnection(std::io::Error),
 }
 
 pub type Result<T> = std::result::Result<T, SqlError>;
