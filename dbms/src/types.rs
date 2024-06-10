@@ -103,7 +103,8 @@ impl TryFrom<&Expression> for ColumnSelector {
 impl_owned!(ColumnSelector);
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum ColumnValue {
     Int(usize),
     Decimal(usize, usize),

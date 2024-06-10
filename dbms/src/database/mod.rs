@@ -60,10 +60,9 @@ impl Row {
         if let Some(where_clause) = condition {
             let PreparedWhere { left, operator, right } = where_clause;
 
-            // TODO: tests for these
             return match operator {
-                InfixOperator::Equals => self.evaluate_equals(*left, right),
-                InfixOperator::NotEqual => self.evaluate_not_equals(*left, right),
+                InfixOperator::Equals => self.evaluate_equal(*left, right),
+                InfixOperator::NotEqual => self.evaluate_not_equal(*left, right),
                 InfixOperator::LessThan => self.evaluate_less_than(*left, right),
                 InfixOperator::LessThanEqual => self.evaluate_less_than_equal(*left, right),
                 InfixOperator::GreaterThan => self.evaluate_greater_than(*left, right),
@@ -74,33 +73,44 @@ impl Row {
         }
     }
 
-    fn evaluate_equals(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+    fn evaluate_equal(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        use ColumnValue::*;
+
         let left = self.select(&[left])?;
 
         // left will always have length one
         let value = left.0.first().unwrap();
 
-        return Ok(value == right);
+        let result = match (value, right) {
+            (Int(left), Int(right)) => Ok(left == right),
+            (Int(left), Decimal(whole, fractional)) => Ok(left == whole && fractional == &0),
+            (Decimal(whole, fractional), Int(right)) => Ok(whole == right && fractional == &0),
+            (Decimal(left_whole, left_fractional), Decimal(right_whole, right_fractional)) => {
+                if left_whole == right_whole {
+                    Ok(true)
+                } else {
+                    Ok(left_fractional == right_fractional)
+                }
+            },
+            (Bool(left), Bool(right)) => Ok(left == right),
+            _ => Err(SqlError::ImpossibleComparison(value.clone(), right.clone()))
+        };
+
+        return result;
     }
 
-    fn evaluate_not_equals(&self, left: usize, right: &ColumnValue) -> Result<bool> {
-        let left = self.select(&[left])?;
-
-        let value = left.0.first().unwrap();
-
-        return Ok(value != right);
+    fn evaluate_not_equal(&self, left: usize, right: &ColumnValue) -> Result<bool> {
+        return Ok(!self.evaluate_equal(left, right)?);
     }
 
     fn evaluate_less_than(&self, left: usize, right: &ColumnValue) -> Result<bool> {
-        let less_than_or_equal = self.evaluate_less_than_equal(left, right)?;
+        let equal = self.evaluate_equal(left, right)?;
 
-        let left = self.select(&[left])?;
-
-        let value = left.0.first().unwrap();
-
-        if value == right {
+        if equal {
             return Ok(false);
         }
+
+        let less_than_or_equal = self.evaluate_less_than_equal(left, right)?;
 
         return Ok(less_than_or_equal);
     }
@@ -116,14 +126,14 @@ impl Row {
             (Int(left), Int(right)) => Ok(left <= right),
             (Int(left), Decimal(whole, _)) => Ok(left <= whole),
             (Decimal(whole, _), Int(right)) => Ok(whole <= right),
-            (Decimal(lwhole, lfractional), Decimal(rwhole, rfractional)) => {
-                if lwhole <= rwhole {
+            (Decimal(left_whole, left_fractional), Decimal(right_whole, right_fractional)) => {
+                if left_whole <= right_whole {
                     Ok(true)
                 } else {
-                    Ok(lfractional <= rfractional)
+                    Ok(left_fractional <= right_fractional)
                 }
             },
-            (Bool(left), Bool(right)) => Ok(!left && *right),
+            (Bool(left), Bool(right)) => Ok(!left || *right),
             _ => Err(SqlError::ImpossibleComparison(value.clone(), right.clone()))
         };
 

@@ -81,6 +81,185 @@ fn select_basic() {
         where_bool_true,
         test_row_set(vec![Row(row1)])
     );
+}
+
+#[test]
+fn evaluate_equal() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+
+    let inputs = [
+        (row1.evaluate_equal(0, &Int(5)).unwrap(), true),
+        (row1.evaluate_equal(0, &Int(6)).unwrap(), false),
+        (row1.evaluate_equal(0, &Decimal(5, 0)).unwrap(), true),
+        (row1.evaluate_equal(0, &Decimal(5, 1)).unwrap(), false),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    assert!(matches!(
+        row1.evaluate_equal(0, &Bool(true)),
+        Err(SqlError::ImpossibleComparison(Int(5), Bool(true)))
+    ));
+}
+
+#[test]
+fn evaluate_not_equal() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+
+    let inputs = [
+        (row1.evaluate_not_equal(0, &Int(5)).unwrap(), false),
+        (row1.evaluate_not_equal(0, &Int(6)).unwrap(), true),
+        (row1.evaluate_not_equal(0, &Decimal(5, 0)).unwrap(), false),
+        (row1.evaluate_not_equal(0, &Decimal(5, 1)).unwrap(), true),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    assert!(matches!(
+        row1.evaluate_not_equal(0, &Bool(true)),
+        Err(SqlError::ImpossibleComparison(Int(5), Bool(true)))
+    ));
+}
+
+#[test]
+fn evaluate_less_than() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+    let row2 = Row(vec![Int(6), Bool(false)]);
+
+    let inputs = [
+        (row1.evaluate_less_than(0, &Int(5)).unwrap(), false),
+        (row1.evaluate_less_than(0, &Int(6)).unwrap(), true),
+        (row1.evaluate_less_than(0, &Int(4)).unwrap(), false),
+        (row1.evaluate_less_than(0, &Decimal(5, 0)).unwrap(), false),
+        (row1.evaluate_less_than(1, &Bool(false)).unwrap(), false),
+        (row1.evaluate_less_than(1, &Bool(true)).unwrap(), false),
+
+        (row2.evaluate_less_than(1, &Bool(true)).unwrap(), true),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    let failing_inputs = [
+        (row1.evaluate_less_than(1, &Decimal(5, 0))),
+        (row1.evaluate_less_than(0, &Bool(false))),
+    ];
+
+    failing_inputs.iter().for_each(|input| {
+        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
+    });
+}
+
+#[test]
+fn evaluate_less_than_equal() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+    let row2 = Row(vec![Int(6), Bool(false)]);
+
+    let inputs = [
+        (row1.evaluate_less_than_equal(0, &Int(5)).unwrap(), true),
+        (row1.evaluate_less_than_equal(0, &Int(6)).unwrap(), true),
+        (row1.evaluate_less_than_equal(0, &Int(4)).unwrap(), false),
+        (row1.evaluate_less_than_equal(0, &Decimal(5, 0)).unwrap(), true),
+        (row1.evaluate_less_than_equal(1, &Bool(false)).unwrap(), false),
+        (row1.evaluate_less_than_equal(1, &Bool(true)).unwrap(), true),
+
+        (row2.evaluate_less_than_equal(1, &Bool(true)).unwrap(), true),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    let failing_inputs = [
+        (row1.evaluate_less_than_equal(1, &Decimal(5, 0))),
+        (row1.evaluate_less_than_equal(0, &Bool(false))),
+    ];
+
+    failing_inputs.iter().for_each(|input| {
+        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
+    });
+}
+
+#[test]
+fn evaluate_greater_than() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+    let row2 = Row(vec![Int(6), Bool(false)]);
+
+    let inputs = [
+        (row1.evaluate_greater_than(0, &Int(5)).unwrap(), false),
+        (row1.evaluate_greater_than(0, &Int(6)).unwrap(), false),
+        (row1.evaluate_greater_than(0, &Int(4)).unwrap(), true),
+        (row1.evaluate_greater_than(0, &Decimal(5, 0)).unwrap(), false),
+        (row1.evaluate_greater_than(1, &Bool(false)).unwrap(), true),
+        (row1.evaluate_greater_than(1, &Bool(true)).unwrap(), false),
+
+        (row2.evaluate_greater_than(1, &Bool(false)).unwrap(), false),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    let failing_inputs = [
+        (row1.evaluate_greater_than(1, &Decimal(5, 0))),
+        (row1.evaluate_greater_than(0, &Bool(false))),
+    ];
+
+    failing_inputs.iter().for_each(|input| {
+        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
+    });
+}
+
+#[test]
+fn evaluate_greater_than_equal() {
+    use ColumnValue::*;
+
+    let row1 = Row(vec![Int(5), Bool(true)]);
+    let row2 = Row(vec![Int(6), Bool(false)]);
+
+    let inputs = [
+        (row1.evaluate_greater_than_equal(0, &Int(5)).unwrap(), true),
+        (row1.evaluate_greater_than_equal(0, &Int(6)).unwrap(), false),
+        (row1.evaluate_greater_than_equal(0, &Int(4)).unwrap(), true),
+        (row1.evaluate_greater_than_equal(0, &Decimal(5, 0)).unwrap(), true),
+        (row1.evaluate_greater_than_equal(1, &Bool(false)).unwrap(), true),
+        (row1.evaluate_greater_than_equal(1, &Bool(true)).unwrap(), true),
+
+        (row2.evaluate_greater_than_equal(1, &Bool(false)).unwrap(), true),
+    ];
+
+    inputs.iter().for_each(|(result, expected)| {
+        assert_eq!(result, expected);
+    });
+
+    let failing_inputs = [
+        (row1.evaluate_greater_than_equal(1, &Decimal(5, 0))),
+        (row1.evaluate_greater_than_equal(0, &Bool(false))),
+    ];
+
+    failing_inputs.iter().for_each(|input| {
+        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
+    });
+}
+
+#[test]
+fn select_with_where() {
+    let (table, _) = test_table_with_values();
 
     let only_int_five = table.select(
         ColumnSelector::Name(vec![ColumnName("first".into())]),
