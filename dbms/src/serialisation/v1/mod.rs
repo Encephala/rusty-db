@@ -336,7 +336,7 @@ impl V1Deserialise for String {
         // https://doc.rust-lang.org/book/ch08-02-strings.html
         // strings are UTF8 in rust
         let result = String::from_utf8(input[..length].to_vec())
-            .map_err(SqlError::InvalidStringEncoding)?;
+            .map_err(SqlError::NotAValidString)?;
 
         *input = &input[length..];
 

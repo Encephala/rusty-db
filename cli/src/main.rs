@@ -1,31 +1,40 @@
 #![allow(clippy::needless_return)]
 mod serverless;
 
-use async_std::{
-    io::{prelude::BufReadExt, BufReader, WriteExt},
-    net::TcpStream,
+use tokio::net::{
+    TcpStream,
+    ToSocketAddrs,
 };
 
-async fn connect_to_server() {
-    let mut stream = TcpStream::connect("localhost:42069").await.unwrap();
+use dbms::{
+    SqlError,
+    serialisation::{SerialisationManager, Serialiser},
+    server::Message,
+};
 
-    let mut reader = BufReader::new(&stream);
+const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);
 
-    let buffer = &mut vec![];
+async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
+    let mut stream = TcpStream::connect(address).await.unwrap();
 
-    reader.read_until(0xA, buffer).await.unwrap();
+    println!("connected");
+
+    let welcome_message = Message::read(&mut stream).await?;
 
     println!(
-        "Got welcome message {}",
-        String::from_utf8(buffer.to_owned()).unwrap()
+        "Got welcome message: {}",
+        String::from_utf8(welcome_message.0).unwrap()
     );
 
-    let response = "ya mum\n".to_owned().into_bytes();
+    let response = "ya mum\n".bytes().collect();
 
-    stream.write_all(response.as_slice()).await.unwrap();
+    Message(response).write(&mut stream).await.unwrap();
+    println!("Wrote response");
+
+    return Ok(());
 }
 
 #[tokio::main]
 async fn main() {
-    connect_to_server().await;
+    session("localhost:42069").await.unwrap();
 }

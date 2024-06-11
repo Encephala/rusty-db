@@ -1,17 +1,21 @@
 mod connection;
 
-use async_std::net::{
+pub use connection::Message;
+
+use std::net::SocketAddr;
+
+use tokio::{
+    net::{
         TcpListener,
         TcpStream,
-        SocketAddr,
         ToSocketAddrs,
-    };
-use tokio::{
-    signal::ctrl_c, spawn, sync::broadcast::*, task::{JoinError, JoinHandle}
+    },
+    signal::ctrl_c,
+    spawn,
+    sync::broadcast::*,
+    task::{JoinError, JoinHandle}
 };
 use futures::future::{select_all, join_all, OptionFuture};
-
-// use sql_parse::parse_statement;
 
 use connection::handle_connection;
 
@@ -47,12 +51,10 @@ pub async fn server(listen_address: impl ToSocketAddrs) {
     });
 
     loop {
-        let join_all_future = OptionFuture::from(
-            match join_handles.len() {
-                0 => None,
-                _ => Some(select_all(&mut join_handles)),
-            }
-        );
+        let join_all_future: OptionFuture<_> = match join_handles.len() {
+            0 => None,
+            _ => Some(select_all(&mut join_handles)),
+        }.into();
 
         tokio::select! {
             _ = shutdown_receiver_main.recv() => {
@@ -61,7 +63,14 @@ pub async fn server(listen_address: impl ToSocketAddrs) {
             },
 
             result = listener.accept() => {
-                join_handles.push(spawn_new_handler(result, shutdown_sender.subscribe()));
+                match result {
+                    Err(error) => {
+                        eprintln!("Failed to accept connection: {error}");
+                    },
+                    Ok((stream, address)) => {
+                        join_handles.push(spawn_new_handler(stream, address, shutdown_sender.subscribe()));
+                    }
+                };
             },
 
             Some((result, resolved_index, _)) = join_all_future => {
@@ -83,19 +92,15 @@ pub async fn server(listen_address: impl ToSocketAddrs) {
 }
 
 fn spawn_new_handler(
-    listen_result: std::result::Result<(TcpStream, SocketAddr), std::io::Error>,
+    stream: TcpStream,
+    address: SocketAddr,
     shutdown_receiver: Receiver<()>,
 ) -> JoinHandle<Result<(), SqlError>> {
-    match listen_result {
-        Ok((stream, address)) => {
-            println!("New connection established from {address}");
+    println!("New connection established from {address:?}");
 
-            return spawn(async move {
-                handle_connection(stream, shutdown_receiver).await
-            });
-        },
-        Err(error) => panic!("{error:?}"),
-    }
+    return spawn(async move {
+        handle_connection(stream, shutdown_receiver).await
+    });
 }
 
 fn print_join_error(result: Result<Result<(), SqlError>, JoinError>) {

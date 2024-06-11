@@ -16,6 +16,15 @@ pub enum Serialiser {
     V2,
 }
 
+impl std::fmt::Display for Serialiser {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Serialiser::V1 => write!(f, "V1"),
+            Serialiser::V2 => write!(f, "V2"),
+        }
+    }
+}
+
 impl From<Serialiser> for &[u8] {
     fn from(value: Serialiser) -> Self {
         return match value {
@@ -88,7 +97,7 @@ pub struct SerialisationManager(
 );
 
 impl SerialisationManager {
-    pub fn new(serialiser: Serialiser) -> Self {
+    pub const fn new(serialiser: Serialiser) -> Self {
         return Self(serialiser);
     }
 

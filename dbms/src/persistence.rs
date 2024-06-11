@@ -13,7 +13,7 @@ use super::serialisation::SerialisationManager;
 
 // Love me some premature abstractions
 #[async_trait]
-pub trait PersistenceManager: Sync {
+pub trait PersistenceManager: Send + Sync {
     async fn save_database(&self, database: &Database) -> Result<()>;
     async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName>;
 
@@ -92,6 +92,7 @@ impl PersistenceManager for FileSystem {
             return Err(SqlError::DatabaseDoesNotExist(database_name));
         }
 
+        // Create database object, then load tables
         let mut database = Database::new(database_name);
 
         let files = read_dir(path).map_err(SqlError::FSError)?;

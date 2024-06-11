@@ -71,6 +71,15 @@ pub enum ExecutionResult {
     DropDatabase(DatabaseName),
 }
 
+impl From<Option<ExecutionResult>> for ExecutionResult {
+    fn from(value: Option<ExecutionResult>) -> Self {
+        return match value {
+            Some(result) => result,
+            None => ExecutionResult::None,
+        };
+    }
+}
+
 #[async_trait]
 pub trait Execute {
     async fn execute(self, database: Option<&mut Database>, persistence: &dyn PersistenceManager) -> Result<ExecutionResult>;

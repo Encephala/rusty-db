@@ -11,10 +11,9 @@ pub mod server;
 
 use types::{ColumnName, ColumnValue, TableName};
 use sql_parse::parser::{ColumnType, Expression, InfixOperator};
-
+use types::DatabaseName;
 
 pub use database::Database;
-use types::DatabaseName;
 
 
 
@@ -44,7 +43,7 @@ pub enum SqlError {
 
     SliceConversionError(std::array::TryFromSliceError),
     InputTooShort(usize, usize),
-    InvalidStringEncoding(std::string::FromUtf8Error),
+    NotAValidString(std::string::FromUtf8Error),
     NotATypeDiscriminator(u8),
     NotABoolean(u8),
 
