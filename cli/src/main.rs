@@ -34,6 +34,10 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
     let select_query = "SELECT * FROM mcdonalds;";
     Message::from(select_query).write(&mut writer).await?;
 
+    let response = Message::read(&mut reader).await?;
+
+    println!("{response:?}");
+
     return Ok(());
 }
 
