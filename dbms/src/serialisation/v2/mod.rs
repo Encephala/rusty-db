@@ -70,17 +70,6 @@ trait V2Deserialise {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> where Self: Sized;
 }
 
-fn u64_to_bytes(input: usize) -> Vec<u8> {
-    // https://stackoverflow.com/questions/72631065/how-to-convert-a-u32-array-to-a-u8-array-in-place
-    let mut result = Vec::with_capacity(8);
-
-    for byte in input.to_le_bytes() {
-        result.push(byte)
-    }
-
-    return result;
-}
-
 impl V2Serialise for Table {
     fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
@@ -110,7 +99,7 @@ impl V2Serialise for Table {
 
 impl V2Serialise for TableName {
     fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = u64_to_bytes(self.0.len());
+        let mut result = (self.0.len() as u64).serialise()?;
 
         result.extend(self.0.bytes());
 
@@ -133,7 +122,7 @@ impl V2Serialise for ColumnType {
 
 impl V2Serialise for ColumnName {
     fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = u64_to_bytes(self.0.len());
+        let mut result = (self.0.len() as u64).serialise()?;
 
         result.extend(self.0.bytes());
 
@@ -162,16 +151,16 @@ impl V2Serialise for Row {
 impl V2Serialise for ColumnValue {
     fn serialise(&self) -> Result<Vec<u8>> {
         return match self {
-            ColumnValue::Int(value) => Ok(u64_to_bytes(*value)),
+            ColumnValue::Int(value) => Ok((*value as u64).serialise()?),
             ColumnValue::Decimal(whole, fractional) => {
-                let mut result = u64_to_bytes(*whole);
+                let mut result = (*whole as u64).serialise()?;
 
-                result.extend(u64_to_bytes(*fractional));
+                result.extend((*fractional as u64).serialise()?);
 
                 Ok(result)
             },
             ColumnValue::Str(value) => {
-                let mut result = u64_to_bytes(value.len());
+                let mut result = (value.len() as u64).serialise()?;
 
                 result.extend(value.as_bytes());
 
@@ -182,12 +171,35 @@ impl V2Serialise for ColumnValue {
     }
 }
 
+impl V2Serialise for u64 {
+    fn serialise(&self) -> Result<Vec<u8>> {
+        // https://stackoverflow.com/questions/72631065/how-to-convert-a-u32-array-to-a-u8-array-in-place
+        let mut result = Vec::with_capacity(8);
+
+        for byte in self.to_le_bytes() {
+            result.push(byte)
+        }
+
+        return Ok(result);
+    }
+}
+
+impl V2Serialise for String {
+    fn serialise(&self) -> Result<Vec<u8>> {
+        let mut result = (self.len() as u64).serialise()?;
+
+        result.extend(self.bytes());
+
+        return Ok(result);
+    }
+}
+
 impl<T: V2Serialise> V2Serialise for Vec<T> {
     fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
         // First store total count
-        result.extend(u64_to_bytes(self.len()));
+        result.extend((self.len() as u64).serialise()?);
 
         for t in self {
             let bytes = t.serialise()?;
