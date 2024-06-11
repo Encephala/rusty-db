@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod tests {
-    use sql_parse::ColumnType;
+    use sql_parse::parser::ColumnType;
     use super::super::database::{Table, Row, RowSet};
     use super::super::types::{TableName, ColumnName, DatabaseName, ColumnValue, ColumnDefinition};
 

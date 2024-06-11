@@ -3,11 +3,20 @@ mod tests;
 
 use std::collections::HashMap;
 
-use sql_parse::{ColumnType, InfixOperator};
+use sql_parse::parser::{ColumnType, InfixOperator};
 
 use crate::Result;
 use super::SqlError;
-use super::types::{ColumnName, TableName, DatabaseName, ColumnSelector, ColumnValue, ColumnDefinition, Where, PreparedWhere};
+use super::types::{
+    ColumnName,
+    TableName,
+    DatabaseName,
+    ColumnSelector,
+    ColumnValue,
+    ColumnDefinition,
+    Where,
+    PreparedWhere
+};
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]

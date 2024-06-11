@@ -5,7 +5,7 @@
 //! (hopefully).
 use std::any::type_name;
 
-use sql_parse::{ColumnType, InfixOperator};
+use sql_parse::parser::{ColumnType, InfixOperator};
 
 use crate::Result;
 use super::{Expression, SqlError};

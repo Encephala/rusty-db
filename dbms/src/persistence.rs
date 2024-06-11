@@ -1,5 +1,3 @@
-mod serialisation;
-
 use std::fs::{remove_dir_all, remove_file, DirBuilder, write, read_dir};
 use std::os::unix::fs::DirBuilderExt;
 use std::path::{Path, PathBuf};
@@ -11,8 +9,7 @@ use crate::Result;
 use super::SqlError;
 use super::database::{Database, Table};
 use super::types::DatabaseName;
-
-pub use serialisation::{Serialiser, SerialisationManager};
+use super::serialisation::SerialisationManager;
 
 // Love me some premature abstractions
 #[async_trait]
@@ -137,7 +134,7 @@ mod tests{
 
     use super::*;
     use super::super::types::*;
-    use sql_parse::ColumnType;
+    use sql_parse::parser::ColumnType;
 
     #[test]
     fn create_database_path_basic() {

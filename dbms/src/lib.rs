@@ -2,21 +2,19 @@
 #![allow(clippy::needless_return)]
 
 mod database;
-mod types;
-mod evaluate;
+pub mod types;
+pub mod evaluate;
 mod utils;
-mod persistence;
-mod server;
+pub mod persistence;
+pub mod serialisation;
+pub mod server;
 
 use types::{ColumnName, ColumnValue, TableName};
-use sql_parse::{ColumnType, Expression, InfixOperator};
+use sql_parse::parser::{ColumnType, Expression, InfixOperator};
 
 
 pub use database::Database;
-pub use types::DatabaseName;
-pub use evaluate::{Execute, ExecutionResult};
-pub use persistence::{PersistenceManager, FileSystem, SerialisationManager, Serialiser};
-pub use server::handle_connection;
+use types::DatabaseName;
 
 
 

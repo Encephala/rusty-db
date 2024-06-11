@@ -1,13 +1,10 @@
 #![allow(clippy::needless_return)]
 
-mod lexer;
+pub mod lexer;
 pub mod parser;
 
-use lexer::Token;
-use parser::{StatementParser, Create, Insert, Select, Update, Delete, Drop};
-
-pub use lexer::Lexer;
-pub use parser::{Statement, CreateType, Expression, ColumnType, InfixOperator};
+use lexer::{Lexer, Token};
+use parser::statements::{StatementParser, Statement, Create, Insert, Select, Update, Delete, Drop};
 
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);

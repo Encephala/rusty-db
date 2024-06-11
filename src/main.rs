@@ -16,7 +16,7 @@ use tokio::{
 };
 use futures::future::{select_all, join_all, OptionFuture};
 
-use dbms::handle_connection;
+use dbms::server::handle_connection;
 
 fn spawn_new_handler(
     listen_result: Result<(TcpStream, SocketAddr), std::io::Error>,

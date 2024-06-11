@@ -1,8 +1,18 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-use sql_parse::{Lexer, parse_statement, Statement, CreateType};
-use dbms::{Execute, Database, DatabaseName, ExecutionResult, PersistenceManager, FileSystem, SerialisationManager, Serialiser};
+use sql_parse::{
+    lexer::Lexer,
+    parse_statement,
+    parser::{Statement, CreateType}
+};
+use dbms::{
+    Database,
+    evaluate::{Execute, ExecutionResult},
+    types::DatabaseName,
+    persistence::{PersistenceManager, FileSystem},
+    serialisation::{SerialisationManager, Serialiser},
+};
 
 pub async fn _repl() {
     let stdin = std::io::stdin();

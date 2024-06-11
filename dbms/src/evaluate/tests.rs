@@ -1,7 +1,7 @@
 use super::*;
 use super::super::database::{Database, Row};
 use super::super::types::ColumnDefinition;
-use sql_parse::{InfixOperator, ColumnType};
+use sql_parse::parser::{InfixOperator, ColumnType};
 use crate::utils::tests::*;
 
 #[test]

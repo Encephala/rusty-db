@@ -3,7 +3,7 @@ mod tests;
 
 use async_trait::async_trait;
 
-use sql_parse::{Expression, Statement, CreateType};
+use sql_parse::parser::{Expression, Statement, CreateType};
 
 use crate::Result;
 use super::SqlError;

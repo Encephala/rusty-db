@@ -1,21 +1,19 @@
-//! Essentially the same as v1, except it uses u64 instead of usize for sizes
 #[cfg(test)]
 mod tests;
 
-use sql_parse::ColumnType;
+use sql_parse::parser::ColumnType;
 
-use crate::{
-    SqlError, Result,
-    database::{Table, Row, RowSet},
-    types::{TableName, ColumnName, ColumnValue},
-};
+use crate::{Result, SqlError};
+
+use crate::database::{Table, Row, RowSet};
+use crate::types::{TableName, ColumnName, ColumnValue};
 
 use super::Serialise;
 
 #[derive(Debug)]
-pub struct V2;
+pub struct V1;
 
-impl Serialise for V2 {
+impl Serialise for V1 {
     fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
         return value.serialise();
     }
@@ -62,17 +60,19 @@ impl From<Option<DO>> for DO {
 }
 
 
-trait V2Serialise {
+trait V1Serialise {
     fn serialise(&self) -> Result<Vec<u8>>;
 }
 
-trait V2Deserialise {
+trait V1Deserialise {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> where Self: Sized;
 }
 
-fn u64_to_bytes(input: usize) -> Vec<u8> {
+const SIZEOF_USIZE: usize = std::mem::size_of::<usize>();
+
+fn usize_to_bytes(input: usize) -> Vec<u8> {
     // https://stackoverflow.com/questions/72631065/how-to-convert-a-u32-array-to-a-u8-array-in-place
-    let mut result = Vec::with_capacity(8);
+    let mut result = Vec::with_capacity(SIZEOF_USIZE);
 
     for byte in input.to_le_bytes() {
         result.push(byte)
@@ -81,7 +81,7 @@ fn u64_to_bytes(input: usize) -> Vec<u8> {
     return result;
 }
 
-impl V2Serialise for Table {
+impl V1Serialise for Table {
     fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
@@ -108,9 +108,9 @@ impl V2Serialise for Table {
     }
 }
 
-impl V2Serialise for TableName {
+impl V1Serialise for TableName {
     fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = u64_to_bytes(self.0.len());
+        let mut result = usize_to_bytes(self.0.len());
 
         result.extend(self.0.bytes());
 
@@ -118,7 +118,7 @@ impl V2Serialise for TableName {
     }
 }
 
-impl V2Serialise for ColumnType {
+impl V1Serialise for ColumnType {
     fn serialise(&self) -> Result<Vec<u8>> {
         // Start counting at 1 to make sure uninitialised data isn't a valid type
         // (for what it's worth)
@@ -131,9 +131,9 @@ impl V2Serialise for ColumnType {
     }
 }
 
-impl V2Serialise for ColumnName {
+impl V1Serialise for ColumnName {
     fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = u64_to_bytes(self.0.len());
+        let mut result = usize_to_bytes(self.0.len());
 
         result.extend(self.0.bytes());
 
@@ -141,7 +141,7 @@ impl V2Serialise for ColumnName {
     }
 }
 
-impl V2Serialise for Row {
+impl V1Serialise for Row {
     fn serialise(&self) -> Result<Vec<u8>> {
         return self.0.serialise();
     }
@@ -159,19 +159,19 @@ impl V2Serialise for Row {
 // Ah well fixing that means writing a specialised Vec<ColumnValue> parser as well,
 // see above about negative impl. Doing it now would just be unnecessary complexity
 
-impl V2Serialise for ColumnValue {
+impl V1Serialise for ColumnValue {
     fn serialise(&self) -> Result<Vec<u8>> {
         return match self {
-            ColumnValue::Int(value) => Ok(u64_to_bytes(*value)),
+            ColumnValue::Int(value) => Ok(usize_to_bytes(*value)),
             ColumnValue::Decimal(whole, fractional) => {
-                let mut result = u64_to_bytes(*whole);
+                let mut result = usize_to_bytes(*whole);
 
-                result.extend(u64_to_bytes(*fractional));
+                result.extend(usize_to_bytes(*fractional));
 
                 Ok(result)
             },
             ColumnValue::Str(value) => {
-                let mut result = u64_to_bytes(value.len());
+                let mut result = usize_to_bytes(value.len());
 
                 result.extend(value.as_bytes());
 
@@ -182,12 +182,12 @@ impl V2Serialise for ColumnValue {
     }
 }
 
-impl<T: V2Serialise> V2Serialise for Vec<T> {
+impl<T: V1Serialise> V1Serialise for Vec<T> {
     fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = vec![];
 
         // First store total count
-        result.extend(u64_to_bytes(self.len()));
+        result.extend(usize_to_bytes(self.len()));
 
         for t in self {
             let bytes = t.serialise()?;
@@ -199,7 +199,7 @@ impl<T: V2Serialise> V2Serialise for Vec<T> {
     }
 }
 
-impl V2Serialise for RowSet {
+impl V1Serialise for RowSet {
     fn serialise(&self) -> Result<Vec<u8>> {
         let mut result = self.names.serialise()?;
 
@@ -209,7 +209,7 @@ impl V2Serialise for RowSet {
     }
 }
 
-impl V2Deserialise for Table {
+impl V1Deserialise for Table {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let name = TableName::deserialise(input, None.into())?;
 
@@ -228,25 +228,25 @@ impl V2Deserialise for Table {
     }
 }
 
-impl V2Deserialise for u64 {
+impl V1Deserialise for usize {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
-        if input.len() < 8 {
-            return Err(SqlError::InputTooShort(input.len(), 8))
+        if input.len() < SIZEOF_USIZE {
+            return Err(SqlError::InputTooShort(input.len(), SIZEOF_USIZE))
         }
 
         // try_into to convert length(?)
-        let bytes: [u8; 8] = input[..8].try_into()
+        let bytes: [u8; SIZEOF_USIZE] = input[..SIZEOF_USIZE].try_into()
             .map_err(SqlError::SliceConversionError)?;
 
-        let result = u64::from_le_bytes(bytes);
+        let result = usize::from_le_bytes(bytes);
 
-        *input = &input[8..];
+        *input = &input[SIZEOF_USIZE..];
 
         return Ok(result);
     }
 }
 
-impl V2Deserialise for TableName {
+impl V1Deserialise for TableName {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let result = String::deserialise(input, None.into())?;
 
@@ -254,7 +254,7 @@ impl V2Deserialise for TableName {
     }
 }
 
-impl V2Deserialise for ColumnType {
+impl V1Deserialise for ColumnType {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         // A ColumnType is serialised as one byte
         if input.is_empty() {
@@ -277,9 +277,9 @@ impl V2Deserialise for ColumnType {
 
 // Only reason we can't have a blanket implementation for Vec<T>
 // is that ColumnValues requires the types to be known
-impl V2Deserialise for Vec<ColumnType> {
+impl V1Deserialise for Vec<ColumnType> {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
-        let count = u64::deserialise(input, None.into())?;
+        let count = usize::deserialise(input, None.into())?;
 
         let mut result = vec![];
 
@@ -294,7 +294,7 @@ impl V2Deserialise for Vec<ColumnType> {
 }
 
 
-impl V2Deserialise for ColumnName {
+impl V1Deserialise for ColumnName {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         let result = String::deserialise(input, None.into())?;
 
@@ -302,9 +302,9 @@ impl V2Deserialise for ColumnName {
     }
 }
 
-impl V2Deserialise for Vec<ColumnName> {
+impl V1Deserialise for Vec<ColumnName> {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
-        let count = u64::deserialise(input, None.into())?;
+        let count = usize::deserialise(input, None.into())?;
 
         let mut result = vec![];
 
@@ -319,26 +319,26 @@ impl V2Deserialise for Vec<ColumnName> {
 }
 
 
-impl V2Deserialise for String {
+impl V1Deserialise for String {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
-        let length = u64::deserialise(input, None.into())?;
+        let length = usize::deserialise(input, None.into())?;
 
-        if input.len() < length as usize {
-            return Err(SqlError::InputTooShort(input.len(), length as usize));
+        if input.len() < length {
+            return Err(SqlError::InputTooShort(input.len(), length));
         }
 
         // https://doc.rust-lang.org/book/ch08-02-strings.html
         // strings are UTF8 in rust
-        let result = String::from_utf8(input[..length as usize].to_vec())
+        let result = String::from_utf8(input[..length].to_vec())
             .map_err(SqlError::InvalidStringEncoding)?;
 
-        *input = &input[length as usize..];
+        *input = &input[length..];
 
         return Ok(result);
     }
 }
 
-impl V2Deserialise for bool {
+impl V1Deserialise for bool {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
         if input.is_empty() {
             return Err(SqlError::InputTooShort(input.len(), 1));
@@ -360,7 +360,7 @@ impl V2Deserialise for bool {
     }
 }
 
-impl V2Deserialise for Row {
+impl V1Deserialise for Row {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let result = Vec::<ColumnValue>::deserialise(input, options)?;
 
@@ -368,9 +368,9 @@ impl V2Deserialise for Row {
     }
 }
 
-impl V2Deserialise for Vec<Row> {
+impl V1Deserialise for Vec<Row> {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
-        let count = u64::deserialise(input, None.into())?;
+        let count = usize::deserialise(input, None.into())?;
 
         let mut result = vec![];
 
@@ -384,7 +384,7 @@ impl V2Deserialise for Vec<Row> {
     }
 }
 
-impl V2Deserialise for ColumnValue {
+impl V1Deserialise for ColumnValue {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let column_type = match options {
             DO::ColumnType(column_type) => Ok(column_type),
@@ -392,12 +392,12 @@ impl V2Deserialise for ColumnValue {
         }?;
 
         let result = match column_type {
-            ColumnType::Int => ColumnValue::Int(u64::deserialise(input, None.into())? as usize),
+            ColumnType::Int => ColumnValue::Int(usize::deserialise(input, None.into())?),
             ColumnType::Decimal => {
-                let whole = u64::deserialise(input, None.into())?;
-                let fractional = u64::deserialise(input, None.into())?;
+                let whole = usize::deserialise(input, None.into())?;
+                let fractional = usize::deserialise(input, None.into())?;
 
-                ColumnValue::Decimal(whole as usize, fractional as usize)
+                ColumnValue::Decimal(whole, fractional)
             },
             ColumnType::Text => ColumnValue::Str(String::deserialise(input, None.into())?),
             ColumnType::Bool => ColumnValue::Bool(bool::deserialise(input, None.into())?),
@@ -407,17 +407,17 @@ impl V2Deserialise for ColumnValue {
     }
 }
 
-impl V2Deserialise for Vec<ColumnValue> {
+impl V1Deserialise for Vec<ColumnValue> {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
         let types = match options {
             DO::ColumnTypes(types) => Ok(types),
             _ => Err(SqlError::InvalidParameter),
         }?;
 
-        let count = u64::deserialise(input, None.into())?;
+        let count = usize::deserialise(input, None.into())?;
 
-        if count != types.len() as u64 {
-            return Err(SqlError::UnequalLengths(count as usize, types.len()));
+        if count != types.len() {
+            return Err(SqlError::UnequalLengths(count, types.len()));
         }
 
         let mut result = vec![];
@@ -432,7 +432,7 @@ impl V2Deserialise for Vec<ColumnValue> {
     }
 }
 
-impl V2Deserialise for RowSet {
+impl V1Deserialise for RowSet {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> where Self: Sized {
         let names = Vec::<ColumnName>::deserialise(input, None.into())?;
 
