@@ -25,6 +25,15 @@ impl From<Serialiser> for &[u8] {
     }
 }
 
+impl From<&Serialiser> for Box<dyn Serialise> {
+    fn from(value: &Serialiser) -> Self {
+        return match value {
+            Serialiser::V1 => Box::new(V1),
+            Serialiser::V2 => Box::new(V2),
+        };
+    }
+}
+
 impl TryFrom<u8> for Serialiser {
     type Error = SqlError;
 
@@ -49,31 +58,27 @@ trait Serialise {
 
 impl Serialise for Serialiser {
     fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
-        return match self {
-            Serialiser::V1 => V1.serialise_table(value),
-            Serialiser::V2 => V2.serialise_table(value),
-        };
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.serialise_table(value);
     }
 
     fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
-        return match self {
-            Serialiser::V1 => V1.serialise_rowset(value),
-            Serialiser::V2 => V2.serialise_rowset(value),
-        };
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.serialise_rowset(value);
     }
 
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
-        return match self {
-            Serialiser::V1 => V1.deserialise_table(input),
-            Serialiser::V2 => V2.deserialise_table(input),
-        };
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.deserialise_table(input);
     }
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
-        return match self {
-            Serialiser::V1 => V1.deserialise_rowset(input),
-            Serialiser::V2 => V2.deserialise_rowset(input),
-        };
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.deserialise_rowset(input);
     }
 }
 
