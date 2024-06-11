@@ -4,12 +4,10 @@ mod tests;
 use std::path::PathBuf;
 
 use tokio::{
-    sync::broadcast::Receiver,
     io::{
-        AsyncReadExt,
-        AsyncWriteExt,
-    },
-    net::TcpStream
+        AsyncBufReadExt, AsyncRead, BufReader,
+        AsyncWrite, AsyncWriteExt,
+    }, net::TcpStream, sync::broadcast::Receiver
 };
 
 use crate::{
@@ -40,52 +38,42 @@ const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Se
 #[derive(Debug, PartialEq)]
 pub struct Message(pub Vec<u8>);
 
-impl From<&[u8]> for Message {
-    fn from(value: &[u8]) -> Self {
-        let mut result = u64_to_bytes(value.len() as u64);
-
-        result.extend(value);
-
-        return Self(result);
-    }
-}
-
 impl Message {
     pub fn empty() -> Self {
         return Self(vec![]);
     }
 
-    pub async fn read(stream: &mut TcpStream) -> Result<Message> {
-        println!("Reading at {:?}", std::time::Instant::now());
-        let length = &mut [0u8; 8];
+    pub fn from(message: impl Into<Vec<u8>>) -> Self {
+        return Self(message.into());
+    }
 
-        println!("Waiting to read length");
-        stream.read_exact(length).await
-            .map_err(SqlError::CouldNotReadFromConnection)?;
-        println!("Got length {length:?}");
+    pub async fn read(stream: &mut BufReader<impl AsyncRead + std::marker::Unpin>) -> Result<Message> {
+        let mut result = vec![];
 
-        let length = u64::from_le_bytes(*length);
-
-        let mut result = vec![0u8; length as usize];
-
-        stream.read_exact(&mut result).await
+        stream.read_until(b'\0', &mut result).await
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
-        println!("Succeed at reading message {result:?}");
+        // Remove null character
+        result.pop();
+
         return Ok(Message(result));
     }
 
-    pub async fn write(&self, stream: &mut TcpStream) -> Result<()> {
-        println!("Writing {:?} at {:?}", self.0, std::time::Instant::now());
+    pub async fn write(&self, stream: &mut (impl AsyncWrite + std::marker::Unpin)) -> Result<()> {
         stream.write_all(self.0.as_slice()).await
             .map_err(SqlError::CouldNotWriteToConnection)?;
 
-        stream.flush().await
+        stream.write_all(&[b'\0']).await
             .map_err(SqlError::CouldNotWriteToConnection)?;
 
-        println!("Writing succeeded at {:?}", std::time::Instant::now());
+        // stream.flush().await
+        //     .map_err(SqlError::CouldNotWriteToConnection)?;
 
         return Ok(());
+    }
+
+    pub fn value(&self) -> &Vec<u8> {
+        return &self.0;
     }
 }
 
@@ -104,8 +92,11 @@ impl From<ExecutionResult> for Message {
 }
 
 pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Receiver<()>) -> Result<()> {
-    welcome_message().write(&mut stream).await?;
-    println!("Wrote welcome message");
+    let (reader, mut writer) = stream.split();
+
+    let mut reader = BufReader::new(reader);
+
+    welcome_message().write(&mut writer).await?;
 
     let mut runtime = Runtime {
         persistence_manager: Box::new(FileSystem::new(
@@ -117,7 +108,7 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
 
     loop {
         tokio::select! {
-            message = Message::read(&mut stream) => {
+            message = Message::read(&mut reader) => {
                 let message = message?;
 
                 // Stream closed
@@ -126,8 +117,6 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
                 }
 
                 // Handle message
-                println!("Got message {:?}", message);
-
                 process_statement(message.0, &mut runtime).await?;
             },
             _ = shutdown_signal.recv() => {
@@ -140,19 +129,17 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
 }
 
 fn welcome_message() -> Message {
-    return b"deez nuts".as_slice().into();
-}
-
-fn u64_to_bytes(value: u64) -> Vec<u8> {
-    return value.to_le_bytes().to_vec();
+    return Message::from(b"deez nuts".as_slice());
 }
 
 async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<ExecutionResult> {
     let input = &String::from_utf8(buffer)
         .map_err(SqlError::NotAValidString)?;
 
+    println!("Executing: {input}");
+
     if input.starts_with("\\c ") {
-        let database_name = input.strip_prefix("\\c ").unwrap().strip_suffix('\n').unwrap();
+        let database_name = input.strip_prefix("\\c ").unwrap();
 
         runtime.database = match runtime.persistence_manager.load_database(DatabaseName(database_name.into())).await {
             Ok(db) => {
@@ -173,7 +160,8 @@ async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<Exe
     let statement = parse_statement(input);
 
     if statement.is_none() {
-        println!("Failed to parse: {input}")
+        println!("Failed to parse: {input}");
+        return Ok(None.into());
     }
 
     let statement = statement.unwrap();

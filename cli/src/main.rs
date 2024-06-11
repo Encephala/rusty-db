@@ -1,10 +1,10 @@
 #![allow(clippy::needless_return)]
 mod serverless;
 
-use tokio::net::{
+use tokio::{io::BufReader, net::{
     TcpStream,
     ToSocketAddrs,
-};
+}};
 
 use dbms::{
     SqlError,
@@ -17,19 +17,22 @@ const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Se
 async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
     let mut stream = TcpStream::connect(address).await.unwrap();
 
-    println!("connected");
+    let (reader, mut writer) = stream.split();
 
-    let welcome_message = Message::read(&mut stream).await?;
+    let mut reader = BufReader::new(reader);
+
+    let welcome_message = Message::read(&mut reader).await?;
 
     println!(
         "Got welcome message: {}",
         String::from_utf8(welcome_message.0).unwrap()
     );
 
-    let response = "ya mum\n".bytes().collect();
+    let select_db = "\\c sweden";
+    Message::from(select_db).write(&mut writer).await?;
 
-    Message(response).write(&mut stream).await.unwrap();
-    println!("Wrote response");
+    let select_query = "SELECT * FROM mcdonalds;";
+    Message::from(select_query).write(&mut writer).await?;
 
     return Ok(());
 }
