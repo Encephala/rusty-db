@@ -44,7 +44,7 @@ impl Serialise for V2 {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum DeserialisationOptions {
     None,
     ColumnType(ColumnType),
@@ -213,6 +213,8 @@ impl<T: V2Serialise> V2Serialise for Vec<T> {
 
 impl V2Serialise for RowSet {
     fn serialise(&self) -> Vec<u8> {
+        // TODO: This needs to contain value on types of self,
+        // otherwise it can't be deserialised
         let mut result = self.names.serialise();
 
         result.extend(self.values.serialise());
@@ -421,6 +423,7 @@ impl V2Deserialise for ColumnValue {
 
 impl V2Deserialise for Vec<ColumnValue> {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
+        println!("Options: {options:?}");
         let types = match options {
             DO::ColumnTypes(types) => Ok(types),
             _ => Err(SqlError::InvalidParameter),

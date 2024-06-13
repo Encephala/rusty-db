@@ -59,13 +59,24 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
 
                 // Stream closed
                 if Message::empty() == message {
+                    println!("Client {:?} disconnected", stream.peer_addr().unwrap());
+
                     break;
                 }
 
                 // Handle message
-                process_statement(message.0, &mut runtime).await?;
+                let execution_result = process_statement(message.0, &mut runtime).await?;
+
+                dbg!(&execution_result);
+
+                let message: Message = execution_result.into();
+
+                println!("Writing message {:?}", message.0);
+
+                message.write(&mut writer).await?;
             },
             _ = shutdown_signal.recv() => {
+                // TODO: Inform client of shutdown
                 break;
             }
         }
@@ -124,11 +135,13 @@ async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<Exe
         Err(error) => {
             println!("Got execution error: {error:?}");
 
-            // Don't persist storage if statement failed
-            None.into()
+            // Don't persist storage if statement failed, so early return
+            return Ok(None.into());
         }
     };
 
+    // If it was one of these two statements, we currently don't have a valid DB selected,
+    // so skip persistence
     if is_create_database || is_drop_database {
         return Ok(None.into());
     }
