@@ -56,9 +56,9 @@ impl TryFrom<u8> for Serialiser {
 }
 
 trait Serialise {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>>;
+    fn serialise_table(&self, value: &Table) -> Vec<u8>;
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>>;
+    fn serialise_rowset(&self, value: &RowSet) -> Vec<u8>;
 
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table>;
 
@@ -66,13 +66,13 @@ trait Serialise {
 }
 
 impl Serialise for Serialiser {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
+    fn serialise_table(&self, value: &Table) -> Vec<u8> {
         let implementation: Box<dyn Serialise> = self.into();
 
         return implementation.serialise_table(value);
     }
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
+    fn serialise_rowset(&self, value: &RowSet) -> Vec<u8> {
         let implementation: Box<dyn Serialise> = self.into();
 
         return implementation.serialise_rowset(value);
@@ -111,20 +111,20 @@ impl SerialisationManager {
         return result;
     }
 
-    pub fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
+    pub fn serialise_table(&self, value: &Table) -> Vec<u8> {
         let mut result = self.write_version();
 
-        result.extend(self.0.serialise_table(value)?);
+        result.extend(self.0.serialise_table(value));
 
-        return Ok(result);
+        return result;
     }
 
-    pub fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
+    pub fn serialise_rowset(&self, value: &RowSet) -> Vec<u8> {
         let mut result = self.write_version();
 
-        result.extend(self.0.serialise_rowset(value)?);
+        result.extend(self.0.serialise_rowset(value));
 
-        return Ok(result);
+        return result;
     }
 
     fn read_version(&self, input: &mut &[u8]) -> Result<Serialiser> {
@@ -169,7 +169,7 @@ mod tests {
 
         let manager = SerialisationManager::new(Serialiser::V1);
 
-        let serialised = manager.serialise_table(&table).unwrap();
+        let serialised = manager.serialise_table(&table);
 
         assert_eq!(
             serialised.first().unwrap(),
@@ -181,7 +181,7 @@ mod tests {
             None
         ).unwrap();
 
-        let serialised = manager.serialise_rowset(&rowset).unwrap();
+        let serialised = manager.serialise_rowset(&rowset);
 
         assert_eq!(
             serialised.first().unwrap(),
@@ -195,7 +195,7 @@ mod tests {
 
         let manager = SerialisationManager::new(Serialiser::V1);
 
-        let mut serialised = manager.serialise_table(&table).unwrap();
+        let mut serialised = manager.serialise_table(&table);
 
         let first = serialised.first_mut().unwrap();
 
@@ -211,7 +211,7 @@ mod tests {
             None
         ).unwrap();
 
-        let mut serialised = manager.serialise_rowset(&rowset).unwrap();
+        let mut serialised = manager.serialise_rowset(&rowset);
 
         let first = serialised.first_mut().unwrap();
 

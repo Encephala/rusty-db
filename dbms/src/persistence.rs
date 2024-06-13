@@ -68,7 +68,7 @@ impl PersistenceManager for FileSystem {
     async fn save_table(&self, database: &Database, table: &Table) -> Result<()> {
         let path = table_path(&self.1, database, table);
 
-        let data = self.0.serialise_table(table)?;
+        let data = self.0.serialise_table(table);
 
         write(path, data)
             .map_err(|error| SqlError::CouldNotStoreTable(table.name.clone(), error))?;

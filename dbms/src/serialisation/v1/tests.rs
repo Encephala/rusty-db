@@ -25,7 +25,7 @@ fn serialise_column_types() {
         ColumnType::Text,
     ];
 
-    let serialised = types.serialise().unwrap();
+    let serialised = types.serialise();
 
     let mut expected = serialised_usize(4);
     expected.extend([2, 1, 4, 3]);
@@ -43,7 +43,7 @@ fn serialise_column_names() {
         "hello".into(),
     ];
 
-    let serialised = names.serialise().unwrap();
+    let serialised = names.serialise();
 
     let mut expected = serialised_usize(2);
     expected.extend(serialised_usize(4));
@@ -67,7 +67,7 @@ fn serialise_column_values() {
         false.into(),
     ];
 
-    let serialised = values.serialise().unwrap();
+    let serialised = values.serialise();
 
     let buffer = [0_u8; SIZEOF_USIZE];
 
@@ -119,11 +119,11 @@ fn serialise_row() {
 
     let mut expected = serialised_usize(2);
 
-    expected.extend(row1.serialise().unwrap());
-    expected.extend(row2.serialise().unwrap());
+    expected.extend(row1.serialise());
+    expected.extend(row2.serialise());
 
     assert_eq!(
-        input.serialise().unwrap(),
+        input.serialise(),
         expected
     );
 
@@ -133,7 +133,7 @@ fn serialise_row() {
     let expected = serialised_usize(0);
 
     assert_eq!(
-        input.serialise().unwrap(),
+        input.serialise(),
         expected
     );
 }
@@ -142,7 +142,7 @@ fn serialise_row() {
 fn serialise_table() {
     let table = test_table();
 
-    let serialised = table.serialise().unwrap();
+    let serialised = table.serialise();
 
     // Names
     let mut expected = serialised_usize(10);
@@ -169,7 +169,7 @@ fn serialise_table() {
 
     let (table, _) = test_table_with_values();
 
-    let serialised = table.serialise().unwrap();
+    let serialised = table.serialise();
 
     let mut expected = expected.get(0..expected.len() - 8).unwrap().to_vec();
 
@@ -223,7 +223,7 @@ fn deserialise_column_type() {
         ColumnType::Int,
         ColumnType::Bool,
         ColumnType::Text
-    ].serialise().unwrap();
+    ].serialise();
 
     let input = &mut input.as_slice();
 
@@ -255,7 +255,7 @@ fn deserialise_table_name() {
         TableName("a".into()),
         "abcd".into(),
         "meme".into(),
-    ].serialise().unwrap();
+    ].serialise();
 
     let input = &mut input.as_slice();
 
@@ -283,7 +283,7 @@ fn deserialise_table_name() {
 
 #[test]
 fn deserialise_column_name() {
-    let input = ColumnName("hey".into()).serialise().unwrap();
+    let input = ColumnName("hey".into()).serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -291,7 +291,7 @@ fn deserialise_column_name() {
         "hey".into()
     );
 
-    let input = ColumnName("".into()).serialise().unwrap();
+    let input = ColumnName("".into()).serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -306,7 +306,7 @@ fn deserialise_vector_fixed_length_item() {
         ColumnType::Bool,
         ColumnType::Text,
         ColumnType::Decimal,
-    ].serialise().unwrap();
+    ].serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -334,7 +334,7 @@ fn deserialise_vector_fixed_length_item() {
     let input = vec![
         ColumnType::Int,
         ColumnType::Bool,
-    ].serialise().unwrap();
+    ].serialise();
     let input = &mut input.as_slice();
 
     // Length
@@ -351,7 +351,7 @@ fn deserialise_vector_variable_length_item() {
     let input = vec![
         ColumnName("a".into()),
         ColumnName("abc".into()),
-    ].serialise().unwrap();
+    ].serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -371,7 +371,7 @@ fn deserialise_column_values() {
         "hey".into(),
         true.into()
     ];
-    let input = values.serialise().unwrap();
+    let input = values.serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -391,7 +391,7 @@ fn deserialise_row_vector() {
 
     let input = vec![
         Row(row1.clone()), Row(row2.clone())
-    ].serialise().unwrap();
+    ].serialise();
     let input = &mut input.as_slice();
 
     assert_eq!(
@@ -406,7 +406,7 @@ fn deserialise_row_vector() {
 #[test]
 fn deserialise_table() {
     // We test serialise_table separately, so this is fine I guess
-    let table = test_table().serialise().unwrap();
+    let table = test_table().serialise();
     let input = &mut table.as_slice();
 
     let result = Table::deserialise(input, None.into()).unwrap();
@@ -416,7 +416,7 @@ fn deserialise_table() {
         test_table()
     );
 
-    let table = test_table_with_values().0.serialise().unwrap();
+    let table = test_table_with_values().0.serialise();
     let input = &mut table.as_slice();
 
     let result = Table::deserialise(input, None.into()).unwrap();
@@ -436,7 +436,7 @@ fn serialise_rowset() {
         None,
     ).unwrap();
 
-    let serialised = result.serialise().unwrap();
+    let serialised = result.serialise();
 
     // Names
     let mut expected = serialised_usize(2);

@@ -16,16 +16,16 @@ use super::Serialise;
 pub struct V2;
 
 impl Serialise for V2 {
-    fn serialise_table(&self, value: &Table) -> Result<Vec<u8>> {
+    fn serialise_table(&self, value: &Table) -> Vec<u8> {
         return value.serialise();
     }
 
-    fn serialise_rowset(&self, value: &RowSet) -> Result<Vec<u8>> {
-        let mut result = value.names.serialise()?;
+    fn serialise_rowset(&self, value: &RowSet) -> Vec<u8> {
+        let mut result = value.names.serialise();
 
-        result.extend(value.values.serialise()?);
+        result.extend(value.values.serialise());
 
-        return Ok(result);
+        return result;
     }
 
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
@@ -63,7 +63,7 @@ impl From<Option<DO>> for DO {
 
 
 trait V2Serialise {
-    fn serialise(&self) -> Result<Vec<u8>>;
+    fn serialise(&self) -> Vec<u8>;
 }
 
 trait V2Deserialise {
@@ -71,67 +71,67 @@ trait V2Deserialise {
 }
 
 impl V2Serialise for Table {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         let mut result = vec![];
 
-        let name = self.name.serialise()?;
+        let name = self.name.serialise();
 
         result.extend(name);
 
 
-        let types = self.types.serialise()?;
+        let types = self.types.serialise();
 
         result.extend(types);
 
 
-        let names = self.column_names.serialise()?;
+        let names = self.column_names.serialise();
 
         result.extend(names);
 
 
-        let values = self.values.serialise()?;
+        let values = self.values.serialise();
 
         result.extend(values);
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl V2Serialise for TableName {
-    fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = (self.0.len() as u64).serialise()?;
+    fn serialise(&self) -> Vec<u8> {
+        let mut result = (self.0.len() as u64).serialise();
 
         result.extend(self.0.bytes());
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl V2Serialise for ColumnType {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         // Start counting at 1 to make sure uninitialised data isn't a valid type
         // (for what it's worth)
         return match self {
-            ColumnType::Int => Ok(vec![1]),
-            ColumnType::Decimal => Ok(vec![2]),
-            ColumnType::Text => Ok(vec![3]),
-            ColumnType::Bool => Ok(vec![4]),
+            ColumnType::Int => vec![1],
+            ColumnType::Decimal => vec![2],
+            ColumnType::Text => vec![3],
+            ColumnType::Bool => vec![4],
         };
     }
 }
 
 impl V2Serialise for ColumnName {
-    fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = (self.0.len() as u64).serialise()?;
+    fn serialise(&self) -> Vec<u8> {
+        let mut result = (self.0.len() as u64).serialise();
 
         result.extend(self.0.bytes());
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl V2Serialise for Row {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         return self.0.serialise();
     }
 }
@@ -149,30 +149,30 @@ impl V2Serialise for Row {
 // see above about negative impl. Doing it now would just be unnecessary complexity
 
 impl V2Serialise for ColumnValue {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         return match self {
-            ColumnValue::Int(value) => Ok((*value as u64).serialise()?),
+            ColumnValue::Int(value) => (*value as u64).serialise(),
             ColumnValue::Decimal(whole, fractional) => {
-                let mut result = (*whole as u64).serialise()?;
+                let mut result = (*whole as u64).serialise();
 
-                result.extend((*fractional as u64).serialise()?);
+                result.extend((*fractional as u64).serialise());
 
-                Ok(result)
+                result
             },
             ColumnValue::Str(value) => {
-                let mut result = (value.len() as u64).serialise()?;
+                let mut result = (value.len() as u64).serialise();
 
                 result.extend(value.as_bytes());
 
-                Ok(result)
+                result
             },
-            ColumnValue::Bool(value) => Ok(vec![*value as u8]),
+            ColumnValue::Bool(value) => vec![*value as u8],
         }
     }
 }
 
 impl V2Serialise for u64 {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         // https://stackoverflow.com/questions/72631065/how-to-convert-a-u32-array-to-a-u8-array-in-place
         let mut result = Vec::with_capacity(8);
 
@@ -180,44 +180,44 @@ impl V2Serialise for u64 {
             result.push(byte)
         }
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl V2Serialise for String {
-    fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = (self.len() as u64).serialise()?;
+    fn serialise(&self) -> Vec<u8> {
+        let mut result = (self.len() as u64).serialise();
 
         result.extend(self.bytes());
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl<T: V2Serialise> V2Serialise for Vec<T> {
-    fn serialise(&self) -> Result<Vec<u8>> {
+    fn serialise(&self) -> Vec<u8> {
         let mut result = vec![];
 
         // First store total count
-        result.extend((self.len() as u64).serialise()?);
+        result.extend((self.len() as u64).serialise());
 
         for t in self {
-            let bytes = t.serialise()?;
+            let bytes = t.serialise();
 
             result.extend(bytes);
         }
 
-        return Ok(result);
+        return result;
     }
 }
 
 impl V2Serialise for RowSet {
-    fn serialise(&self) -> Result<Vec<u8>> {
-        let mut result = self.names.serialise()?;
+    fn serialise(&self) -> Vec<u8> {
+        let mut result = self.names.serialise();
 
-        result.extend(self.values.serialise()?);
+        result.extend(self.values.serialise());
 
-        return Ok(result);
+        return result;
     }
 }
 
