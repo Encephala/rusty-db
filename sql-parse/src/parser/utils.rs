@@ -6,11 +6,11 @@ use crate::lexer::Token;
 /// If not, returns [`None`].
 /// If so, advances input by one token and returns [`Some`].
 pub fn check_and_skip(input: &mut &[Token], equals: Token) -> Option<()> {
-    if input.get(0) != Some(&equals) {
+    if input.first() != Some(&equals) {
         return None;
     }
 
-    *input = &mut &input[1..];
+    *input = &input[1..];
 
     return Some(());
 }

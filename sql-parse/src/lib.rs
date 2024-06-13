@@ -9,7 +9,7 @@ use parser::statements::{StatementParser, Statement, Create, Insert, Select, Upd
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);
 
-    return match tokens.get(0)? {
+    return match tokens.first()? {
         Token::Create => Create.parse(tokens),
         Token::Insert => Insert.parse(tokens),
         Token::Select => Select.parse(tokens),

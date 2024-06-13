@@ -78,7 +78,7 @@ impl StatementParser for Select {
 
 
 fn parse_table_or_database(input: &mut &[Token]) -> Option<CreateType> {
-        let which = match input.get(0)? {
+        let which = match input.first()? {
             Token::Table => Some(CreateType::Table),
             Token::Database => Some(CreateType::Database),
             _ => None,
@@ -132,7 +132,7 @@ impl StatementParser for Insert {
 
         let mut columns = None;
 
-        if input.get(0)? != &Token::Values {
+        if input.first()? != &Token::Values {
             check_and_skip(input, Token::LParenthesis)?;
 
             columns = Some(Identifier.multiple().parse(input)?);

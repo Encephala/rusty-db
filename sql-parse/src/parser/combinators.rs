@@ -53,13 +53,13 @@ impl ExpressionParser for Multiple {
 
         expressions.push(self.parser.parse(input)?);
 
-        while Some(&Token::Comma) == input.get(0) {
+        while Some(&Token::Comma) == input.first() {
             *input = &input[1..];
 
             // Allow trailing comma at end of array
             // Idk if this is a good idea to have, probably hard to get proper
             // error messages if parsing somewhere else fails
-            if let Some(Token::RParenthesis) = input.get(0) {
+            if let Some(Token::RParenthesis) = input.first() {
                 break;
             }
 

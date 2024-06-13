@@ -46,7 +46,7 @@ impl InfixOperator {
     fn parse(input: &mut &[Token]) -> Option<Self> {
         use InfixOperator as I;
 
-        let operator = match input.get(0)? {
+        let operator = match input.first()? {
             Token::Equals => Some(I::Equals),
             Token::NotEquals => Some(I::NotEqual),
             Token::LessThan => Some(I::LessThan),
@@ -76,7 +76,7 @@ pub trait ExpressionParser: std::fmt::Debug {
 pub struct Int;
 impl ExpressionParser for Int {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::Int(value) = input.get(0)? {
+        if let Token::Int(value) = input.first()? {
             *input = &input[1..];
 
             return Some(E::Int(*value));
@@ -90,7 +90,7 @@ impl ExpressionParser for Int {
 pub struct Decimal;
 impl ExpressionParser for Decimal {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::Decimal(whole, fractional) = input.get(0)? {
+        if let Token::Decimal(whole, fractional) = input.first()? {
             *input = &input[1..];
 
             return Some(E::Decimal(*whole, *fractional));
@@ -112,7 +112,7 @@ impl ExpressionParser for Number {
 pub struct Str;
 impl ExpressionParser for Str {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Token::Str(value) = input.get(0)? {
+        if let Token::Str(value) = input.first()? {
             *input = &input[1..];
 
             return Some(E::Str(value.clone()));
@@ -127,7 +127,7 @@ impl ExpressionParser for Str {
 pub struct Bool;
 impl ExpressionParser for Bool {
     fn parse(&self, input: &mut &[Token]) -> Option<E> {
-        if let Token::Bool(value) = input.get(0)? {
+        if let Token::Bool(value) = input.first()? {
             *input = &input[1..];
 
             return Some(E::Bool(*value));
@@ -142,7 +142,7 @@ impl ExpressionParser for Bool {
 pub struct Type;
 impl ExpressionParser for Type {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        let result = match input.get(0)? {
+        let result = match input.first()? {
             Token::TypeInt => Some(E::Type(ColumnType::Int)),
             Token::TypeDecimal => Some(E::Type(ColumnType::Decimal)),
             Token::TypeBool => Some(E::Type(ColumnType::Bool)),
@@ -163,7 +163,7 @@ impl ExpressionParser for Type {
 pub struct Identifier;
 impl ExpressionParser for Identifier {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        if let Token::Ident(name) = input.get(0)? {
+        if let Token::Ident(name) = input.first()? {
             *input = &input[1..];
 
             return Some(E::Ident(name.clone()));
