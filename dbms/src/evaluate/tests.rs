@@ -75,7 +75,7 @@ fn select_from_table_basic() {
 
     assert_eq!(
         db.select("test_table".into(), ColumnSelector::AllColumns, None).unwrap(),
-        test_row_set(vec![Row(row1.clone()), Row(row2.clone())])
+        test_row_set(vec![Row(row1.clone()), Row(row2.clone())]).unwrap()
     );
 
     assert_eq!(
@@ -87,7 +87,7 @@ fn select_from_table_basic() {
         test_row_set(vec![
             Row(vec![ColumnValue::Int(5)]),
             Row(vec![ColumnValue::Int(6)])
-        ])
+        ]).unwrap()
     );
 
     assert_eq!(
@@ -102,7 +102,7 @@ fn select_from_table_basic() {
         ).unwrap(),
         test_row_set(vec![
             Row(vec![ColumnValue::Int(5), ColumnValue::Bool(true)]),
-        ])
+        ]).unwrap()
     );
 
     assert_eq!(
@@ -117,7 +117,7 @@ fn select_from_table_basic() {
         ).unwrap(),
         test_row_set(vec![
             Row(vec![ColumnValue::Int(5)]),
-        ])
+        ]).unwrap()
     );
 }
 

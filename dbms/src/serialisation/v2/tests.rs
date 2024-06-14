@@ -458,6 +458,10 @@ fn serialise_rowset() {
     let serialised = result.serialise();
 
     let expected = vec![
+        // Types
+        2, 0, 0, 0, 0, 0, 0, 0,
+        1, 4,
+
         // Names
         2, 0, 0, 0, 0, 0, 0, 0,
         5, 0, 0, 0, 0, 0, 0, 0,
@@ -481,4 +485,23 @@ fn serialise_rowset() {
         serialised,
         expected
     )
+}
+
+#[test]
+fn deserialise_rowset() {
+    let (table, _) = test_table_with_values();
+
+    let result = table.select(
+        crate::types::ColumnSelector::AllColumns,
+        None,
+    ).unwrap();
+
+    let serialised = result.serialise();
+
+    let deserialised = RowSet::deserialise(&mut serialised.as_slice(), DO::None).unwrap();
+
+    assert_eq!(
+        result,
+        deserialised,
+    );
 }

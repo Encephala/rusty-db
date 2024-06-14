@@ -4,6 +4,8 @@ pub mod tests {
     use super::super::database::{Table, Row, RowSet};
     use super::super::types::{TableName, ColumnName, DatabaseName, ColumnValue, ColumnDefinition};
 
+    use crate::{SqlError, Result};
+
     impl From<&str> for TableName {
         fn from(value: &str) -> Self {
             return Self(value.into());
@@ -83,15 +85,26 @@ pub mod tests {
         return (result, (row1, row2));
     }
 
-    pub fn test_row_set(values: Vec<Row>) -> RowSet {
+    pub fn test_row_set(values: Vec<Row>) -> Result<RowSet> {
+        let types = values.first()
+            .map(|row|
+                row.0.iter()
+                .map(|value| {
+                    ColumnType::from(value)
+                })
+                .collect()
+            )
+            .ok_or(SqlError::InvalidParameter)?;
+
         let names = std::iter::repeat("test_column_name".to_owned())
             .map(ColumnName)
             .take(values.len())
             .collect();
 
-        return RowSet {
+        return Ok(RowSet {
+            types,
             names,
             values,
-        };
+        });
     }
 }

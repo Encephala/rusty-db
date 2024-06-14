@@ -438,8 +438,12 @@ fn serialise_rowset() {
 
     let serialised = result.serialise();
 
-    // Names
+    // Types
     let mut expected = serialised_usize(2);
+    expected.extend([1, 4]);
+
+    // Names
+    expected.extend(serialised_usize(2));
     expected.extend(serialised_usize(5));
     expected.extend([102, 105, 114, 115, 116]);
     expected.extend(serialised_usize(6));
@@ -458,4 +462,23 @@ fn serialise_rowset() {
         serialised,
         expected
     )
+}
+
+#[test]
+fn deserialise_rowset() {
+    let (table, _) = test_table_with_values();
+
+    let result = table.select(
+        crate::types::ColumnSelector::AllColumns,
+        None,
+    ).unwrap();
+
+    let serialised = result.serialise();
+
+    let deserialised = RowSet::deserialise(&mut serialised.as_slice(), DO::None).unwrap();
+
+    assert_eq!(
+        result,
+        deserialised,
+    );
 }

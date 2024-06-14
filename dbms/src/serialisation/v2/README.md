@@ -41,5 +41,6 @@ Length is each value is not explicitly stored (except for `Str`), but is deduced
 - Value as little-endian bytes, fixed length of 8
 
 ## Rowset
+- [types](#type) as [vector](#vector)
 - [names](#column-name) as [vector](#vector)
 - [rows](#row) as [vector](#vector)

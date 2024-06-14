@@ -65,7 +65,7 @@ fn select_basic() {
 
     assert_eq!(
         all,
-        test_row_set(vec![Row(row1.clone()), Row(row2)])
+        test_row_set(vec![Row(row1.clone()), Row(row2)]).unwrap()
     );
 
     let where_bool_true = table.select(
@@ -79,7 +79,7 @@ fn select_basic() {
 
     assert_eq!(
         where_bool_true,
-        test_row_set(vec![Row(row1)])
+        test_row_set(vec![Row(row1)]).unwrap()
     );
 }
 
@@ -272,7 +272,7 @@ fn select_with_where() {
 
     assert_eq!(
         only_int_five,
-        test_row_set(vec![Row(vec![5.into()])])
+        test_row_set(vec![Row(vec![5.into()])]).unwrap()
     );
 
     let none = table.select(
@@ -285,7 +285,7 @@ fn select_with_where() {
         test_row_set(vec![
             Row(vec![]),
             Row(vec![]),
-        ])
+        ]).unwrap()
     )
 }
 

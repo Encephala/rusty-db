@@ -67,11 +67,7 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
                 // Handle message
                 let execution_result = process_statement(message.0, &mut runtime).await?;
 
-                dbg!(&execution_result);
-
                 let message: Message = execution_result.into();
-
-                println!("Writing message {:?}", message.0);
 
                 message.write(&mut writer).await?;
             },

@@ -41,5 +41,6 @@ Length is each value is not explicitly stored (except for `Str`), but is deduced
 - Value as little-endian bytes, length depending on `std::mem::size_of<usize>()`
 
 ## Rowset
+- [types](#type) as [vector](#vector)
 - [names](#column-name) as [vector](#vector)
 - [rows](#row) as [vector](#vector)

@@ -1,4 +1,4 @@
-use tokio::io::{AsyncWrite, AsyncWriteExt, AsyncBufReadExt};
+use tokio::io::{AsyncBufReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{
     evaluate::ExecutionResult, Result, SqlError

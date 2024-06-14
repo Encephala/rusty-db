@@ -160,6 +160,7 @@ impl Row {
 
 #[derive(Debug)]
 pub struct RowSet {
+    pub types: Vec<ColumnType>,
     pub names: Vec<ColumnName>,
     pub values: Vec<Row>
 }
@@ -257,6 +258,17 @@ impl Table {
             }
         };
 
+        let types = self.types.iter()
+            .enumerate()
+            .filter_map(|(index, value)| {
+                match column_indices.contains(&index) {
+                    true => Some(value),
+                    false => None,
+                }
+            })
+            .cloned()
+            .collect();
+
         let prepared_condition = if let Some(condition) = condition {
             Some(self.prepare_where_clause(condition)?)
         } else {
@@ -272,6 +284,7 @@ impl Table {
         }
 
         return Ok(RowSet {
+            types,
             names: self.column_names.clone(),
             values: rows,
         });

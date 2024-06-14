@@ -21,11 +21,7 @@ impl Serialise for V2 {
     }
 
     fn serialise_rowset(&self, value: &RowSet) -> Vec<u8> {
-        let mut result = value.names.serialise();
-
-        result.extend(value.values.serialise());
-
-        return result;
+        return value.serialise();
     }
 
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
@@ -33,14 +29,7 @@ impl Serialise for V2 {
     }
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
-        let names = Vec::<ColumnName>::deserialise(input, None.into())?;
-
-        let values = Vec::<Row>::deserialise(input, None.into())?;
-
-        return Ok(RowSet {
-            names,
-            values,
-        });
+        return RowSet::deserialise(input, None.into());
     }
 }
 
@@ -213,9 +202,9 @@ impl<T: V2Serialise> V2Serialise for Vec<T> {
 
 impl V2Serialise for RowSet {
     fn serialise(&self) -> Vec<u8> {
-        // TODO: This needs to contain value on types of self,
-        // otherwise it can't be deserialised
-        let mut result = self.names.serialise();
+        let mut result = self.types.serialise();
+
+        result.extend(self.names.serialise());
 
         result.extend(self.values.serialise());
 
@@ -423,7 +412,6 @@ impl V2Deserialise for ColumnValue {
 
 impl V2Deserialise for Vec<ColumnValue> {
     fn deserialise(input: &mut &[u8], options: DO) -> Result<Self> {
-        println!("Options: {options:?}");
         let types = match options {
             DO::ColumnTypes(types) => Ok(types),
             _ => Err(SqlError::InvalidParameter),
@@ -449,11 +437,14 @@ impl V2Deserialise for Vec<ColumnValue> {
 
 impl V2Deserialise for RowSet {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> where Self: Sized {
+        let types = Vec::<ColumnType>::deserialise(input, None.into()).unwrap();
+
         let names = Vec::<ColumnName>::deserialise(input, None.into())?;
 
-        let values = Vec::<Row>::deserialise(input, None.into())?;
+        let values = Vec::<Row>::deserialise(input, DO::ColumnTypes(types.clone()))?;
 
         return Ok(Self {
+            types,
             names,
             values,
         });
