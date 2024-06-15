@@ -10,48 +10,51 @@ pub enum MessageType {
     Ack,
     String,
     Command,
-    Error,
+    ErrorMessage,
     RowSet,
 }
 
 impl From<&MessageType> for u8 {
     fn from(value: &MessageType) -> Self {
+        use MessageType::*;
+
         let result = match value {
-            MessageType::Close => 1,
-            MessageType::Ack => 2,
-            MessageType::String => 3,
-            MessageType::Command => 4,
-            MessageType::Error => 5,
-            MessageType::RowSet => 6,
+            Close => 1,
+            Ack => 2,
+            String => 3,
+            Command => 4,
+            ErrorMessage => 5,
+            RowSet => 6,
         };
 
         return result;
     }
 }
 
-#[derive(Debug)]
-pub struct SerialisedHeader {
-    flags: u64,
-    content: VecDeque<u8>,
-}
+impl TryFrom<u8> for MessageType {
+    type Error = SqlError;
 
-#[cfg(test)]
-impl SerialisedHeader {
-    pub fn flags(&self) -> u64 {
-        return self.flags
-    }
+    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+        use MessageType::*;
 
-    pub fn content(&self) -> &VecDeque<u8> {
-        return &self.content;
-    }
-}
-
-impl SerialisedHeader {
-    pub fn new(flags: u64, content: Vec<u8>) -> Self {
-        return SerialisedHeader {
-            flags,
-            content: content.into(),
+        return match value {
+            1 => Ok(Close),
+            2 => Ok(Ack),
+            3 => Ok(String),
+            4 => Ok(Command),
+            5 => Ok(ErrorMessage),
+            6 => Ok(RowSet),
+            _ => Err(SqlError::InvalidMessageType(value)),
         };
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Flags(u64);
+
+impl Flags {
+    pub fn new(flags: u64) -> Self {
+        return Flags(flags);
     }
 
     // Asserts here over returning Results because the indices should be hardcoded,
@@ -60,29 +63,51 @@ impl SerialisedHeader {
     pub fn set_flag(&mut self, index: u8) {
         assert!(index <= 63);
 
-        self.flags |= 1 << (63 - index);
+        self.0 |= 1 << (63 - index);
     }
 
     pub fn get_flag(&self, index: u8) -> bool {
         assert!(index <= 63);
 
-        return (self.flags & 1 << (63 - index)) != 0;
+        return (self.0 & 1 << (63 - index)) != 0;
+    }
+}
+
+#[cfg(test)]
+impl Flags {
+    pub fn inner(&self) -> u64 {
+        return self.0;
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SerialisedHeader {
+    pub flags: Flags,
+    pub content: VecDeque<u8>,
+}
+
+impl SerialisedHeader {
+    pub fn new(flags: u64) -> Self {
+        return SerialisedHeader {
+            flags: Flags(flags),
+            content: vec![].into(),
+        };
     }
 
     fn set_message_type(&mut self, message_type: &Option<MessageType>) {
         match message_type {
             Some(message_type) => {
-                self.set_flag(0);
+                self.flags.set_flag(0);
 
                 self.content.push_back(message_type.into());
             }
-            None => panic!("Tried serialising header with `message_type` unset"),
+            None => panic!("Tried serialising header with `message_type` flag unset"),
         }
     }
 
     fn set_serialisation_version(&mut self, serialisation_version: &Option<Serialiser>) {
         if let Some(serialisation_version) = serialisation_version {
-            self.set_flag(1);
+            self.flags.set_flag(1);
 
             self.content.push_back(serialisation_version.into());
         }
@@ -99,7 +124,7 @@ pub struct Header {
 // Serialisation
 impl Header {
     pub fn serialise(&self) -> SerialisedHeader {
-        let mut result = SerialisedHeader::new(0, vec![]);
+        let mut result = SerialisedHeader::default();
 
         result.set_message_type(&self.message_type);
 
@@ -138,23 +163,6 @@ impl TryFrom<SerialisedHeader> for Header {
     }
 }
 
-fn parse_u64(input: &mut VecDeque<u8>) -> Result<u64> {
-    if input.len() < 8 {
-        return Err(SqlError::InputTooShort(input.len(), 8))
-    }
-
-    // try_into to convert length(?)
-    let bytes: [u8; 8] = input.drain(..8)
-        .collect::<Vec<_>>()
-        .as_slice()
-        .try_into()
-        .map_err(SqlError::SliceConversionError)?;
-
-    let result = u64::from_le_bytes(bytes);
-
-    return Ok(result);
-}
-
 fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
     if input.is_empty() {
         return Err(SqlError::InputTooShort(input.len(), 1))
@@ -166,25 +174,17 @@ fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
 }
 
 fn parse_message_type(header: &mut SerialisedHeader) -> Result<Option<MessageType>> {
-    use MessageType::*;
-
-    if !header.get_flag(0) {
+    if !header.flags.get_flag(0) {
         return Ok(None);
     }
 
-    return match parse_u64(&mut header.content)? {
-        1 => Ok(Some(Close)),
-        2 => Ok(Some(Ack)),
-        3 => Ok(Some(String)),
-        4 => Ok(Some(Command)),
-        5 => Ok(Some(Error)),
-        6 => Ok(Some(RowSet)),
-        other => Err(SqlError::InvalidMessageType(other)),
-    };
+    let message_type: MessageType = parse_u8(&mut header.content)?.try_into()?;
+
+    return Ok(Some(message_type));
 }
 
 fn parse_serialisation_version(header: &mut SerialisedHeader) -> Result<Option<Serialiser>> {
-    if !header.get_flag(1) {
+    if !header.flags.get_flag(1) {
         return Ok(None);
     }
 

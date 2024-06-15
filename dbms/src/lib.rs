@@ -50,7 +50,7 @@ pub enum SqlError {
     IncompatibleVersion(u8),
 
     InvalidHeader(&'static str),
-    InvalidMessageType(u64),
+    InvalidMessageType(u8),
 
     CouldNotWriteToConnection(std::io::Error),
     CouldNotReadFromConnection(std::io::Error),

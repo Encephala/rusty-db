@@ -1,31 +1,37 @@
 use super::header::*;
 use crate::{serialisation::Serialiser, SqlError};
 
+mod messages {
+    use super::*;
+
+
+}
+
 mod headers {
     use super::*;
 
     // Serialisation
     #[test]
     fn set_clear_and_get_header_flags() {
-        let mut header = SerialisedHeader::new(0, vec![]);
+        let mut header = SerialisedHeader::default();
 
-        header.set_flag(0);
+        header.flags.set_flag(0);
 
         assert_eq!(
-            header.flags(),
+            header.flags.inner(),
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
-        header.set_flag(10);
+        header.flags.set_flag(10);
 
         assert_eq!(
-            header.flags(),
+            header.flags.inner(),
             u64::from_be_bytes([128, 32, 0, 0, 0, 0, 0, 0])
         );
 
-        assert!(header.get_flag(10));
+        assert!(header.flags.get_flag(10));
 
-        assert!(!header.get_flag(12));
+        assert!(!header.flags.get_flag(12));
     }
 
     #[test]
@@ -33,10 +39,11 @@ mod headers {
         use MessageType::*;
 
         fn test_header(content: u64) -> SerialisedHeader {
-            return SerialisedHeader::new(
-                u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0]),
-                content.to_le_bytes().into(),
-            );
+            let mut result = SerialisedHeader::new(u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0]));
+
+            result.content = content.to_le_bytes().into();
+
+            return result;
         }
 
         let inputs = [
@@ -44,7 +51,7 @@ mod headers {
             (2, Ack),
             (3, String),
             (4, Command),
-            (5, Error),
+            (5, ErrorMessage),
             (6, RowSet),
         ];
 
@@ -62,7 +69,7 @@ mod headers {
 
     #[test]
     fn parse_message_type_error_if_absent() {
-        let header = SerialisedHeader::new(0, vec![]);
+        let header = SerialisedHeader::default();
 
         let parsed = Header::try_from(header);
 
@@ -74,12 +81,11 @@ mod headers {
 
     #[test]
     fn parse_serialisation_version_basic() {
-        let header = SerialisedHeader::new(
+        let mut header = SerialisedHeader::new(
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0]),
-            [1_u64.to_le_bytes(), 2_u64.to_le_bytes()].into_iter()
-                .flatten()
-                .collect(),
         );
+
+        header.content = [1, 2].into();
 
         let parsed = Header::try_from(header).unwrap();
 
@@ -106,13 +112,13 @@ mod headers {
         let serialised: SerialisedHeader = header.into();
 
         assert_eq!(
-            serialised.flags(),
+            serialised.flags.inner(),
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
-            serialised.content(),
-            &vec![2]
+            serialised.content,
+            vec![2]
         );
     }
 
@@ -126,13 +132,13 @@ mod headers {
         let serialised = header.serialise();
 
         assert_eq!(
-            serialised.flags(),
+            serialised.flags.inner(),
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
-            serialised.content(),
-            &vec![1, 2]
+            serialised.content,
+            vec![1, 2]
         );
     }
 

@@ -19,7 +19,7 @@ A 64-bit set of flags indicating which fields are in the header (in the order of
 
 #### Message type
 
-A `u64`
+A `u8`
 
 - Close connection as 1
 - Ack as 2 (for confirming an operation finished successfully)
@@ -29,6 +29,8 @@ A `u64`
 - `RowSet` as 6
 
 #### Serialisation version
+
+A `u8`
 
 - V1 as 1
 - V2 as 2
