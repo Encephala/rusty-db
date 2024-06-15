@@ -15,23 +15,23 @@ mod headers {
     fn set_clear_and_get_header_flags() {
         let mut header = SerialisedHeader::default();
 
-        header.flags.set_flag(0);
+        header.set_flag(0);
 
         assert_eq!(
-            header.flags.inner(),
+            header.flags(),
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
-        header.flags.set_flag(10);
+        header.set_flag(10);
 
         assert_eq!(
-            header.flags.inner(),
+            header.flags(),
             u64::from_be_bytes([128, 32, 0, 0, 0, 0, 0, 0])
         );
 
-        assert!(header.flags.get_flag(10));
+        assert!(header.get_flag(10));
 
-        assert!(!header.flags.get_flag(12));
+        assert!(!header.get_flag(12));
     }
 
     #[test]
@@ -39,7 +39,10 @@ mod headers {
         use MessageType::*;
 
         fn test_header(content: u64) -> SerialisedHeader {
-            let mut result = SerialisedHeader::new(u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0]));
+            let mut result = SerialisedHeader::new(
+                u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0]),
+                vec![]
+            );
 
             result.content = content.to_le_bytes().into();
 
@@ -83,6 +86,7 @@ mod headers {
     fn parse_serialisation_version_basic() {
         let mut header = SerialisedHeader::new(
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0]),
+            vec![]
         );
 
         header.content = [1, 2].into();
@@ -112,13 +116,13 @@ mod headers {
         let serialised: SerialisedHeader = header.into();
 
         assert_eq!(
-            serialised.flags.inner(),
+            serialised.flags(),
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
             serialised.content,
-            vec![2]
+            vec![1, 0, 0, 0, 0, 0, 0, 0, 2]
         );
     }
 
@@ -132,13 +136,13 @@ mod headers {
         let serialised = header.serialise();
 
         assert_eq!(
-            serialised.flags.inner(),
+            serialised.flags(),
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
             serialised.content,
-            vec![1, 2]
+            vec![2, 0, 0, 0, 0, 0, 0, 0, 1, 2]
         );
     }
 

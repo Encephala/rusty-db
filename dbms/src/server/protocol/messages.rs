@@ -1,8 +1,8 @@
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::{serialisation::Serialiser, Result, SqlError};
+use crate::{Result, SqlError};
 
-use super::header::{MessageType, Flags, Header};
+use super::header::{Header, SerialisedHeader};
 
 
 #[derive(Debug)]
@@ -10,6 +10,8 @@ pub struct Message {
     header: Header,
     body: Vec<u8>,
 }
+
+// TODO: Convert String, Error etc, into Messages
 
 impl Message {
     pub fn empty() -> Self {
@@ -21,33 +23,23 @@ impl Message {
 
     // TODO: Make these testable, taking a vector or something
     async fn parse_header(stream: &mut (impl AsyncReadExt + std::marker::Unpin)) -> Result<Header> {
-        let flags = Flags::new(stream.read_u64().await
-            .map_err(SqlError::CouldNotReadFromConnection)?);
+        let length = stream.read_u64().await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
 
-        let message_type = if flags.get_flag(0) {
-            let result: MessageType = stream.read_u8().await
-                .map_err(SqlError::CouldNotReadFromConnection)?
-                .try_into()?;
+        let flags = stream.read_u64().await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
 
-            Some(result)
-        } else {
-            panic!("Tried deserialising header with `message_type` flag unset")
-        };
+        let mut content = vec![0; length as usize];
 
-        let serialisation_version = if flags.get_flag(1) {
-            let result: Serialiser = stream.read_u8().await
-                .map_err(SqlError::CouldNotReadFromConnection)?
-                .try_into()?;
+        stream.read_exact(&mut content).await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
 
-            Some(result)
-        } else {
-            None
-        };
+        let serialised_header = SerialisedHeader::new(
+            flags,
+            content,
+        );
 
-        return Ok(Header {
-            message_type,
-            serialisation_version,
-        })
+        return serialised_header.try_into();
     }
 
     async fn read_body(stream: &mut (impl AsyncReadExt + std::marker::Unpin), header: &Header) -> Result<Vec<u8>> {
@@ -75,21 +67,25 @@ impl Message {
         });
     }
 
-    // pub async fn write(&self, stream: &mut (impl AsyncWriteExt + std::marker::Unpin)) -> Result<()> {
-    //     stream.write_all(self.0.as_slice()).await
-    //         .map_err(SqlError::CouldNotWriteToConnection)?;
+    pub async fn write(&self, stream: &mut (impl AsyncWriteExt + std::marker::Unpin)) -> Result<()> {
+        let mut serialised_header = self.header.serialise().content;
+        let serialised_header = serialised_header.make_contiguous();
 
-    //     stream.write_all(&[END_OF_MESSAGE]).await
-    //         .map_err(SqlError::CouldNotWriteToConnection)?;
+        let total_length = serialised_header.len() + self.body.len();
 
-    //     // Flush to be sure, might prevent some jank bugs in the future
-    //     stream.flush().await
-    //         .map_err(SqlError::CouldNotWriteToConnection)?;
+        stream.write_all(total_length.to_le_bytes().as_slice()).await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
 
-    //     return Ok(());
-    // }
+        stream.write_all(serialised_header).await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
 
-    pub fn is_empty(&self) -> bool {
-        return self.body.is_empty();
+        stream.write_all(self.body.as_slice()).await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
+
+        // Flush to be sure, might prevent some jank bugs in the future
+        stream.flush().await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
+
+        return Ok(());
     }
 }

@@ -50,11 +50,24 @@ impl TryFrom<u8> for MessageType {
 }
 
 #[derive(Debug, Default)]
-pub struct Flags(u64);
+pub struct SerialisedHeader {
+    flags: u64,
+    pub content: VecDeque<u8>,
+}
 
-impl Flags {
-    pub fn new(flags: u64) -> Self {
-        return Flags(flags);
+#[cfg(test)]
+impl SerialisedHeader {
+    pub fn flags(&self) -> u64 {
+        return self.flags;
+    }
+}
+
+impl SerialisedHeader {
+    pub fn new(flags: u64, content: impl Into<VecDeque<u8>>) -> Self {
+        return SerialisedHeader {
+            flags,
+            content: content.into(),
+        };
     }
 
     // Asserts here over returning Results because the indices should be hardcoded,
@@ -63,41 +76,19 @@ impl Flags {
     pub fn set_flag(&mut self, index: u8) {
         assert!(index <= 63);
 
-        self.0 |= 1 << (63 - index);
+        self.flags |= 1 << (63 - index);
     }
 
     pub fn get_flag(&self, index: u8) -> bool {
         assert!(index <= 63);
 
-        return (self.0 & 1 << (63 - index)) != 0;
-    }
-}
-
-#[cfg(test)]
-impl Flags {
-    pub fn inner(&self) -> u64 {
-        return self.0;
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct SerialisedHeader {
-    pub flags: Flags,
-    pub content: VecDeque<u8>,
-}
-
-impl SerialisedHeader {
-    pub fn new(flags: u64) -> Self {
-        return SerialisedHeader {
-            flags: Flags(flags),
-            content: vec![].into(),
-        };
+        return (self.flags & 1 << (63 - index)) != 0;
     }
 
     fn set_message_type(&mut self, message_type: &Option<MessageType>) {
         match message_type {
             Some(message_type) => {
-                self.flags.set_flag(0);
+                self.set_flag(0);
 
                 self.content.push_back(message_type.into());
             }
@@ -107,7 +98,7 @@ impl SerialisedHeader {
 
     fn set_serialisation_version(&mut self, serialisation_version: &Option<Serialiser>) {
         if let Some(serialisation_version) = serialisation_version {
-            self.flags.set_flag(1);
+            self.set_flag(1);
 
             self.content.push_back(serialisation_version.into());
         }
@@ -129,6 +120,11 @@ impl Header {
         result.set_message_type(&self.message_type);
 
         result.set_serialisation_version(&self.serialisation_version);
+
+        // Rev because pushing one-by-one to front reverses the order
+        for value in result.content.len().to_le_bytes().into_iter().rev() {
+            result.content.push_front(value);
+        }
 
         return result;
     }
@@ -174,7 +170,7 @@ fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
 }
 
 fn parse_message_type(header: &mut SerialisedHeader) -> Result<Option<MessageType>> {
-    if !header.flags.get_flag(0) {
+    if !header.get_flag(0) {
         return Ok(None);
     }
 
@@ -184,7 +180,7 @@ fn parse_message_type(header: &mut SerialisedHeader) -> Result<Option<MessageTyp
 }
 
 fn parse_serialisation_version(header: &mut SerialisedHeader) -> Result<Option<Serialiser>> {
-    if !header.flags.get_flag(1) {
+    if !header.get_flag(1) {
         return Ok(None);
     }
 
