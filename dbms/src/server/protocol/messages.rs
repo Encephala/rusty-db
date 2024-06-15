@@ -4,12 +4,12 @@ use crate::{
     Result, SqlError
 };
 
-use super::header::ParsedHeader;
+use super::header::Header;
 
 
 #[derive(Debug)]
 pub struct Message {
-    header: ParsedHeader,
+    header: Header,
     body: Vec<u8>,
 }
 

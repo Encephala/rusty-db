@@ -26,12 +26,17 @@ impl std::fmt::Display for Serialiser {
     }
 }
 
-impl From<Serialiser> for &[u8] {
-    fn from(value: Serialiser) -> Self {
+impl From<&Serialiser> for u8 {
+    fn from(value: &Serialiser) -> Self {
         return match value {
-            Serialiser::V1 => &[1],
-            Serialiser::V2 => &[2],
+            Serialiser::V1 => 1,
+            Serialiser::V2 => 2,
         };
+    }
+}
+impl From<Serialiser> for u8 {
+    fn from(value: Serialiser) -> Self {
+        return (&value).into();
     }
 }
 
@@ -105,9 +110,9 @@ impl SerialisationManager {
     fn write_version(&self) -> Vec<u8> {
         let mut result = vec![];
 
-        let version: &[u8] = self.0.into();
+        let version: u8 = self.0.into();
 
-        result.extend(version);
+        result.extend(&[version]);
 
         return result;
     }
