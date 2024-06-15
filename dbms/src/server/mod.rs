@@ -1,6 +1,7 @@
 mod connection;
+mod protocol;
 
-pub use connection::Message;
+pub use protocol::Message;
 
 use std::net::SocketAddr;
 

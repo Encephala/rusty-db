@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-mod messages;
-
 use std::path::PathBuf;
 
 use tokio::{
@@ -28,7 +26,7 @@ use crate::{
 
 use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 
-pub use messages::Message;
+use super::protocol::Message;
 
 struct Runtime {
     persistence_manager: Box<dyn PersistenceManager>,
@@ -42,7 +40,7 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
 
     let mut reader = BufReader::new(reader);
 
-    welcome_message().write(&mut writer).await?;
+    // welcome_message().write(&mut writer).await?;
 
     let mut runtime = Runtime {
         persistence_manager: Box::new(FileSystem::new(
@@ -54,23 +52,21 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
 
     loop {
         tokio::select! {
-            message = Message::read(&mut reader) => {
-                let message = message?;
+            // message = Message::read(&mut reader) => {
+            //     let message = message?;
 
-                // Stream closed
-                if Message::empty() == message {
-                    println!("Client {:?} disconnected", stream.peer_addr().unwrap());
+            //     // Stream closed
+            //     if message.is_empty() {
+            //         println!("Client {:?} disconnected", stream.peer_addr().unwrap());
 
-                    break;
-                }
+            //         break;
+            //     }
 
-                // Handle message
-                let execution_result = process_statement(message.0, &mut runtime).await?;
+            //     // Handle message
+            //     let _execution_result = process_statement(message, &mut runtime).await?;
 
-                let message: Message = execution_result.into();
-
-                message.write(&mut writer).await?;
-            },
+            //     // TODO: Construct a proper response message and send it over
+            // },
             _ = shutdown_signal.recv() => {
                 // TODO: Inform client of shutdown
                 break;
@@ -81,9 +77,9 @@ pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Recei
     return Ok(());
 }
 
-fn welcome_message() -> Message {
-    return Message::from(b"deez nuts".as_slice());
-}
+// fn welcome_message() -> Message {
+//     return Message::from(b"deez nuts".as_slice());
+// }
 
 async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<ExecutionResult> {
     let input = &String::from_utf8(buffer)

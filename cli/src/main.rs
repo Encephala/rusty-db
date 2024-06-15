@@ -23,38 +23,40 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
 
     let mut reader = BufReader::new(reader);
 
-    let welcome_message = Message::read(&mut reader).await?;
+    // let welcome_message = Message::read(&mut reader).await?;
 
-    println!(
-        "Got welcome message: {}",
-        String::from_utf8(welcome_message.0).unwrap()
-    );
+    // println!(
+    //     "Got welcome message: {}",
+    //     String::from_utf8(welcome_message.0).unwrap()
+    // );
 
-    loop {
-        let input = rep_without_the_l();
+    todo!();
 
-        let message = Message::from(input);
+    // loop {
+    //     let input = rep_without_the_l();
 
-        message.write(&mut writer).await?;
+    //     let message = Message::from(input);
 
-        let response = Message::read(&mut reader).await?;
+    //     message.write(&mut writer).await?;
 
-        let deserialised_response = SERIALISATION_MANAGER.deserialise_rowset(response.0.as_slice());
+    //     let response = Message::read(&mut reader).await?;
 
-        match deserialised_response {
-            Ok(response) => {
-                println!("Result: {response:?}");
+    //     let deserialised_response = SERIALISATION_MANAGER.deserialise_rowset(response.0.as_slice());
 
-                continue;
-            },
-            Err(error) => println!("Deserialisation error: {error:?}"),
-        }
+    //     match deserialised_response {
+    //         Ok(response) => {
+    //             println!("Result: {response:?}");
 
-        match std::str::from_utf8(&response.0) {
-            Ok(response) => println!("Text response: {response}"),
-            Err(_) => println!("Got binary message: {:?}", response.0),
-        }
-    }
+    //             continue;
+    //         },
+    //         Err(error) => println!("Deserialisation error: {error:?}"),
+    //     }
+
+    //     match std::str::from_utf8(&response.0) {
+    //         Ok(response) => println!("Text response: {response}"),
+    //         Err(_) => println!("Got binary message: {:?}", response.0),
+    //     }
+    // }
 
     // return Ok(());
 }

@@ -11,6 +11,7 @@ use v1::V1;
 use v2::V2;
 
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Serialiser {
     V1,
     V2,
