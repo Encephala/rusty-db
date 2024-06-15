@@ -20,6 +20,29 @@ pub struct Header {
     pub content: VecDeque<u8>,
 }
 
+impl Header {
+    // Asserts here over returning Results because the indices should be hardcoded,
+    // so a wrong index isn't a runtime error that should be handled,
+    // rather tests should catch these panics
+    pub fn set_flag(&mut self, index: u8) {
+        assert!(index <= 63);
+
+        self.flags |= 1 << (63 - index);
+    }
+
+    pub fn clear_flag(&mut self, index: u8) {
+        assert!(index <= 63);
+
+        self.flags &= !(1 << (63 - index));
+    }
+
+    pub fn get_flag(&self, index: u8) -> bool {
+        assert!(index <= 63);
+
+        return (self.flags & 1 << (63 - index)) != 0;
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct ParsedHeader {
     pub message_type: Option<MessageType>,
@@ -79,9 +102,7 @@ fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
 fn parse_message_type(header: &mut Header) -> Result<Option<MessageType>> {
     use MessageType::*;
 
-    let contains_message_type = (1 << 63 & header.flags) != 0;
-
-    if !contains_message_type {
+    if !header.get_flag(0) {
         return Ok(None);
     }
 
@@ -97,9 +118,7 @@ fn parse_message_type(header: &mut Header) -> Result<Option<MessageType>> {
 }
 
 fn parse_serialisation_version(header: &mut Header) -> Result<Option<Serialiser>> {
-    let contains_version = (1 << 62 & header.flags) != 0;
-
-    if !contains_version {
+    if !header.get_flag(1) {
         return Ok(None);
     }
 
