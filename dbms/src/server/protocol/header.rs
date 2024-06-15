@@ -7,24 +7,24 @@ use crate::serialisation::Serialiser;
 #[derive(Debug, PartialEq)]
 pub enum MessageType {
     Close,
-    Ack,
-    String,
+    Ok,
+    Str,
     Command,
-    ErrorMessage,
+    Error,
     RowSet,
 }
 
 impl From<&MessageType> for u8 {
     fn from(value: &MessageType) -> Self {
-        use MessageType::*;
+        use MessageType as MT;
 
         let result = match value {
-            Close => 1,
-            Ack => 2,
-            String => 3,
-            Command => 4,
-            ErrorMessage => 5,
-            RowSet => 6,
+            MT::Close => 1,
+            MT::Ok => 2,
+            MT::Str => 3,
+            MT::Command => 4,
+            MT::Error => 5,
+            MT::RowSet => 6,
         };
 
         return result;
@@ -34,16 +34,16 @@ impl From<&MessageType> for u8 {
 impl TryFrom<u8> for MessageType {
     type Error = SqlError;
 
-    fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
-        use MessageType::*;
+    fn try_from(value: u8) -> std::result::Result<Self, SqlError> {
+        use MessageType as MT;
 
         return match value {
-            1 => Ok(Close),
-            2 => Ok(Ack),
-            3 => Ok(String),
-            4 => Ok(Command),
-            5 => Ok(ErrorMessage),
-            6 => Ok(RowSet),
+            1 => Ok(MT::Close),
+            2 => Ok(MT::Ok),
+            3 => Ok(MT::Str),
+            4 => Ok(MT::Command),
+            5 => Ok(MT::Error),
+            6 => Ok(MT::RowSet),
             _ => Err(SqlError::InvalidMessageType(value)),
         };
     }
@@ -85,15 +85,10 @@ impl SerialisedHeader {
         return (self.flags & 1 << (63 - index)) != 0;
     }
 
-    fn set_message_type(&mut self, message_type: &Option<MessageType>) {
-        match message_type {
-            Some(message_type) => {
-                self.set_flag(0);
+    fn set_message_type(&mut self, message_type: &MessageType) {
+        self.set_flag(0);
 
-                self.content.push_back(message_type.into());
-            }
-            None => panic!("Tried serialising header with `message_type` flag unset"),
-        }
+        self.content.push_back(message_type.into());
     }
 
     fn set_serialisation_version(&mut self, serialisation_version: &Option<Serialiser>) {
@@ -105,9 +100,10 @@ impl SerialisedHeader {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Header {
-    pub message_type: Option<MessageType>,
+    pub message_type: MessageType,
     pub serialisation_version: Option<Serialiser>,
 }
 
@@ -122,7 +118,7 @@ impl Header {
         result.set_serialisation_version(&self.serialisation_version);
 
         // Rev because pushing one-by-one to front reverses the order
-        for value in result.content.len().to_le_bytes().into_iter().rev() {
+        for value in ((result.content.len()) as u64).to_le_bytes().into_iter().rev() {
             result.content.push_front(value);
         }
 
@@ -140,22 +136,22 @@ impl TryFrom<SerialisedHeader> for Header {
     type Error = SqlError;
 
     fn try_from(mut header: SerialisedHeader) -> std::result::Result<Self, Self::Error> {
-        let mut result = Header::default();
+        let message_type = parse_message_type(&mut header)?;
 
-        #[allow(clippy::field_reassign_with_default)]
-        { result.message_type = parse_message_type(&mut header)?; }
-
-        if result.message_type.is_none() {
+        if message_type.is_none() {
             return Err(SqlError::InvalidHeader("Header must contain message type"));
         }
 
-        result.serialisation_version = parse_serialisation_version(&mut header)?;
+        let serialisation_version = parse_serialisation_version(&mut header)?;
 
         if !header.content.is_empty() {
             println!("Warning: unused fields in header detected");
         }
 
-        return Ok(result);
+        return Ok(Header {
+            message_type: message_type.unwrap(),
+            serialisation_version,
+        });
     }
 }
 

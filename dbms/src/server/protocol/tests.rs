@@ -1,10 +1,157 @@
+use super::messages::*;
 use super::header::*;
 use crate::{serialisation::Serialiser, SqlError};
 
 mod messages {
+    use sql_parse::parser::ColumnType;
+
+    use crate::database::{Row, RowSet};
+
     use super::*;
 
+    #[test]
+    fn serialise_command() {
+        let inputs = [
+            (
+                Command::Connect("sweden".into()),
+                vec![
+                    1,
+                    6, 0, 0, 0, 0, 0, 0, 0,
+                    115, 119, 101, 100, 101, 110
+                ]
+            ),
+            (
+                Command::ListDatabases,
+                vec![2]
+            ),
+            (
+                Command::ListTables,
+                vec![3]
+            ),
+        ];
 
+        inputs.into_iter().for_each(|(input, expected)| {
+            let result: Vec<u8> = input.into();
+
+            assert_eq!(
+                result,
+                expected
+            );
+        })
+    }
+
+    #[test]
+    fn close_message_to_packet() {
+        let message = Message::Close;
+
+        let packet = Packet::from(message);
+
+        assert!(matches!(
+            packet,
+            Packet {
+                header: Header { message_type: MessageType::Close, .. },
+                ..
+            }
+        ));
+
+        assert_eq!(
+            packet.body,
+            vec![]
+        );
+    }
+
+    #[test]
+    fn ok_message_to_packet() {
+        let message = Message::Ok;
+
+        let packet = Packet::from(message);
+
+        assert!(matches!(
+            packet,
+            Packet {
+                header: Header { message_type: MessageType::Ok, .. },
+                ..
+            }
+        ));
+
+        assert_eq!(
+            packet.body,
+            vec![]
+        );
+    }
+
+    #[test]
+    fn string_message_to_packet() {
+        let message = Message::Str("deez nuts".into());
+
+        let packet = Packet::from(message);
+
+        assert_eq!(
+            packet,
+            Packet {
+                header: Header {
+                    message_type: MessageType::Str,
+                    serialisation_version: None,
+                },
+                body: vec![
+                    9, 0, 0, 0, 0, 0, 0, 0,
+                    100, 101, 101, 122, 32, 110, 117, 116, 115
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn error_message_to_packet() {
+        let message = Message::Error(SqlError::InvalidParameter);
+
+        let packet = Packet::from(message);
+
+        assert_eq!(
+            packet,
+            Packet {
+                header: Header {
+                    message_type: MessageType::Error,
+                    serialisation_version: None,
+                },
+                // "Error(InvalidParameter)"
+                body: vec![
+                    23, 0, 0, 0, 0, 0, 0, 0,
+                    69, 82, 82, 79, 82, 58, 32, 73, 110, 118, 97, 108, 105, 100, 80, 97, 114, 97, 109, 101, 116, 101, 114
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn rowset_message_to_packet() {
+        let message = Message::RowSet(RowSet {
+            types: vec![ColumnType::Text, ColumnType::Bool],
+            names: vec!["a".into(), "b".into()],
+            values: vec![
+                Row(vec!["first".into(), true.into()]),
+                Row(vec!["second".into(), false.into()]),
+            ]
+        });
+
+        let packet = Packet::from(message);
+
+        assert!(matches!(
+            packet,
+            Packet {
+                header: Header {
+                    message_type: MessageType::RowSet,
+                    ..
+                },
+                ..
+            }
+        ));
+
+        assert_eq!(
+            packet.header.serialisation_version,
+            Some(SERIALISATION_MANAGER.0)
+        );
+    }
 }
 
 mod headers {
@@ -51,10 +198,10 @@ mod headers {
 
         let inputs = [
             (1_u64, Close),
-            (2, Ack),
-            (3, String),
+            (2, Ok),
+            (3, Str),
             (4, Command),
-            (5, ErrorMessage),
+            (5, Error),
             (6, RowSet),
         ];
 
@@ -65,7 +212,7 @@ mod headers {
 
             assert_eq!(
                 parsed.message_type,
-                Some(expected),
+                expected,
             );
         });
     }
@@ -109,7 +256,7 @@ mod headers {
     #[test]
     fn set_message_type_basic() {
         let header = Header {
-            message_type: Some(MessageType::Ack),
+            message_type: MessageType::Ok,
             serialisation_version: None,
         };
 
@@ -129,7 +276,7 @@ mod headers {
     #[test]
     fn set_serialisation_version_basic() {
         let header = Header {
-            message_type: Some(MessageType::Close),
+            message_type: MessageType::Close,
             serialisation_version: Some(Serialiser::V2)
         };
 

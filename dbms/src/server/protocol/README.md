@@ -22,7 +22,7 @@ A 64-bit set of flags indicating which fields are in the header (in the order of
 A `u8`
 
 - Close connection as 1
-- Ack as 2 (for confirming an operation finished successfully)
+- Ok as 2 (for confirming an operation finished successfully)
 - An arbitrary string as 3
 - `Command` as 4
 - `SqlError` as 5

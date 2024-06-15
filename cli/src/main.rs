@@ -11,7 +11,7 @@ use tokio::{io::BufReader, net::{
 use dbms::{
     SqlError,
     serialisation::{SerialisationManager, Serialiser},
-    server::Message,
+    server::Packet,
 };
 
 const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);

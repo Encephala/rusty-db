@@ -26,7 +26,7 @@ use crate::{
 
 use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 
-use super::protocol::Message;
+use super::protocol::Packet;
 
 struct Runtime {
     persistence_manager: Box<dyn PersistenceManager>,

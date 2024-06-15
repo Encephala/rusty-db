@@ -99,7 +99,7 @@ impl Serialise for Serialiser {
 
 #[derive(Debug)]
 pub struct SerialisationManager(
-    Serialiser
+    pub Serialiser
 );
 
 impl SerialisationManager {
