@@ -6,7 +6,7 @@ use tokio::{
     },
 };
 
-use super::Packet;
+use super::Message;
 
 // Only have one test actually open a listener,
 // otherwise we'd have conflicts and stuff

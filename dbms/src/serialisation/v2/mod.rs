@@ -237,7 +237,7 @@ impl V2Deserialise for u64 {
             return Err(SqlError::InputTooShort(input.len(), 8))
         }
 
-        // try_into to convert length(?)
+        // try_into to convert slice into fixed-length array
         let bytes: [u8; 8] = input[..8].try_into()
             .map_err(SqlError::SliceConversionError)?;
 

@@ -1,11 +1,11 @@
 use super::messages::*;
 use super::header::*;
-use crate::{serialisation::Serialiser, SqlError};
+use crate::{serialisation::{SerialisationManager, Serialiser}, SqlError};
+
+const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager(Serialiser::V2);
 
 mod messages {
-    use sql_parse::parser::ColumnType;
-
-    use crate::database::{Row, RowSet};
+    use crate::database::RowSet;
 
     use super::*;
 
@@ -42,108 +42,85 @@ mod messages {
 
     #[test]
     fn close_message_to_packet() {
-        let message = Message::Close;
+        let message = MessageBody::Close;
 
-        let packet = Packet::from(message);
+        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
 
         assert!(matches!(
             packet,
-            Packet {
+            Message {
                 header: Header { message_type: MessageType::Close, .. },
-                ..
+                body: MessageBody::Close,
             }
         ));
-
-        assert_eq!(
-            packet.body,
-            vec![]
-        );
     }
 
     #[test]
     fn ok_message_to_packet() {
-        let message = Message::Ok;
+        let message = MessageBody::Ok;
 
-        let packet = Packet::from(message);
+        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
 
         assert!(matches!(
             packet,
-            Packet {
+            Message {
                 header: Header { message_type: MessageType::Ok, .. },
-                ..
+                body: MessageBody::Ok,
             }
         ));
-
-        assert_eq!(
-            packet.body,
-            vec![]
-        );
     }
 
     #[test]
     fn string_message_to_packet() {
-        let message = Message::Str("deez nuts".into());
+        let message = MessageBody::Str("deez nuts".into());
 
-        let packet = Packet::from(message);
+        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
 
-        assert_eq!(
+        assert!(matches!(
             packet,
-            Packet {
-                header: Header {
-                    message_type: MessageType::Str,
-                    serialisation_version: None,
-                },
-                body: vec![
-                    9, 0, 0, 0, 0, 0, 0, 0,
-                    100, 101, 101, 122, 32, 110, 117, 116, 115
-                ]
+            Message {
+                header: Header { message_type: MessageType::Str, .. },
+                body: MessageBody::Str(_),
             }
-        );
+        ));
     }
 
     #[test]
     fn error_message_to_packet() {
-        let message = Message::Error(SqlError::InvalidParameter);
+        let message = MessageBody::Error(SqlError::InvalidParameter);
 
-        let packet = Packet::from(message);
+        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
 
-        assert_eq!(
+        assert!(matches!(
             packet,
-            Packet {
+            Message {
                 header: Header {
                     message_type: MessageType::Error,
-                    serialisation_version: None,
+                    ..
                 },
-                // "Error(InvalidParameter)"
-                body: vec![
-                    23, 0, 0, 0, 0, 0, 0, 0,
-                    69, 82, 82, 79, 82, 58, 32, 73, 110, 118, 97, 108, 105, 100, 80, 97, 114, 97, 109, 101, 116, 101, 114
-                ]
+                body: MessageBody::Error(_)
             }
-        );
+        ));
     }
 
     #[test]
     fn rowset_message_to_packet() {
-        let message = Message::RowSet(RowSet {
-            types: vec![ColumnType::Text, ColumnType::Bool],
-            names: vec!["a".into(), "b".into()],
-            values: vec![
-                Row(vec!["first".into(), true.into()]),
-                Row(vec!["second".into(), false.into()]),
-            ]
+        let message = MessageBody::RowSet(RowSet {
+            types: vec![],
+            names: vec![],
+            values: vec![],
         });
 
-        let packet = Packet::from(message);
+        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
 
         assert!(matches!(
             packet,
-            Packet {
+            Message {
                 header: Header {
                     message_type: MessageType::RowSet,
                     ..
                 },
-                ..
+                body: MessageBody::RowSet(_)
             }
         ));
 
@@ -160,19 +137,19 @@ mod headers {
     // Serialisation
     #[test]
     fn set_clear_and_get_header_flags() {
-        let mut header = SerialisedHeader::default();
+        let mut header = RawHeader::default();
 
         header.set_flag(0);
 
         assert_eq!(
-            header.flags(),
+            header.flags,
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
         header.set_flag(10);
 
         assert_eq!(
-            header.flags(),
+            header.flags,
             u64::from_be_bytes([128, 32, 0, 0, 0, 0, 0, 0])
         );
 
@@ -185,8 +162,8 @@ mod headers {
     fn parse_message_type_basic() {
         use MessageType::*;
 
-        fn test_header(content: u64) -> SerialisedHeader {
-            let mut result = SerialisedHeader::new(
+        fn test_header(content: u64) -> RawHeader {
+            let mut result = RawHeader::new(
                 u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0]),
                 vec![]
             );
@@ -219,7 +196,7 @@ mod headers {
 
     #[test]
     fn parse_message_type_error_if_absent() {
-        let header = SerialisedHeader::default();
+        let header = RawHeader::default();
 
         let parsed = Header::try_from(header);
 
@@ -231,7 +208,7 @@ mod headers {
 
     #[test]
     fn parse_serialisation_version_basic() {
-        let mut header = SerialisedHeader::new(
+        let mut header = RawHeader::new(
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0]),
             vec![]
         );
@@ -260,16 +237,16 @@ mod headers {
             serialisation_version: None,
         };
 
-        let serialised: SerialisedHeader = header.into();
+        let raw = header.to_raw();
 
         assert_eq!(
-            serialised.flags(),
+            raw.flags,
             u64::from_be_bytes([128, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
-            serialised.content,
-            vec![1, 0, 0, 0, 0, 0, 0, 0, 2]
+            raw.content,
+            vec![2]
         );
     }
 
@@ -280,16 +257,16 @@ mod headers {
             serialisation_version: Some(Serialiser::V2)
         };
 
-        let serialised = header.serialise();
+        let raw = header.to_raw();
 
         assert_eq!(
-            serialised.flags(),
+            raw.flags,
             u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0])
         );
 
         assert_eq!(
-            serialised.content,
-            vec![2, 0, 0, 0, 0, 0, 0, 0, 1, 2]
+            raw.content,
+            vec![1, 2]
         );
     }
 

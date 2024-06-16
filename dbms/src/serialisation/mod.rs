@@ -97,7 +97,7 @@ impl Serialise for Serialiser {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SerialisationManager(
     pub Serialiser
 );

@@ -51,6 +51,7 @@ pub enum SqlError {
 
     InvalidHeader(&'static str),
     InvalidMessageType(u8),
+    InvalidMessage(Vec<u8>),
 
     CouldNotWriteToConnection(std::io::Error),
     CouldNotReadFromConnection(std::io::Error),

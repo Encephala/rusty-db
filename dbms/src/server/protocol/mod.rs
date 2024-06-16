@@ -3,4 +3,4 @@ mod tests;
 mod messages;
 mod header;
 
-pub use messages::Packet;
+pub use messages::Message;

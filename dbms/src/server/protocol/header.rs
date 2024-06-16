@@ -50,21 +50,14 @@ impl TryFrom<u8> for MessageType {
 }
 
 #[derive(Debug, Default)]
-pub struct SerialisedHeader {
-    flags: u64,
+pub struct RawHeader {
+    pub flags: u64,
     pub content: VecDeque<u8>,
 }
 
-#[cfg(test)]
-impl SerialisedHeader {
-    pub fn flags(&self) -> u64 {
-        return self.flags;
-    }
-}
-
-impl SerialisedHeader {
+impl RawHeader {
     pub fn new(flags: u64, content: impl Into<VecDeque<u8>>) -> Self {
-        return SerialisedHeader {
+        return RawHeader {
             flags,
             content: content.into(),
         };
@@ -98,6 +91,36 @@ impl SerialisedHeader {
             self.content.push_back(serialisation_version.into());
         }
     }
+
+    fn parse_message_type(&mut self) -> Result<Option<MessageType>> {
+        if !self.get_flag(0) {
+            return Ok(None);
+        }
+
+        let message_type: MessageType = parse_u8(&mut self.content)?.try_into()?;
+
+        return Ok(Some(message_type));
+    }
+
+    fn parse_serialisation_version(&mut self) -> Result<Option<Serialiser>> {
+        if !self.get_flag(1) {
+            return Ok(None);
+        }
+
+        let result: Serialiser = parse_u8(&mut self.content)?.try_into()?;
+
+        return Ok(Some(result));
+    }
+
+    pub fn serialise(&self) -> Vec<u8> {
+        let mut result = vec![];
+
+        result.extend(self.flags.to_le_bytes());
+
+        result.extend(&self.content);
+
+        return result;
+    }
 }
 
 #[derive(Debug)]
@@ -110,39 +133,34 @@ pub struct Header {
 
 // Serialisation
 impl Header {
-    pub fn serialise(&self) -> SerialisedHeader {
-        let mut result = SerialisedHeader::default();
+    pub fn to_raw(&self) -> RawHeader {
+        let mut result = RawHeader::default();
 
         result.set_message_type(&self.message_type);
 
         result.set_serialisation_version(&self.serialisation_version);
 
-        // Rev because pushing one-by-one to front reverses the order
-        for value in ((result.content.len()) as u64).to_le_bytes().into_iter().rev() {
-            result.content.push_front(value);
-        }
-
         return result;
     }
 }
-impl From<Header> for SerialisedHeader {
+impl From<Header> for RawHeader {
     fn from(header: Header) -> Self {
-        return header.serialise();
+        return header.to_raw();
     }
 }
 
 // Deserialisation
-impl TryFrom<SerialisedHeader> for Header {
+impl TryFrom<RawHeader> for Header {
     type Error = SqlError;
 
-    fn try_from(mut header: SerialisedHeader) -> std::result::Result<Self, Self::Error> {
-        let message_type = parse_message_type(&mut header)?;
+    fn try_from(mut header: RawHeader) -> std::result::Result<Self, Self::Error> {
+        let message_type = header.parse_message_type()?;
 
         if message_type.is_none() {
             return Err(SqlError::InvalidHeader("Header must contain message type"));
         }
 
-        let serialisation_version = parse_serialisation_version(&mut header)?;
+        let serialisation_version = header.parse_serialisation_version()?;
 
         if !header.content.is_empty() {
             println!("Warning: unused fields in header detected");
@@ -163,24 +181,4 @@ fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
     let result = input.pop_front().unwrap();
 
     return Ok(result);
-}
-
-fn parse_message_type(header: &mut SerialisedHeader) -> Result<Option<MessageType>> {
-    if !header.get_flag(0) {
-        return Ok(None);
-    }
-
-    let message_type: MessageType = parse_u8(&mut header.content)?.try_into()?;
-
-    return Ok(Some(message_type));
-}
-
-fn parse_serialisation_version(header: &mut SerialisedHeader) -> Result<Option<Serialiser>> {
-    if !header.get_flag(1) {
-        return Ok(None);
-    }
-
-    let result: Serialiser = parse_u8(&mut header.content)?.try_into()?;
-
-    return Ok(Some(result));
 }
