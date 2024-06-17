@@ -1,4 +1,4 @@
-use tokio::{io::AsyncReadExt, net::TcpStream};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{database::RowSet, serialisation::{SerialisationManager, Serialiser}, Result, SqlError};
 
@@ -207,19 +207,34 @@ impl Message {
     }
 }
 
-
 impl Message {
-    fn serialise(self, serialisation_manager: SerialisationManager) -> Result<Vec<u8>> {
+    pub async fn write(
+        self,
+        stream: &mut (impl AsyncWriteExt + std::marker::Unpin),
+        serialisation_manager: SerialisationManager
+    ) -> Result<()> {
+        let serialised = self.serialise(serialisation_manager);
+
+        stream.write_u64_le(serialised.len() as u64).await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
+
+        stream.write_all(serialised.as_slice()).await
+            .map_err(SqlError::CouldNotWriteToConnection)?;
+
+        return Ok(());
+    }
+
+    fn serialise(self, serialisation_manager: SerialisationManager) -> Vec<u8> {
         let mut result = vec![];
 
         result.extend(self.header.to_raw().serialise());
 
         result.extend(self.body.serialise(serialisation_manager));
 
-        return Ok(result);
+        return result;
     }
 
-    pub async fn read(stream: &mut TcpStream, serialiser: Serialiser) -> Result<Self> {
+    pub async fn read(stream: &mut (impl AsyncReadExt + std::marker::Unpin), serialiser: Serialiser) -> Result<Self> {
         // TODO: Does cancel safety matter?
         // I guess not because the only other branch in tokio::select is to quit out of the program
         // Although maybe that makes client hang if it is in a write?

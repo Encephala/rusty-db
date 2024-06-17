@@ -47,7 +47,7 @@ pub struct Context {
 impl Connection {
     pub async fn new(mut stream: TcpStream, shutdown_receiver: Receiver<()>) -> Result<Self> {
         // TODO: Negotiate connection parameters
-        let context = Connection::negotiate_parameters(&mut stream).await?;
+        let context = Connection::setup_context(&mut stream).await?;
 
         return Ok(Connection {
             stream,
@@ -56,7 +56,11 @@ impl Connection {
         });
     }
 
-    async fn negotiate_parameters(stream: &mut TcpStream) -> Result<Context> {
+    /// Negotiates connection parameters.
+    ///
+    /// Returns a [`Context`] object populated with these parameters
+    /// as well as other (default) parameters.
+    async fn setup_context(stream: &mut TcpStream) -> Result<Context> {
         let peer_address = stream.peer_addr()
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
