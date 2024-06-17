@@ -1,4 +1,6 @@
-use crate::{database::RowSet, serialisation::SerialisationManager, Result, SqlError};
+use tokio::{io::AsyncReadExt, net::TcpStream};
+
+use crate::{database::RowSet, serialisation::{SerialisationManager, Serialiser}, Result, SqlError};
 
 use super::header::{Header, MessageType, RawHeader};
 
@@ -193,10 +195,9 @@ impl From<&MessageBody> for MessageType {
 }
 
 impl Message {
-    pub fn from_message_body(value: MessageBody, serialisation_manager: &SerialisationManager) -> Self {
+    pub fn from_message_body(value: MessageBody) -> Self {
         let header = Header {
             message_type: (&value).into(),
-            serialisation_version: Some(serialisation_manager.0),
         };
 
         return Message {
@@ -208,7 +209,35 @@ impl Message {
 
 
 impl Message {
-    pub fn deserialise(input: &mut &[u8], serialisation_manager: SerialisationManager) -> Result<Self> {
+    fn serialise(self, serialisation_manager: SerialisationManager) -> Result<Vec<u8>> {
+        let mut result = vec![];
+
+        result.extend(self.header.to_raw().serialise());
+
+        result.extend(self.body.serialise(serialisation_manager));
+
+        return Ok(result);
+    }
+
+    pub async fn read(stream: &mut TcpStream, serialiser: Serialiser) -> Result<Self> {
+        // TODO: Does cancel safety matter?
+        // I guess not because the only other branch in tokio::select is to quit out of the program
+        // Although maybe that makes client hang if it is in a write?
+        // By the description of cancel safety, I think it should only leave buffer in undefined state,
+        // but connection should be handled properly still?
+        let length = stream.read_u64_le().await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+        let mut data = vec![0_u8; length as usize];
+        stream.read_exact(&mut data).await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+        let data = &mut data.as_slice();
+
+        return Self::deserialise(data, SerialisationManager(serialiser));
+    }
+
+    fn deserialise(input: &mut &[u8], serialisation_manager: SerialisationManager) -> Result<Self> {
         let header: Header = Self::parse_raw_header(input)?.try_into()?;
 
         let body = MessageBody::deserialise(input, &header.message_type, serialisation_manager)?;
@@ -245,16 +274,6 @@ impl Message {
         result.content = input[..header_length].to_vec().into();
 
         *input = &input[header_length..];
-
-        return Ok(result);
-    }
-
-    pub fn serialise(self, serialisation_manager: SerialisationManager) -> Result<Vec<u8>> {
-        let mut result = vec![];
-
-        result.extend(self.header.to_raw().serialise());
-
-        result.extend(self.body.serialise(serialisation_manager));
 
         return Ok(result);
     }

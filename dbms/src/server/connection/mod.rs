@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests;
 
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 
 use tokio::{
-    io::BufReader,
     net::TcpStream, sync::broadcast::Receiver
 };
 
@@ -26,65 +25,86 @@ use crate::{
 
 use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 
-use super::protocol::Message;
+use super::protocol::{Message, MessageBody};
 
 struct Runtime {
     persistence_manager: Box<dyn PersistenceManager>,
     database: Option<Database>,
 }
 
-const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);
-
-pub async fn handle_connection(mut stream: TcpStream, mut shutdown_signal: Receiver<()>) -> Result<()> {
-    let (reader, mut writer) = stream.split();
-
-    let mut reader = BufReader::new(reader);
-
-    // welcome_message().write(&mut writer).await?;
-
-    let mut runtime = Runtime {
-        persistence_manager: Box::new(FileSystem::new(
-                SERIALISATION_MANAGER,
-                PathBuf::from("/tmp/rusty-db")
-            )),
-        database: None,
-    };
-
-    loop {
-        tokio::select! {
-            // message = Message::read(&mut reader) => {
-            //     let message = message?;
-
-            //     // Stream closed
-            //     if message.is_empty() {
-            //         println!("Client {:?} disconnected", stream.peer_addr().unwrap());
-
-            //         break;
-            //     }
-
-            //     // Handle message
-            //     let _execution_result = process_statement(message, &mut runtime).await?;
-
-            //     // TODO: Construct a proper response message and send it over
-            // },
-            _ = shutdown_signal.recv() => {
-                // TODO: Inform client of shutdown
-                break;
-            }
-        }
-    }
-
-    return Ok(());
+pub struct Connection {
+    stream: TcpStream,
+    shutdown_receiver: Receiver<()>,
+    context: Context,
 }
 
-// fn welcome_message() -> Message {
-//     return Message::from(b"deez nuts".as_slice());
-// }
+pub struct Context {
+    peer_address: SocketAddr,
+    serialiser: Serialiser,
+    runtime: Runtime,
+}
 
-async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<ExecutionResult> {
-    let input = &String::from_utf8(buffer)
-        .map_err(SqlError::NotAValidString)?;
+impl Connection {
+    pub async fn new(mut stream: TcpStream, shutdown_receiver: Receiver<()>) -> Result<Self> {
+        // TODO: Negotiate connection parameters
+        let context = Connection::negotiate_parameters(&mut stream).await?;
 
+        return Ok(Connection {
+            stream,
+            shutdown_receiver,
+            context,
+        });
+    }
+
+    async fn negotiate_parameters(stream: &mut TcpStream) -> Result<Context> {
+        let peer_address = stream.peer_addr()
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+        let serialiser = todo!();
+
+        let runtime = Runtime {
+            persistence_manager: Box::new(FileSystem::new(
+                    SerialisationManager(serialiser),
+                    PathBuf::from("/tmp/rusty-db"),
+                )),
+            database: None,
+        };
+
+        return Ok(Context {
+            peer_address,
+            serialiser,
+            runtime,
+        });
+    }
+
+    pub async fn handle(mut self) -> Result<()> {
+        println!("Handling connection in {:?}", std::thread::current());
+
+        loop {
+            tokio::select! {
+                message = Message::read(&mut self.stream, self.context.serialiser) => {
+                    // This breaks out of the loop
+                    let message = message?;
+
+                    // Handle message
+                    if let MessageBody::Str(statement) = message.body {
+                        let _execution_result = process_statement(statement, &mut self.context.runtime).await?;
+                    };
+
+                    // TODO: Construct a proper response message and send it over
+                },
+                _ = self.shutdown_receiver.recv() => {
+                    // TODO: Inform client of shutdown
+                    break;
+                }
+            }
+        }
+
+        return Ok(());
+    }
+}
+
+async fn process_statement(input: String, runtime: &mut Runtime) -> Result<ExecutionResult> {
     println!("Executing: {input}");
 
     if input.starts_with("\\c ") {
@@ -106,7 +126,7 @@ async fn process_statement(buffer: Vec<u8>, runtime: &mut Runtime) -> Result<Exe
         return Ok(None.into());
     }
 
-    let statement = parse_statement(input);
+    let statement = parse_statement(&input);
 
     if statement.is_none() {
         println!("Failed to parse: {input}");

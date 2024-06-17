@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use crate::{Result, SqlError};
-use crate::serialisation::Serialiser;
 
 
 #[derive(Debug, PartialEq)]
@@ -84,14 +83,6 @@ impl RawHeader {
         self.content.push_back(message_type.into());
     }
 
-    fn set_serialisation_version(&mut self, serialisation_version: &Option<Serialiser>) {
-        if let Some(serialisation_version) = serialisation_version {
-            self.set_flag(1);
-
-            self.content.push_back(serialisation_version.into());
-        }
-    }
-
     fn parse_message_type(&mut self) -> Result<Option<MessageType>> {
         if !self.get_flag(0) {
             return Ok(None);
@@ -100,16 +91,6 @@ impl RawHeader {
         let message_type: MessageType = parse_u8(&mut self.content)?.try_into()?;
 
         return Ok(Some(message_type));
-    }
-
-    fn parse_serialisation_version(&mut self) -> Result<Option<Serialiser>> {
-        if !self.get_flag(1) {
-            return Ok(None);
-        }
-
-        let result: Serialiser = parse_u8(&mut self.content)?.try_into()?;
-
-        return Ok(Some(result));
     }
 
     pub fn serialise(&self) -> Vec<u8> {
@@ -127,7 +108,6 @@ impl RawHeader {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Header {
     pub message_type: MessageType,
-    pub serialisation_version: Option<Serialiser>,
 }
 
 
@@ -137,8 +117,6 @@ impl Header {
         let mut result = RawHeader::default();
 
         result.set_message_type(&self.message_type);
-
-        result.set_serialisation_version(&self.serialisation_version);
 
         return result;
     }
@@ -160,15 +138,12 @@ impl TryFrom<RawHeader> for Header {
             return Err(SqlError::InvalidHeader("Header must contain message type"));
         }
 
-        let serialisation_version = header.parse_serialisation_version()?;
-
         if !header.content.is_empty() {
             println!("Warning: unused fields in header detected");
         }
 
         return Ok(Header {
             message_type: message_type.unwrap(),
-            serialisation_version,
         });
     }
 }

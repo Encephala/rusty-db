@@ -1,8 +1,6 @@
 use super::messages::*;
 use super::header::*;
-use crate::{serialisation::{SerialisationManager, Serialiser}, SqlError};
-
-const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager(Serialiser::V2);
+use crate::SqlError;
 
 mod messages {
     use crate::database::RowSet;
@@ -44,7 +42,7 @@ mod messages {
     fn close_message_to_packet() {
         let message = MessageBody::Close;
 
-        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
+        let packet = Message::from_message_body(message);
 
         assert!(matches!(
             packet,
@@ -59,7 +57,7 @@ mod messages {
     fn ok_message_to_packet() {
         let message = MessageBody::Ok;
 
-        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
+        let packet = Message::from_message_body(message);
 
         assert!(matches!(
             packet,
@@ -74,7 +72,7 @@ mod messages {
     fn string_message_to_packet() {
         let message = MessageBody::Str("deez nuts".into());
 
-        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
+        let packet = Message::from_message_body(message);
 
         assert!(matches!(
             packet,
@@ -89,7 +87,7 @@ mod messages {
     fn error_message_to_packet() {
         let message = MessageBody::Error(SqlError::InvalidParameter);
 
-        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
+        let packet = Message::from_message_body(message);
 
         assert!(matches!(
             packet,
@@ -111,7 +109,7 @@ mod messages {
             values: vec![],
         });
 
-        let packet = Message::from_message_body(message, &SERIALISATION_MANAGER);
+        let packet = Message::from_message_body(message);
 
         assert!(matches!(
             packet,
@@ -123,11 +121,6 @@ mod messages {
                 body: MessageBody::RowSet(_)
             }
         ));
-
-        assert_eq!(
-            packet.header.serialisation_version,
-            Some(SERIALISATION_MANAGER.0)
-        );
     }
 }
 
@@ -206,25 +199,7 @@ mod headers {
         ));
     }
 
-    #[test]
-    fn parse_serialisation_version_basic() {
-        let mut header = RawHeader::new(
-            u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0]),
-            vec![]
-        );
-
-        header.content = [1, 2].into();
-
-        let parsed = Header::try_from(header).unwrap();
-
-        assert_eq!(
-            parsed.serialisation_version,
-            Some(Serialiser::V2),
-        );
-    }
-
     // TODO: This when more fields exist
-    // But for now because message type is required, parse_serialisation_version_basic actual is a full header
     // #[test]
     // fn parse_full_header() {
     // }
@@ -234,7 +209,6 @@ mod headers {
     fn set_message_type_basic() {
         let header = Header {
             message_type: MessageType::Ok,
-            serialisation_version: None,
         };
 
         let raw = header.to_raw();
@@ -250,28 +224,7 @@ mod headers {
         );
     }
 
-    #[test]
-    fn set_serialisation_version_basic() {
-        let header = Header {
-            message_type: MessageType::Close,
-            serialisation_version: Some(Serialiser::V2)
-        };
-
-        let raw = header.to_raw();
-
-        assert_eq!(
-            raw.flags,
-            u64::from_be_bytes([192, 0, 0, 0, 0, 0, 0, 0])
-        );
-
-        assert_eq!(
-            raw.content,
-            vec![1, 2]
-        );
-    }
-
     // TODO: This when more fields exist
-    // But for now because message type is required, parse_serialisation_version_basic actual is a full header
     // #[test]
     // fn serialise_full_header() {
     // }
