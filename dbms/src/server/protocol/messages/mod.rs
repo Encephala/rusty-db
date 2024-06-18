@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{database::RowSet, serialisation::{SerialisationManager, Serialiser}, Result, SqlError};
@@ -37,6 +40,7 @@ pub struct Message {
 }
 
 #[derive(Debug, PartialEq)]
+#[cfg_attr(test, derive(Clone))]
 pub enum Command {
     Connect(String),
     ListDatabases,
@@ -73,15 +77,9 @@ impl Command {
         let result = match input.first()
             .ok_or(SqlError::InputTooShort(1, input.len()))? {
                 1 => {
-                    let length = u64_from_input(input)? as usize;
+                    *input = &input[1..];
 
-                    let string = String::from_utf8(
-                        input.get(..length)
-                            .ok_or(SqlError::InputTooShort(length, input.len()))?
-                            .to_vec()
-                    ).map_err(SqlError::NotAValidString)?;
-
-                    *input = &input[length..];
+                    let string = string_from_input(input)?;
 
                     Command::Connect(string)
                 }
@@ -115,8 +113,8 @@ pub enum MessageBody {
 impl MessageBody {
     fn serialise(self, serialisation_manager: SerialisationManager) -> Vec<u8> {
         return match self {
-            MessageBody::Close => todo!(),
-            MessageBody::Ok => todo!(),
+            MessageBody::Close => vec![],
+            MessageBody::Ok => vec![],
             MessageBody::Str(value) => {
                 let mut result = (value.len() as u64).to_le_bytes().to_vec();
 
@@ -140,16 +138,8 @@ impl MessageBody {
 
     fn deserialise(input: &mut &[u8], message_type: &MessageType, serialisation_manager: SerialisationManager) -> Result<Self> {
         let result = match message_type {
-            MessageType::Close => {
-                *input = &input[1..];
-
-                MessageBody::Close
-            },
-            MessageType::Ok => {
-                *input = &input[1..];
-
-                MessageBody::Ok
-            },
+            MessageType::Close => MessageBody::Close,
+            MessageType::Ok => MessageBody::Ok,
             MessageType::Str => {
                 let string = string_from_input(input)?;
 

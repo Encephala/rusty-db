@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::collections::VecDeque;
 
 use crate::{Result, SqlError};
@@ -68,13 +71,13 @@ impl RawHeader {
     pub fn set_flag(&mut self, index: u8) {
         assert!(index <= 63);
 
-        self.flags |= 1 << (63 - index);
+        self.flags |= 1 << index;
     }
 
     pub fn get_flag(&self, index: u8) -> bool {
         assert!(index <= 63);
 
-        return (self.flags & 1 << (63 - index)) != 0;
+        return (self.flags & 1 << index) != 0;
     }
 
     fn set_message_type(&mut self, message_type: &MessageType) {
