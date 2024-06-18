@@ -3,7 +3,7 @@ mod serverless;
 
 use std::io::Write;
 
-use tokio::{io::BufReader, net::{
+use tokio::{io::{AsyncReadExt, AsyncWriteExt, BufReader}, net::{
     TcpStream,
     ToSocketAddrs,
 }};
@@ -12,6 +12,7 @@ use dbms::{
     SqlError,
     serialisation::{SerialisationManager, Serialiser},
     server::Message,
+    utils::serialiser_version_to_serialiser,
 };
 
 const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);
@@ -23,12 +24,27 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
 
     let mut reader = BufReader::new(reader);
 
-    // let welcome_message = Message::read(&mut reader).await?;
+    // TODO: How do I do this?
+    let number_of_serialisers = stream.read_u8().await
+        .map_err(SqlError::CouldNotReadFromConnection)?;
 
-    // println!(
-    //     "Got welcome message: {}",
-    //     String::from_utf8(welcome_message.0).unwrap()
-    // );
+    let mut serialisers_buffer = vec![0_u8; number_of_serialisers as usize];
+
+    stream.read_exact(&mut serialisers_buffer).await
+        .map_err(SqlError::CouldNotReadFromConnection)?;
+
+    if serialisers_buffer.is_empty() {
+        return Err(SqlError::InputTooShort(0, 1));
+    }
+
+    let highest_serialiser = serialisers_buffer.iter().max().unwrap();
+
+    let serialiser = serialiser_version_to_serialiser(*highest_serialiser)?;
+
+    println!("Chose serialiser {serialiser:?}");
+
+    stream.write_u8(*highest_serialiser).await
+        .map_err(SqlError::CouldNotWriteToConnection)?;
 
     todo!();
 

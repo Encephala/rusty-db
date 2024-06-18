@@ -100,8 +100,6 @@ fn spawn_new_handler(
     println!("New connection established from {address:?}");
 
     return spawn(async move {
-        println!("Setting up new connection in {:?}", std::thread::current());
-
         let connection = Connection::new(stream, shutdown_receiver).await?;
 
         connection.handle().await

@@ -1,3 +1,16 @@
+use crate::{
+    SqlError, Result,
+    serialisation::Serialiser
+};
+
+pub fn serialiser_version_to_serialiser(version: u8) -> Result<Serialiser>{
+    return match version {
+        1 => Ok(Serialiser::V1),
+        2 => Ok(Serialiser::V2),
+        other => Err(SqlError::IncompatibleVersion(other)),
+    };
+}
+
 #[cfg(test)]
 pub mod tests {
     use sql_parse::parser::ColumnType;

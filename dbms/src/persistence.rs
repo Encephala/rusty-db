@@ -13,7 +13,7 @@ use super::serialisation::SerialisationManager;
 
 // Love me some premature abstractions
 #[async_trait]
-pub trait PersistenceManager: Send + Sync {
+pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn save_database(&self, database: &Database) -> Result<()>;
     async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName>;
 

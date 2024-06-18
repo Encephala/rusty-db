@@ -4,29 +4,27 @@ mod tests;
 use std::{net::SocketAddr, path::PathBuf};
 
 use tokio::{
-    net::TcpStream, sync::broadcast::Receiver
+    io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
 };
 
 use crate::{
     evaluate::{
         Execute,
         ExecutionResult
-    },
-    persistence::{
+    }, persistence::{
         FileSystem,
         PersistenceManager
-    },
-    serialisation::{
+    }, serialisation::{
         SerialisationManager,
         Serialiser
-    },
-    types::DatabaseName, Database, Result, SqlError
+    }, types::DatabaseName, utils::serialiser_version_to_serialiser, Database, Result, SqlError
 };
 
 use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 
 use super::protocol::{Message, MessageBody};
 
+#[derive(Debug)]
 struct Runtime {
     persistence_manager: Box<dyn PersistenceManager>,
     database: Option<Database>,
@@ -38,6 +36,7 @@ pub struct Connection {
     context: Context,
 }
 
+#[derive(Debug)]
 pub struct Context {
     peer_address: SocketAddr,
     serialiser: Serialiser,
@@ -46,7 +45,6 @@ pub struct Context {
 
 impl Connection {
     pub async fn new(mut stream: TcpStream, shutdown_receiver: Receiver<()>) -> Result<Self> {
-        // TODO: Negotiate connection parameters
         let context = Connection::setup_context(&mut stream).await?;
 
         return Ok(Connection {
@@ -60,11 +58,12 @@ impl Connection {
     ///
     /// Returns a [`Context`] object populated with these parameters
     /// as well as other (default) parameters.
+    // I don't quite like this function name
     async fn setup_context(stream: &mut TcpStream) -> Result<Context> {
         let peer_address = stream.peer_addr()
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
-        let serialiser = todo!();
+        let serialiser = Connection::negotiate_serialiser_version(stream).await?;
 
         let runtime = Runtime {
             persistence_manager: Box::new(FileSystem::new(
@@ -81,8 +80,29 @@ impl Connection {
         });
     }
 
+    async fn negotiate_serialiser_version(stream: &mut TcpStream) -> Result<Serialiser> {
+        let available_serialiser_versions = [1, 2];
+
+        stream.write_all((available_serialiser_versions.len() as u8).to_le_bytes().as_slice()).await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+        stream.write_all(available_serialiser_versions.as_slice()).await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+
+        let mut serialiser_version_buffer = [0_u8];
+
+        stream.read_exact(&mut serialiser_version_buffer).await
+            .map_err(SqlError::CouldNotReadFromConnection)?;
+
+        let [decided_version] = serialiser_version_buffer;
+
+        let serialiser = serialiser_version_to_serialiser(decided_version)?;
+
+        return Ok(serialiser);
+    }
+
     pub async fn handle(mut self) -> Result<()> {
-        println!("Handling connection in {:?}", std::thread::current());
 
         loop {
             tokio::select! {

@@ -4,7 +4,7 @@
 mod database;
 pub mod types;
 pub mod evaluate;
-mod utils;
+pub mod utils;
 pub mod persistence;
 pub mod serialisation;
 pub mod server;
