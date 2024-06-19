@@ -12,7 +12,7 @@ use super::{Message, MessageBody};
 
 // Only have one test actually open a listener,
 // otherwise we'd have conflicts and stuff
-// #[tokio::test]
+#[tokio::test]
 async fn message_read_write() {
     let test_message: Message = Message::from_message_body(MessageBody::Str("deez nuts".into()));
 
