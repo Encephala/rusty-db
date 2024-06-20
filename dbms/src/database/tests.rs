@@ -1,5 +1,6 @@
+use crate::utils::tests::{test_row_set, test_table, test_table_with_values};
+
 use super::*;
-use crate::utils::tests::*;
 
 #[test]
 fn insert_basic() {

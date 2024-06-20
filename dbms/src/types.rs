@@ -60,6 +60,7 @@ impl_owned!(TableName);
 
 
 #[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct DatabaseName(pub String);
 
 impl TryFrom<&Expression> for DatabaseName {

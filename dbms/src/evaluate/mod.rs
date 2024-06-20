@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-use async_trait::async_trait;
-
 use sql_parse::parser::{Expression, Statement, CreateType};
 
 use crate::Result;
@@ -63,6 +61,7 @@ impl Database {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum ExecutionResult {
     None,
     Table(Table),
@@ -80,13 +79,13 @@ impl From<Option<ExecutionResult>> for ExecutionResult {
     }
 }
 
-#[async_trait]
 pub trait Execute {
-    async fn execute(self, database: Option<&mut Database>, persistence: &dyn PersistenceManager) -> Result<ExecutionResult>;
+    fn execute(&self, database: Option<&mut Database>, persistence: &dyn PersistenceManager)
+    -> impl futures::Future<Output = Result<ExecutionResult>> + Send;
 }
 
 // Helper to destructure Array expressions
-fn try_destructure_array(input: Expression) -> Result<Vec<Expression>> {
+fn try_destructure_array(input: &Expression) -> Result<&Vec<Expression>> {
     return match input {
         Expression::Array(values) => Ok(values),
         _ => Err(SqlError::InvalidParameter),
@@ -95,23 +94,22 @@ fn try_destructure_array(input: Expression) -> Result<Vec<Expression>> {
 
 // Helper to map the option because TryFrom can't be implemented for Options
 // (unless Expression had been in this crate)
-fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>> {
+fn map_option_where_clause(input: &Option<Expression>) -> Result<Option<Where>> {
     return match input {
         Some(clause) => Ok(Some(clause.try_into()?)),
         None => Ok(None),
     };
 }
 
-#[async_trait]
 impl Execute for Statement {
-    async fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult> {
+    async fn execute(&self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult> {
         match self {
         Statement::Select { table, columns, where_clause } => {
             if database.is_none() {
                 return Err(SqlError::NoDatabaseSelected);
             }
 
-            let database = &mut database.unwrap();
+            let database = database.unwrap();
 
             let table: TableName = table.try_into()?;
 
@@ -139,9 +137,9 @@ impl Execute for Statement {
 
                 let database = database.unwrap();
 
-                let columns = try_destructure_array(columns.ok_or(SqlError::InvalidParameter)?)?;
+                let columns = try_destructure_array(columns.as_ref().ok_or(SqlError::InvalidParameter)?)?;
 
-                let columns = columns.into_iter()
+                let columns = columns.iter()
                     .map(|column_definition| column_definition.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
@@ -160,7 +158,7 @@ impl Execute for Statement {
 
             let database = database.unwrap();
 
-            let into: TableName = into.try_into()?;
+            let into = TableName::try_from(into)?;
 
 
             let values = try_destructure_array(values)?;
@@ -170,7 +168,7 @@ impl Execute for Statement {
             for row in values {
                 let row = try_destructure_array(row)?;
 
-                let row_values = row.into_iter()
+                let row_values = row.iter()
                     .map(|value| value.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
@@ -182,7 +180,7 @@ impl Execute for Statement {
             Some(columns) => {
                 let names = try_destructure_array(columns)?;
 
-                let names: Vec<ColumnName> = names.into_iter()
+                let names: Vec<ColumnName> = names.iter()
                     .map(|name| name.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
@@ -207,14 +205,14 @@ impl Execute for Statement {
 
             let columns = try_destructure_array(columns)?;
 
-            let column_names = columns.into_iter()
+            let column_names = columns.iter()
                 .map(|column_name| column_name.try_into())
                 .collect::<Result<Vec<_>>>()?;
 
 
             let values = try_destructure_array(values)?;
 
-            let values = values.into_iter()
+            let values = values.iter()
                 .map(|value| value.try_into())
                 .collect::<Result<Vec<_>>>()?;
 
