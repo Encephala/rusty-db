@@ -17,15 +17,6 @@ pub enum Serialiser {
     V2,
 }
 
-impl std::fmt::Display for Serialiser {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Serialiser::V1 => write!(f, "V1"),
-            Serialiser::V2 => write!(f, "V2"),
-        }
-    }
-}
-
 impl From<&Serialiser> for u8 {
     fn from(value: &Serialiser) -> Self {
         return match value {
@@ -226,6 +217,11 @@ mod tests {
         assert!(matches!(
             manager.deserialise_table(serialised.as_slice()),
             Err(SqlError::IncompatibleVersion(0))
+        ));
+
+        assert!(matches!(
+            manager.deserialise_table(vec![].as_slice()),
+            Err(SqlError::InputTooShort(0, 1))
         ));
     }
 }

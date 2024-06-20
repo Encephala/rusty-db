@@ -88,11 +88,7 @@ impl V2Serialise for Table {
 
 impl V2Serialise for TableName {
     fn serialise(&self) -> Vec<u8> {
-        let mut result = (self.0.len() as u64).serialise();
-
-        result.extend(self.0.bytes());
-
-        return result;
+        return self.0.serialise();
     }
 }
 
@@ -111,11 +107,7 @@ impl V2Serialise for ColumnType {
 
 impl V2Serialise for ColumnName {
     fn serialise(&self) -> Vec<u8> {
-        let mut result = (self.0.len() as u64).serialise();
-
-        result.extend(self.0.bytes());
-
-        return result;
+        return self.0.serialise();
     }
 }
 
