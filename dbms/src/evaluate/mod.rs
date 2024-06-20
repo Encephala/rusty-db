@@ -106,160 +106,160 @@ fn map_option_where_clause(input: Option<Expression>) -> Result<Option<Where>> {
 impl Execute for Statement {
     async fn execute(self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult> {
         match self {
-            Statement::Select { table, columns, where_clause } => {
-                if database.is_none() {
-                    return Err(SqlError::NoDatabaseSelected);
-                }
+        Statement::Select { table, columns, where_clause } => {
+            if database.is_none() {
+                return Err(SqlError::NoDatabaseSelected);
+            }
 
-                let database = &mut database.unwrap();
+            let database = &mut database.unwrap();
 
-                let table: TableName = table.try_into()?;
+            let table: TableName = table.try_into()?;
 
-                let columns: ColumnSelector = columns.try_into()?;
+            let columns: ColumnSelector = columns.try_into()?;
 
-                let where_clause = map_option_where_clause(where_clause)?;
+            let where_clause = map_option_where_clause(where_clause)?;
 
-                return database.select(table, columns, where_clause)
-                    .map(ExecutionResult::Select);
+            return database.select(table, columns, where_clause)
+                .map(ExecutionResult::Select);
+        },
+
+        Statement::Create { what, name, columns } => {
+            match what {
+            CreateType::Database => {
+                let database = Database::new(name.try_into()?);
+
+                persistence_manager.save_database(&database).await?;
+
+                return Ok(ExecutionResult::CreateDatabase(database.name));
             },
-
-            Statement::Create { what, name, columns } => {
-                match what {
-                    CreateType::Database => {
-                        let database = Database::new(name.try_into()?);
-
-                        persistence_manager.save_database(&database).await?;
-
-                        return Ok(ExecutionResult::CreateDatabase(database.name));
-                    },
-                    CreateType::Table => {
-                        if database.is_none() {
-                            return Err(SqlError::NoDatabaseSelected);
-                        }
-
-                        let database = database.unwrap();
-
-                        let columns = try_destructure_array(columns.ok_or(SqlError::InvalidParameter)?)?;
-
-                        let columns = columns.into_iter()
-                            .map(|column_definition| column_definition.try_into())
-                            .collect::<Result<Vec<_>>>()?;
-
-                        return database.create(Table::new(
-                            name.try_into()?,
-                            columns
-                        )?).map(|_| ExecutionResult::None);
-                    },
-                };
-            },
-
-            Statement::Insert { into, columns,  values } => {
+            CreateType::Table => {
                 if database.is_none() {
                     return Err(SqlError::NoDatabaseSelected);
                 }
 
                 let database = database.unwrap();
 
-                let into: TableName = into.try_into()?;
+                let columns = try_destructure_array(columns.ok_or(SqlError::InvalidParameter)?)?;
 
-
-                let values = try_destructure_array(values)?;
-
-                let mut result = vec![];
-
-                for row in values {
-                    let row = try_destructure_array(row)?;
-
-                    let row_values = row.into_iter()
-                        .map(|value| value.try_into())
-                        .collect::<Result<Vec<_>>>()?;
-
-                    result.push(row_values);
-                }
-
-
-                let columns = match columns {
-                    Some(columns) => {
-                        let names = try_destructure_array(columns)?;
-
-                        let names: Vec<ColumnName> = names.into_iter()
-                            .map(|name| name.try_into())
-                            .collect::<Result<Vec<_>>>()?;
-
-                        Some(names)
-                    },
-                    None => None,
-                };
-
-                return database.insert(into, columns, result)
-                    .map(|_| ExecutionResult::None);
-            },
-
-            Statement::Update { from, columns, values, where_clause } => {
-                if database.is_none() {
-                    return Err(SqlError::NoDatabaseSelected);
-                }
-
-                let database = database.unwrap();
-
-                let from: TableName = from.try_into()?;
-
-
-                let columns = try_destructure_array(columns)?;
-
-                let column_names = columns.into_iter()
-                    .map(|column_name| column_name.try_into())
+                let columns = columns.into_iter()
+                    .map(|column_definition| column_definition.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
+                return database.create(Table::new(
+                    name.try_into()?,
+                    columns
+                )?).map(|_| ExecutionResult::None);
+            },
+            };
+        },
 
-                let values = try_destructure_array(values)?;
+        Statement::Insert { into, columns,  values } => {
+            if database.is_none() {
+                return Err(SqlError::NoDatabaseSelected);
+            }
 
-                let values = values.into_iter()
+            let database = database.unwrap();
+
+            let into: TableName = into.try_into()?;
+
+
+            let values = try_destructure_array(values)?;
+
+            let mut result = vec![];
+
+            for row in values {
+                let row = try_destructure_array(row)?;
+
+                let row_values = row.into_iter()
                     .map(|value| value.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
+                result.push(row_values);
+            }
 
-                let where_clause = map_option_where_clause(where_clause)?;
 
-                return database.update(from, column_names, values, where_clause)
-                    .map(|_| ExecutionResult::None);
+            let columns = match columns {
+            Some(columns) => {
+                let names = try_destructure_array(columns)?;
+
+                let names: Vec<ColumnName> = names.into_iter()
+                    .map(|name| name.try_into())
+                    .collect::<Result<Vec<_>>>()?;
+
+                Some(names)
             },
+            None => None,
+            };
 
-            Statement::Delete { from, where_clause } => {
+            return database.insert(into, columns, result)
+                .map(|_| ExecutionResult::None);
+        },
+
+        Statement::Update { from, columns, values, where_clause } => {
+            if database.is_none() {
+                return Err(SqlError::NoDatabaseSelected);
+            }
+
+            let database = database.unwrap();
+
+            let from: TableName = from.try_into()?;
+
+
+            let columns = try_destructure_array(columns)?;
+
+            let column_names = columns.into_iter()
+                .map(|column_name| column_name.try_into())
+                .collect::<Result<Vec<_>>>()?;
+
+
+            let values = try_destructure_array(values)?;
+
+            let values = values.into_iter()
+                .map(|value| value.try_into())
+                .collect::<Result<Vec<_>>>()?;
+
+
+            let where_clause = map_option_where_clause(where_clause)?;
+
+            return database.update(from, column_names, values, where_clause)
+                .map(|_| ExecutionResult::None);
+        },
+
+        Statement::Delete { from, where_clause } => {
+            if database.is_none() {
+                return Err(SqlError::NoDatabaseSelected);
+            }
+
+            let database = database.unwrap();
+
+            let from: TableName = from.try_into()?;
+
+            let where_clause = map_option_where_clause(where_clause)?;
+
+            return database.delete(from, where_clause)
+                .map(|_| ExecutionResult::None);
+        },
+
+        Statement::Drop { what, name } => {
+            match what {
+            CreateType::Database => {
+                return persistence_manager.delete_database(name.try_into()?).await
+                    .map(ExecutionResult::DropDatabase);
+            },
+            CreateType::Table => {
                 if database.is_none() {
                     return Err(SqlError::NoDatabaseSelected);
                 }
 
                 let database = database.unwrap();
 
-                let from: TableName = from.try_into()?;
+                let name: TableName = name.try_into()?;
 
-                let where_clause = map_option_where_clause(where_clause)?;
-
-                return database.delete(from, where_clause)
-                    .map(|_| ExecutionResult::None);
-            },
-
-            Statement::Drop { what, name } => {
-                match what {
-                    CreateType::Database => {
-                        return persistence_manager.delete_database(name.try_into()?).await
-                            .map(ExecutionResult::DropDatabase);
-                    },
-                    CreateType::Table => {
-                        if database.is_none() {
-                            return Err(SqlError::NoDatabaseSelected);
-                        }
-
-                        let database = database.unwrap();
-
-                        let name: TableName = name.try_into()?;
-
-                        return database.drop_table(name)
-                            .map(ExecutionResult::Table);
-                    }
-                }
-            },
+                return database.drop_table(name)
+                    .map(ExecutionResult::Table);
+            }
+            }
+        },
         }
     }
 }
