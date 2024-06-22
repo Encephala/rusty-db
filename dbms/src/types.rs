@@ -61,6 +61,9 @@ impl_owned!(TableName);
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
+// TODO: Validating the name
+// At least that it doesn't contain slashes
+// I'm sure rust has some function to validate that a string is a valid filename
 pub struct DatabaseName(pub String);
 
 impl TryFrom<&Expression> for DatabaseName {

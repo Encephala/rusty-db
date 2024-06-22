@@ -30,6 +30,7 @@ pub enum SqlError {
 
     ImpossibleComparison(ColumnValue, ColumnValue),
 
+    DuplicateDatabase(String),
     DuplicateTable(String),
     TableDoesNotExist(TableName),
     NoDatabaseSelected,

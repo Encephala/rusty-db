@@ -35,7 +35,13 @@ impl FileSystem {
 #[async_trait]
 impl PersistenceManager for FileSystem {
     async fn save_database(&self, database: &Database) -> Result<()> {
-        // TODO: This should error if database already exists
+        let db_path = database_path(&self.1, &database.name);
+
+        let exists = std::fs::metadata(&db_path).is_ok();
+        if exists {
+            return Err(SqlError::DuplicateDatabase(db_path.to_string_lossy().into()));
+        }
+
         DirBuilder::new()
             .recursive(true)
             .mode(0o750) // Windows support can get lost byeeeee

@@ -4,7 +4,6 @@ use super::*;
 use super::super::database::{Database, Row};
 use super::super::types::ColumnDefinition;
 use sql_parse::parser::{InfixOperator, ColumnType};
-use crate::persistence;
 use crate::utils::tests::*;
 use crate::{evaluate::{Execute, ExecutionResult}, persistence::{FileSystem, PersistenceManager}, serialisation::{SerialisationManager, Serialiser}};
 
