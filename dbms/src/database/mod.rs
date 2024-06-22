@@ -353,7 +353,7 @@ impl Table {
 }
 
 #[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Database {
     pub name: DatabaseName,
     pub tables: HashMap<String, Table>,

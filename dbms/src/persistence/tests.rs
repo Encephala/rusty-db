@@ -6,6 +6,8 @@ use super::super::types::*;
 use sql_parse::parser::ColumnType;
 
 mod filesystem {
+    use crate::utils::tests::*;
+
     use super::*;
 
     const TEST_PATH: &str = "/tmp/rusty-db-tests/";
@@ -90,6 +92,42 @@ mod filesystem {
             );
         } else {
             panic!("Wrong result type");
+        }
+    }
+
+    #[tokio::test]
+    async fn load_database_basic() {
+        let mut runtime = test_runtime();
+
+        let db = test_db_with_values();
+
+        runtime.create_database(db.clone());
+
+        let persistence = new_filesystem_manager().0;
+
+        persistence.save_database(&db).await.unwrap();
+
+        let result = persistence.load_database(db.name.clone()).await.unwrap();
+
+        assert_eq!(
+            result,
+            db
+        );
+    }
+
+    #[tokio::test]
+    async fn load_database_nonexistent() {
+        let persistence = new_filesystem_manager().0;
+
+        let result = persistence.load_database("nonexistent".into()).await;
+
+        if let Err(SqlError::DatabaseDoesNotExist(name)) = result {
+            assert_eq!(
+                name,
+                "nonexistent".into()
+            );
+        } else {
+            panic!("Wrong result type")
         }
     }
 }

@@ -61,6 +61,32 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
+    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
+        let path = database_path(&self.1, &database_name);
+
+        if !path.exists() {
+            return Err(SqlError::DatabaseDoesNotExist(database_name));
+        }
+
+        // Create database object, then load tables
+        let mut database = Database::new(database_name);
+
+        let files = read_dir(path).map_err(SqlError::FSError)?;
+
+        for file in files {
+            let file = file.map_err(SqlError::FSError)?;
+
+            let data = std::fs::read(file.path())
+                .map_err(SqlError::FSError)?;
+
+            let table = self.0.deserialise_table(data.as_slice())?;
+
+            database.tables.insert(table.name.0.clone(), table);
+        }
+
+        return Ok(database);
+    }
+
     async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName> {
         let path = database_path(&self.1, &name);
 
@@ -88,32 +114,6 @@ impl PersistenceManager for FileSystem {
             .map_err(|error| SqlError::CouldNotRemoveTable(table.name.clone(), error))?;
 
         return Ok(());
-    }
-
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
-        let path = database_path(&self.1, &database_name);
-
-        if !path.exists() {
-            return Err(SqlError::DatabaseDoesNotExist(database_name));
-        }
-
-        // Create database object, then load tables
-        let mut database = Database::new(database_name);
-
-        let files = read_dir(path).map_err(SqlError::FSError)?;
-
-        for file in files {
-            let file = file.map_err(SqlError::FSError)?;
-
-            let data = std::fs::read(file.path())
-                .map_err(SqlError::FSError)?;
-
-            let table = self.0.deserialise_table(data.as_slice())?;
-
-            database.tables.insert(table.name.0.clone(), table);
-        }
-
-        return Ok(database);
     }
 }
 

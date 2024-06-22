@@ -9,7 +9,6 @@ description = "CLI client for the database"
 
 [dependencies]
 tokio.workspace = true
-async-std.workspace = true
 
 sql-parse.workspace = true
 dbms.workspace = true

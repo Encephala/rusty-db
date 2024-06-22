@@ -11,15 +11,12 @@ license = "MIT"
 
 [dependencies]
 tokio.workspace = true
-futures = "*"
-async-std.workspace = true
 
 sql-parse.workspace = true
 dbms.workspace = true
 
 [workspace.dependencies]
 tokio = { version = "*", features = ["full"]}
-async-std = "*"
 
 sql-parse = { path = "./sql-parse", version = "0.1.0" }
 dbms = { path = "./dbms", version = "0.1.0" }

@@ -17,7 +17,8 @@ pub mod tests {
     use super::super::database::{Table, Row, RowSet};
     use super::super::types::{TableName, ColumnName, DatabaseName, ColumnValue, ColumnDefinition};
 
-    use crate::{SqlError, Result};
+    use crate::server::Runtime;
+    use crate::{Database, Result, SqlError};
 
     impl From<&str> for TableName {
         fn from(value: &str) -> Self {
@@ -119,5 +120,29 @@ pub mod tests {
             names,
             values,
         });
+    }
+
+    pub fn test_db() -> Database {
+        return Database::new("test_db".into());
+    }
+
+    pub fn test_db_with_values() -> Database {
+        let mut db = Database::new("test_db".into());
+
+        let table = test_table_with_values().0;
+
+        db.create(table).unwrap();
+
+        return db;
+    }
+
+    pub fn test_runtime() -> Runtime {
+        let mut runtime = Runtime::new_test();
+
+        let db = test_db_with_values();
+
+        runtime.create_database(db);
+
+        return runtime;
     }
 }

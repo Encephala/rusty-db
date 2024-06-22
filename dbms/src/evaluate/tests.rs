@@ -6,26 +6,6 @@ use sql_parse::parser::{InfixOperator, ColumnType};
 use crate::utils::tests::*;
 use crate::evaluate::{Execute, ExecutionResult};
 
-fn test_db() -> Database {
-    let mut db = Database::new("test_db".into());
-
-    let table = test_table_with_values().0;
-
-    db.create(table).unwrap();
-
-    return db;
-}
-
-fn test_runtime() -> Runtime {
-    let mut runtime = Runtime::new_test();
-
-    let db = test_db();
-
-    runtime.create_database(db);
-
-    return runtime;
-}
-
 #[test]
 fn create_and_drop_tables_basic() {
     let mut db = Database::new("db".into());
