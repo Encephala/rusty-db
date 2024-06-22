@@ -3,10 +3,10 @@ mod tests;
 
 use sql_parse::parser::{Expression, Statement, CreateType};
 
+use crate::server::Runtime;
 use crate::Result;
 use super::SqlError;
 use super::database::{Database, Table, RowSet};
-use super::persistence::PersistenceManager;
 use super::types::{DatabaseName, TableName, ColumnValue, ColumnName, Where, ColumnSelector};
 
 
@@ -79,8 +79,9 @@ impl From<Option<ExecutionResult>> for ExecutionResult {
     }
 }
 
+// Because Statement is a foreign type
 pub trait Execute {
-    fn execute(&self, database: Option<&mut Database>, persistence: &dyn PersistenceManager)
+    fn execute(&self, runtime: &mut Runtime)
     -> impl futures::Future<Output = Result<ExecutionResult>> + Send;
 }
 
@@ -102,7 +103,9 @@ fn map_option_where_clause(input: &Option<Expression>) -> Result<Option<Where>> 
 }
 
 impl Execute for Statement {
-    async fn execute(&self, database: Option<&mut Database>, persistence_manager: &dyn PersistenceManager) -> Result<ExecutionResult> {
+    async fn execute(&self, runtime: &mut Runtime) -> Result<ExecutionResult> {
+        let database = runtime.get_database();
+
         match self {
         Statement::Select { table, columns, where_clause } => {
             if database.is_none() {
@@ -126,9 +129,11 @@ impl Execute for Statement {
             CreateType::Database => {
                 let database = Database::new(name.try_into()?);
 
-                persistence_manager.save_database(&database).await?;
+                let name = database.name.clone();
 
-                return Ok(ExecutionResult::CreateDatabase(database.name));
+                runtime.create_database(database);
+
+                return Ok(ExecutionResult::CreateDatabase(name));
             },
             CreateType::Table => {
                 if database.is_none() {
@@ -241,7 +246,7 @@ impl Execute for Statement {
         Statement::Drop { what, name } => {
             match what {
             CreateType::Database => {
-                return persistence_manager.delete_database(name.try_into()?).await
+                return runtime.drop_database()
                     .map(ExecutionResult::DropDatabase);
             },
             CreateType::Table => {

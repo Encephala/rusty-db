@@ -1,11 +1,30 @@
-use std::path::PathBuf;
 
 use super::*;
 use super::super::database::{Database, Row};
 use super::super::types::ColumnDefinition;
 use sql_parse::parser::{InfixOperator, ColumnType};
 use crate::utils::tests::*;
-use crate::{evaluate::{Execute, ExecutionResult}, persistence::{FileSystem, PersistenceManager}, serialisation::{SerialisationManager, Serialiser}};
+use crate::evaluate::{Execute, ExecutionResult};
+
+fn test_db() -> Database {
+    let mut db = Database::new("test_db".into());
+
+    let table = test_table_with_values().0;
+
+    db.create(table).unwrap();
+
+    return db;
+}
+
+fn test_runtime() -> Runtime {
+    let mut runtime = Runtime::new_test();
+
+    let db = test_db();
+
+    runtime.create_database(db);
+
+    return runtime;
+}
 
 #[test]
 fn create_and_drop_tables_basic() {
@@ -65,23 +84,6 @@ fn create_table_duplicate_name() {
     }
 }
 
-fn new_persistence_manager() -> Box<impl PersistenceManager> {
-    return Box::new(FileSystem::new(
-        SerialisationManager(Serialiser::V2),
-        PathBuf::from("/tmp/rusty-db-tests")
-    ));
-}
-
-fn test_db() -> Database {
-    let mut db = Database::new("test_db".into());
-
-    let table = test_table_with_values().0;
-
-    db.create(table).unwrap();
-
-    return db;
-}
-
 #[test]
 fn create_basic() {
     let mut db = Database::new("test_db".into());
@@ -99,20 +101,17 @@ async fn create_db_statement() {
         columns: None,
     };
 
-    let persistence = new_persistence_manager();
-    let result = statement.execute(None, persistence.as_ref()).await.unwrap();
+    let result = statement.execute(&mut Runtime::new_test()).await.unwrap();
 
     assert_eq!(
         result,
         ExecutionResult::CreateDatabase("test_db".into()),
     );
-
-    std::fs::remove_dir(std::path::Path::new("/tmp/rusty-db-tests/test_db")).unwrap();
 }
 
 #[tokio::test]
 async fn create_table_statement() {
-    let mut db = test_db();
+    let mut runtime = test_runtime();
 
     let statement = Statement::Create {
         what: CreateType::Table,
@@ -123,20 +122,18 @@ async fn create_table_statement() {
         ])),
     };
 
-    let persistence = new_persistence_manager();
-
-    let result = statement.execute(Some(&mut db), persistence.as_ref()).await.unwrap();
+    let result = statement.execute(&mut runtime).await.unwrap();
 
     assert_eq!(
         result,
         ExecutionResult::None,
     );
 
-    test_create_table_statement_no_db(&statement, persistence.as_ref()).await;
+    test_create_table_statement_no_db(&statement).await;
 }
 
-async fn test_create_table_statement_no_db(statement: &Statement, persistence: &dyn PersistenceManager) {
-    let result = statement.execute(None, persistence).await;
+async fn test_create_table_statement_no_db(statement: &Statement) {
+    let result = statement.execute(&mut Runtime::new_test()).await;
 
     dbg!(&result);
     assert!(matches!(
@@ -147,14 +144,9 @@ async fn test_create_table_statement_no_db(statement: &Statement, persistence: &
 
 #[test]
 fn insert_into_table_basic() {
-    let mut db = Database::new("db".into());
+    let mut runtime = test_runtime();
 
-    db.create(test_table()).unwrap();
-
-    assert_eq!(
-        db.tables.get("test_table").unwrap().values,
-        vec![],
-    );
+    let db = runtime.get_database().unwrap();
 
     db.insert("test_table".into(), None, vec![vec![
         ColumnValue::Int(69),
@@ -164,6 +156,8 @@ fn insert_into_table_basic() {
     assert_eq!(
         db.tables.get("test_table").unwrap().values,
         vec![
+            Row(vec![ColumnValue::Int(5), ColumnValue::Bool(true)]),
+            Row(vec![ColumnValue::Int(6), ColumnValue::Bool(false)]),
             Row(vec![ColumnValue::Int(69), ColumnValue::Bool(false)]),
         ]
     );
@@ -171,7 +165,7 @@ fn insert_into_table_basic() {
 
 #[tokio::test]
 async fn insert_statement() {
-    let mut db = test_db();
+    let mut runtime = test_runtime();
 
     let statement = Statement::Insert {
         into: Expression::Ident("test_table".into()),
@@ -188,40 +182,33 @@ async fn insert_statement() {
         ]),
     };
 
-    let persistence = new_persistence_manager();
-    let result = statement.execute(
-        Some(&mut db),
-        persistence.as_ref(),
-    ).await.unwrap();
+    let result = statement.execute(&mut runtime).await.unwrap();
 
     assert_eq!(
         result,
         ExecutionResult::None,
     );
 
-    test_insert_statement_no_db(&statement, persistence.as_ref()).await;
+    test_insert_statement_no_db(&statement).await;
 }
 
-async fn test_insert_statement_no_db(statement: &Statement, manager: &dyn PersistenceManager) {
-    let failed_result = statement.execute(
-        None,
-        manager
-    ).await;
+async fn test_insert_statement_no_db(statement: &Statement) {
+    let result = statement.execute(&mut Runtime::new_test()).await;
 
-    dbg!(&failed_result);
+    dbg!(&result);
     assert!(matches!(
-        failed_result,
+        result,
         Err(SqlError::NoDatabaseSelected)
     ));
 }
 
 #[test]
 fn select_from_table_basic() {
-    let mut db = Database::new("db".into());
+    let mut runtime = test_runtime();
 
-    let (table, (row1, row2)) = test_table_with_values();
+    let db = runtime.get_database().unwrap();
 
-    db.create(table).unwrap();
+    let (_, (row1, row2)) = test_table_with_values();
 
     assert_eq!(
         db.select("test_table".into(), ColumnSelector::AllColumns, None).unwrap(),
@@ -273,7 +260,7 @@ fn select_from_table_basic() {
 
 #[tokio::test]
 async fn select_statement() {
-    let mut db = test_db();
+    let mut runtime = test_runtime();
 
     let statement = Statement::Select {
         table: Expression::Ident("test_table".into()),
@@ -285,8 +272,7 @@ async fn select_statement() {
         })
     };
 
-    let persistence = new_persistence_manager();
-    let result = statement.execute(Some(&mut db), persistence.as_ref()).await.unwrap();
+    let result = statement.execute(&mut runtime).await.unwrap();
 
     assert_eq!(
         result,
@@ -349,7 +335,7 @@ fn delete_from_table_basic() {
 
 #[tokio::test]
 async fn delete_statement() {
-    let mut db = test_db();
+    let mut runtime = test_runtime();
 
     let statement = Statement::Delete {
         from: Expression::Ident("test_table".into()),
@@ -360,8 +346,9 @@ async fn delete_statement() {
         })
     };
 
-    let persistence = new_persistence_manager();
-    let result = statement.execute(Some(&mut db), persistence.as_ref()).await.unwrap();
+    let result = statement.execute(&mut runtime).await.unwrap();
+
+    let db = runtime.get_database().unwrap();
 
     assert_eq!(
         result,
@@ -478,7 +465,7 @@ fn update_table_basic() {
 
 #[tokio::test]
 async fn update_statement() {
-    let mut db = test_db();
+    let mut runtime = test_runtime();
 
     let statement = Statement::Update {
         from: Expression::Ident("test_table".into()),
@@ -497,13 +484,14 @@ async fn update_statement() {
         })
     };
 
-    let persistence = new_persistence_manager();
-    let result = statement.execute(Some(&mut db), persistence.as_ref()).await.unwrap();
+    let result = statement.execute(&mut runtime).await.unwrap();
 
     assert_eq!(
         result,
         ExecutionResult::None,
     );
+
+    let db = runtime.get_database().unwrap();
 
     assert_eq!(
         db.tables.get("test_table").unwrap().values,

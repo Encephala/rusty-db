@@ -117,6 +117,34 @@ impl PersistenceManager for FileSystem {
     }
 }
 
+#[cfg(test)]
+#[derive(Debug)]
+pub struct NoOp;
+
+#[cfg(test)]
+#[async_trait]
+impl PersistenceManager for NoOp {
+    async fn save_database(&self, _: &Database) -> Result<()> {
+        return Ok(());
+    }
+
+    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName> {
+        return Ok(name);
+    }
+
+    async fn save_table(&self, _: &Database, _: &Table) -> Result<()> {
+        return Ok(());
+    }
+
+    async fn delete_table(&self, _: &Database, _: &Table) -> Result<()> {
+        return Ok(());
+    }
+
+    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
+        return Ok(Database::new(database_name));
+    }
+}
+
 fn database_path(path: &Path, database: &DatabaseName) -> PathBuf {
     let mut result = path.to_path_buf();
 

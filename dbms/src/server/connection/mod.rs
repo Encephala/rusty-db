@@ -7,13 +7,15 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
 };
 
+#[cfg(test)]
+use crate::persistence::NoOp;
+
 use crate::{
     evaluate::{
         Execute,
         ExecutionResult
     }, persistence::{
-        FileSystem,
-        PersistenceManager
+        FileSystem, PersistenceManager
     }, serialisation::{
         SerialisationManager,
         Serialiser
@@ -25,10 +27,63 @@ use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 use super::protocol::{Message, MessageBody};
 
 #[derive(Debug)]
-struct Runtime {
+pub struct Runtime {
     persistence_manager: Box<dyn PersistenceManager>,
     database: Option<Database>,
 }
+
+#[cfg(test)]
+impl Runtime {
+    pub fn new_test() -> Self {
+        return Self {
+            persistence_manager: Box::new(NoOp),
+            database: None,
+        };
+    }
+}
+
+impl Runtime {
+    pub fn new(persistence_manager: impl PersistenceManager + 'static) -> Self {
+        return Self {
+            persistence_manager: Box::new(persistence_manager),
+            database: None
+        };
+    }
+
+    pub fn create_database(&mut self, database: Database) {
+        self.database = Some(database);
+
+        // TODO: Persistence?
+    }
+
+    pub fn get_database(&mut self) -> Option<&mut Database> {
+        return self.database.as_mut();
+    }
+
+    pub fn drop_database(&mut self) -> Result<DatabaseName> {
+        if self.database.is_none() {
+            return Err(SqlError::NoDatabaseSelected);
+        }
+
+        let name = self.database.as_ref().unwrap().name.clone();
+
+        self.database = None;
+
+        // TODO: Persistence
+
+        return Ok(name);
+    }
+
+    // I think these two methods sense?
+    pub async fn persist(&mut self) -> Result<()> {
+        todo!();
+    }
+
+    pub async fn load_persisted(&mut self, _database_name: DatabaseName) -> Result<&DatabaseName> {
+        todo!();
+    }
+}
+
 
 pub struct Connection {
     stream: TcpStream,
@@ -162,7 +217,7 @@ async fn process_statement(input: String, runtime: &mut Runtime) -> Result<Execu
     let is_create_database = matches!(statement, Statement::Create { what: CreateType::Database, .. });
     let is_drop_database = matches!(statement, Statement::Drop { what: CreateType::Database, .. });
 
-    let result = statement.execute(runtime.database.as_mut(), runtime.persistence_manager.as_ref()).await;
+    let result = statement.execute(runtime).await;
 
     let result = match result {
         Ok(execution_result) => {
