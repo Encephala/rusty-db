@@ -196,7 +196,7 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let result = persistence_manager.load_table(&db.name, &"test_table".into()).await.unwrap();
+        let result = persistence_manager.load_table(&db.name, "test_table".into()).await.unwrap();
 
         assert_eq!(
             result,
@@ -212,7 +212,7 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let result = persistence_manager.load_table(&db.name, &"nonexistent".into()).await;
+        let result = persistence_manager.load_table(&db.name, "nonexistent".into()).await;
 
         if let Err(SqlError::TableDoesNotExist(name)) = result {
             assert_eq!(

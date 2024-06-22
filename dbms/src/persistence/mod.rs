@@ -23,7 +23,7 @@ pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn drop_database(&self, name: &DatabaseName) -> Result<()>;
 
     async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()>;
-    async fn load_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<Table>;
+    async fn load_table(&self, database_name: &DatabaseName, name: TableName) -> Result<Table>;
     async fn drop_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<()>;
 
 }
@@ -74,16 +74,25 @@ impl PersistenceManager for FileSystem {
 
         let files = fs::read_dir(path).map_err(SqlError::FSError)?;
 
+
+        let mut futures = vec![];
+
         for file in files {
             let file = file.map_err(SqlError::FSError)?;
 
-            let table_name = file.file_name().into_string()
+            let name = file.file_name().into_string()
                 .map_err(SqlError::CouldNotReadTable)?;
 
-            let table = self.load_table(&database.name, &TableName(table_name)).await?;
+            let name = TableName(name);
 
-            database.tables.insert(table.name.0.clone(), table);
+            futures.push(self.load_table(&database.name, name));
         }
+
+        let tables = try_join_all(futures).await?;
+
+        tables.into_iter().for_each(|table| {
+            database.tables.insert(table.name.0.clone(), table);
+        });
 
         return Ok(database);
     }
@@ -97,22 +106,22 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn save_table(&self, database_name: &DatabaseName, name: &Table) -> Result<()> {
-        let path = table_path(&self.1, database_name, &name.name);
+    async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()> {
+        let path = table_path(&self.1, database_name, &table.name);
 
-        let data = self.0.serialise_table(name);
+        let data = self.0.serialise_table(table);
 
         fs::write(path, data)
-            .map_err(|error| SqlError::CouldNotStoreTable(name.name.clone(), error))?;
+            .map_err(|error| SqlError::CouldNotStoreTable(table.name.clone(), error))?;
 
         return Ok(());
     }
 
-    async fn load_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<Table> {
-        let path = table_path(&self.1, database_name, name);
+    async fn load_table(&self, database_name: &DatabaseName, name: TableName) -> Result<Table> {
+        let path = table_path(&self.1, database_name, &name);
 
         if !path.exists() {
-            return Err(SqlError::TableDoesNotExist(name.clone()))
+            return Err(SqlError::TableDoesNotExist(name))
         }
 
         let data = fs::read(path).map_err(SqlError::FSError)?;
@@ -155,9 +164,9 @@ impl PersistenceManager for NoOp {
         return Ok(());
     }
 
-    async fn load_table(&self, _: &DatabaseName, _: &TableName) -> Result<Table> {
+    async fn load_table(&self, _: &DatabaseName, name: TableName) -> Result<Table> {
         let result = Table::new(
-            TableName("empty_table".into()),
+            name,
             vec![]
         ).unwrap();
 
