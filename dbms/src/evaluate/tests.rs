@@ -65,7 +65,7 @@ fn create_table_duplicate_name() {
     }
 }
 
-fn new_persistence_manager() -> Box<dyn PersistenceManager> {
+fn new_persistence_manager() -> Box<impl PersistenceManager> {
     return Box::new(FileSystem::new(
         SerialisationManager(Serialiser::V2),
         PathBuf::from("/tmp/rusty-db-tests")
@@ -106,6 +106,8 @@ async fn create_db_statement() {
         result,
         ExecutionResult::CreateDatabase("test_db".into()),
     );
+
+    std::fs::remove_dir(std::path::Path::new("/tmp/rusty-db-tests/test_db")).unwrap();
 }
 
 #[tokio::test]
