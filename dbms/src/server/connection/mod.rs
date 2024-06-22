@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
@@ -93,7 +93,6 @@ pub struct Connection {
 
 #[derive(Debug)]
 pub struct Context {
-    peer_address: SocketAddr,
     serialiser: Serialiser,
     runtime: Runtime,
 }
@@ -115,9 +114,6 @@ impl Connection {
     /// as well as other (default) parameters.
     // I don't quite like this function name
     async fn setup_context(stream: &mut TcpStream) -> Result<Context> {
-        let peer_address = stream.peer_addr()
-            .map_err(SqlError::CouldNotReadFromConnection)?;
-
         let serialiser = Connection::negotiate_serialiser_version(stream).await?;
 
         let runtime = Runtime {
@@ -129,7 +125,6 @@ impl Connection {
         };
 
         return Ok(Context {
-            peer_address,
             serialiser,
             runtime,
         });

@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 
+use crate::types::TableName;
 use crate::Result;
 use super::SqlError;
 use super::database::{Database, Table};
@@ -21,8 +22,8 @@ pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn load_database(&self, database_name: &DatabaseName) -> Result<Database>;
     async fn drop_database(&self, name: &DatabaseName) -> Result<()>;
 
-    async fn save_table(&self, database: &Database, table: &Table) -> Result<()>;
-    async fn drop_table(&self, database: &Database, table: &Table) -> Result<()>;
+    async fn save_table(&self, database: &DatabaseName, table: &Table) -> Result<()>;
+    async fn drop_table(&self, database: &DatabaseName, table: &TableName) -> Result<()>;
 
 }
 
@@ -53,7 +54,7 @@ impl PersistenceManager for FileSystem {
 
         // The C in ACID stands for "can't be fucked" right?
         let futures = database.tables.values()
-            .map(|table| self.save_table(database, table))
+            .map(|table| self.save_table(&database.name, table))
             .collect::<Vec<_>>();
 
         try_join_all(futures).await?;
@@ -96,8 +97,8 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn save_table(&self, database: &Database, table: &Table) -> Result<()> {
-        let path = table_path(&self.1, database, table);
+    async fn save_table(&self, database: &DatabaseName, table: &Table) -> Result<()> {
+        let path = table_path(&self.1, database, &table.name);
 
         let data = self.0.serialise_table(table);
 
@@ -107,11 +108,11 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn drop_table(&self, database: &Database, table: &Table) -> Result<()> {
+    async fn drop_table(&self, database: &DatabaseName, table: &TableName) -> Result<()> {
         let path = table_path(&self.1, database, table);
 
         remove_file(path)
-            .map_err(|error| SqlError::CouldNotRemoveTable(table.name.clone(), error))?;
+            .map_err(|error| SqlError::CouldNotRemoveTable(table.clone(), error))?;
 
         return Ok(());
     }
@@ -136,11 +137,11 @@ impl PersistenceManager for NoOp {
         return Ok(());
     }
 
-    async fn save_table(&self, _: &Database, _: &Table) -> Result<()> {
+    async fn save_table(&self, _: &DatabaseName, _: &Table) -> Result<()> {
         return Ok(());
     }
 
-    async fn drop_table(&self, _: &Database, _: &Table) -> Result<()> {
+    async fn drop_table(&self, _: &DatabaseName, _: &TableName) -> Result<()> {
         return Ok(());
     }
 }
@@ -153,11 +154,11 @@ fn database_path(path: &Path, database: &DatabaseName) -> PathBuf {
     return result;
 }
 
-fn table_path(path: &Path, database: &Database, table: &Table) -> PathBuf {
+fn table_path(path: &Path, database: &DatabaseName, table: &TableName) -> PathBuf {
     let mut result = path.to_path_buf();
 
-    result.push(&database.name.0);
-    result.push(&table.name.0);
+    result.push(&database.0);
+    result.push(&table.0);
 
     return result;
 }

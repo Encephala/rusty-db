@@ -137,6 +137,10 @@ pub mod tests {
     }
 
     pub fn test_runtime() -> Runtime {
+        return Runtime::new_test();
+    }
+
+    pub fn test_runtime_with_values() -> Runtime {
         let mut runtime = Runtime::new_test();
 
         let db = test_db_with_values();

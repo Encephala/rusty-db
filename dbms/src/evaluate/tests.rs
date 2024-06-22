@@ -91,7 +91,7 @@ async fn create_db_statement() {
 
 #[tokio::test]
 async fn create_table_statement() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let statement = Statement::Create {
         what: CreateType::Table,
@@ -124,7 +124,7 @@ async fn test_create_table_statement_no_db(statement: &Statement) {
 
 #[test]
 fn insert_into_table_basic() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let db = runtime.get_database().unwrap();
 
@@ -145,7 +145,7 @@ fn insert_into_table_basic() {
 
 #[tokio::test]
 async fn insert_statement() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let statement = Statement::Insert {
         into: Expression::Ident("test_table".into()),
@@ -184,7 +184,7 @@ async fn test_insert_statement_no_db(statement: &Statement) {
 
 #[test]
 fn select_from_table_basic() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let db = runtime.get_database().unwrap();
 
@@ -240,7 +240,7 @@ fn select_from_table_basic() {
 
 #[tokio::test]
 async fn select_statement() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let statement = Statement::Select {
         table: Expression::Ident("test_table".into()),
@@ -315,7 +315,7 @@ fn delete_from_table_basic() {
 
 #[tokio::test]
 async fn delete_statement() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let statement = Statement::Delete {
         from: Expression::Ident("test_table".into()),
@@ -445,7 +445,7 @@ fn update_table_basic() {
 
 #[tokio::test]
 async fn update_statement() {
-    let mut runtime = test_runtime();
+    let mut runtime = test_runtime_with_values();
 
     let statement = Statement::Update {
         from: Expression::Ident("test_table".into()),
