@@ -8,7 +8,7 @@ use sql_parse::parser::ColumnType;
 fn new_persistence_manager() -> impl PersistenceManager {
     return FileSystem::new(
         SerialisationManager(Serialiser::V2),
-        PathBuf::from("/tmp/rusty-db-test")
+        PathBuf::from("/tmp/rusty-db-tests")
     );
 }
 
@@ -54,7 +54,7 @@ async fn save_database_basic() {
 
     persistence.save_database(&database).await.unwrap();
 
-    let database_path = database_path(std::path::Path::new("/tmp/rusty-db-test"), &database.name);
+    let database_path = database_path(std::path::Path::new("/tmp/rusty-db-tests"), &database.name);
 
     assert!(std::fs::metadata(&database_path).is_ok());
 
