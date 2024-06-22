@@ -1,6 +1,4 @@
 #![allow(clippy::needless_return)]
-mod serverless;
-
 use std::io::Write;
 
 use tokio::{io::{AsyncReadExt, AsyncWriteExt, BufReader}, net::{

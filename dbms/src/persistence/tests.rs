@@ -5,58 +5,62 @@ use super::super::serialisation::Serialiser;
 use super::super::types::*;
 use sql_parse::parser::ColumnType;
 
-fn new_persistence_manager() -> impl PersistenceManager {
-    return FileSystem::new(
-        SerialisationManager(Serialiser::V2),
-        PathBuf::from("/tmp/rusty-db-tests")
-    );
-}
+mod filesystem {
+    use super::*;
 
-#[test]
-fn create_database_path_basic() {
-    let database = Database::new("db".into());
+    fn new_persistence_manager() -> impl PersistenceManager {
+        return FileSystem::new(
+            SerialisationManager(Serialiser::V2),
+            PathBuf::from("/tmp/rusty-db-tests")
+        );
+    }
 
-    let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database.name);
+    #[test]
+    fn create_database_path_basic() {
+        let database = Database::new("db".into());
 
-    assert_eq!(
-        path,
-        PathBuf::from_str("/tmp/db").unwrap()
-    );
-}
+        let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database.name);
 
-#[test]
-fn create_table_path_basic() {
-    let mut database = Database::new("db".into());
+        assert_eq!(
+            path,
+            PathBuf::from_str("/tmp/db").unwrap()
+        );
+    }
 
-    let table = Table::new(
-        "tbl".into(),
-        vec![
-            ColumnDefinition("col1".into(), ColumnType::Int),
-            ColumnDefinition("col2".into(), ColumnType::Bool),
-        ]
-    ).unwrap();
+    #[test]
+    fn create_table_path_basic() {
+        let mut database = Database::new("db".into());
 
-    database.create(table.clone()).unwrap();
+        let table = Table::new(
+            "tbl".into(),
+            vec![
+                ColumnDefinition("col1".into(), ColumnType::Int),
+                ColumnDefinition("col2".into(), ColumnType::Bool),
+            ]
+        ).unwrap();
 
-    let path = table_path(&PathBuf::from_str("/tmp").unwrap(), &database, &table);
+        database.create(table.clone()).unwrap();
 
-    assert_eq!(
-        path,
-        PathBuf::from_str("/tmp/db/tbl").unwrap()
-    );
-}
+        let path = table_path(&PathBuf::from_str("/tmp").unwrap(), &database, &table);
 
-#[tokio::test]
-async fn save_database_basic() {
-    let persistence = new_persistence_manager();
+        assert_eq!(
+            path,
+            PathBuf::from_str("/tmp/db/tbl").unwrap()
+        );
+    }
 
-    let database = Database::new("test_save_db".into());
+    #[tokio::test]
+    async fn save_database_basic() {
+        let persistence = new_persistence_manager();
 
-    persistence.save_database(&database).await.unwrap();
+        let database = Database::new("test_save_db".into());
 
-    let database_path = database_path(std::path::Path::new("/tmp/rusty-db-tests"), &database.name);
+        persistence.save_database(&database).await.unwrap();
 
-    assert!(std::fs::metadata(&database_path).is_ok());
+        let database_path = database_path(std::path::Path::new("/tmp/rusty-db-tests"), &database.name);
 
-    std::fs::remove_dir(&database_path).unwrap();
+        assert!(std::fs::metadata(&database_path).is_ok());
+
+        std::fs::remove_dir(&database_path).unwrap();
+    }
 }
