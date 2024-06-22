@@ -42,7 +42,7 @@ impl PersistenceManager for FileSystem {
 
         let exists = std::fs::metadata(&db_path).is_ok();
         if exists {
-            return Err(SqlError::DuplicateDatabase(db_path.to_string_lossy().into()));
+            return Err(SqlError::DuplicateDatabase(database.name.clone()));
         }
 
         DirBuilder::new()

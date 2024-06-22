@@ -10,7 +10,7 @@ mod filesystem {
 
     const TEST_PATH: &str = "/tmp/rusty-db-tests/";
 
-    fn new_persistence_manager() -> (impl PersistenceManager, PathBuf) {
+    fn new_filesystem_manager() -> (FileSystem, PathBuf) {
         let time_since_epoch = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap();
@@ -64,12 +64,32 @@ mod filesystem {
 
     #[tokio::test]
     async fn save_database_basic() {
-        let (persistence, path) = new_persistence_manager();
+        let (persistence, path) = new_filesystem_manager();
 
         let database = Database::new("test_save_db".into());
 
         persistence.save_database(&database).await.unwrap();
 
         assert!(std::fs::metadata(&path).is_ok());
+    }
+
+    #[tokio::test]
+    async fn save_database_duplicate() {
+        let persistence = new_filesystem_manager().0;
+
+        let database = Database::new("test_save_duplicate_db".into());
+
+        persistence.save_database(&database).await.unwrap();
+
+        let result = persistence.save_database(&database).await;
+
+        if let Err(SqlError::DuplicateDatabase(name)) = result {
+            assert_eq!(
+                name,
+                database.name,
+            );
+        } else {
+            panic!("Wrong result type");
+        }
     }
 }
