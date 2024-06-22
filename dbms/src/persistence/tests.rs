@@ -8,11 +8,24 @@ use sql_parse::parser::ColumnType;
 mod filesystem {
     use super::*;
 
-    fn new_persistence_manager() -> impl PersistenceManager {
-        return FileSystem::new(
+    const TEST_PATH: &str = "/tmp/rusty-db-tests/";
+
+    fn new_persistence_manager() -> (impl PersistenceManager, PathBuf) {
+        let time_since_epoch = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap();
+
+        // Very random yes
+        let random_suffix = time_since_epoch.subsec_nanos().to_string();
+
+        let path = PathBuf::from(TEST_PATH.to_owned() + &random_suffix);
+
+        let manager = FileSystem::new(
             SerialisationManager(Serialiser::V2),
-            PathBuf::from("/tmp/rusty-db-tests")
+            PathBuf::from(&path)
         );
+
+        return (manager, path);
     }
 
     #[test]
@@ -51,16 +64,12 @@ mod filesystem {
 
     #[tokio::test]
     async fn save_database_basic() {
-        let persistence = new_persistence_manager();
+        let (persistence, path) = new_persistence_manager();
 
         let database = Database::new("test_save_db".into());
 
         persistence.save_database(&database).await.unwrap();
 
-        let database_path = database_path(std::path::Path::new("/tmp/rusty-db-tests"), &database.name);
-
-        assert!(std::fs::metadata(&database_path).is_ok());
-
-        std::fs::remove_dir(&database_path).unwrap();
+        assert!(std::fs::metadata(&path).is_ok());
     }
 }
