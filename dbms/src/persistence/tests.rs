@@ -68,15 +68,15 @@ mod filesystem {
 
     #[tokio::test]
     async fn save_database_basic() {
-        let (persistence_manager, path) = new_filesystem_manager();
+        let (persistence_manager, ref path) = new_filesystem_manager();
 
         let database = Database::new("test_save_db".into());
 
         persistence_manager.save_database(&database).await.unwrap();
 
-        let db_path = path.join(&database.name.0);
+        let db_path = database_path(path, &database.name);
 
-        assert!(std::fs::metadata(db_path).is_ok());
+        assert!(db_path.exists());
     }
 
     #[tokio::test]
@@ -95,7 +95,7 @@ mod filesystem {
                 database.name,
             );
         } else {
-            panic!("Wrong result type");
+            panic!("Wrong result type: {result:?}");
         }
     }
 
@@ -127,7 +127,7 @@ mod filesystem {
                 "nonexistent".into()
             );
         } else {
-            panic!("Wrong result type")
+            panic!("Wrong result type: {result:?}")
         }
     }
 
@@ -139,24 +139,13 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let db_path = path.join(&db.name.0);
+        let db_path = database_path(path, &db.name);
 
-        // Created db
-        assert!(std::fs::metadata(&db_path).is_ok());
+        assert!(db_path.exists());
 
         persistence_manager.drop_database(&db.name).await.unwrap();
 
-        // Dropped db
-        if let Err(error) = std::fs::metadata(db_path) {
-            let message = format!("{error:?}");
-
-            dbg!(&message);
-            assert!(
-                message.contains("kind: NotFound")
-            );
-        } else {
-            panic!("Path exists");
-        }
+        assert!(!db_path.exists());
     }
 
     #[tokio::test]
@@ -178,13 +167,13 @@ mod filesystem {
                 message.contains("kind: NotFound")
             );
         } else {
-            panic!("Wrong result type")
+            panic!("Wrong result type: {result:?}")
         }
     }
 
     #[tokio::test]
     async fn save_table_basic() {
-        let (persistence_manager, path) = new_filesystem_manager();
+        let (persistence_manager, ref path) = new_filesystem_manager();
 
         let db = test_db();
 
@@ -194,38 +183,61 @@ mod filesystem {
 
         persistence_manager.save_table(&db.name, &table).await.unwrap();
 
-        let table_path = path.join(&db.name.0).join(&table.name.0);
+        let table_path = table_path(path, &db.name, &table.name);
 
-        assert!(std::fs::metadata(table_path).is_ok());
+        assert!(table_path.exists());
     }
 
     #[tokio::test]
-    async fn drop_table_basic() {
-        let (persistence_manager, path) = new_filesystem_manager();
+    async fn load_table_basic() {
+        let persistence_manager = new_filesystem_manager().0;
 
         let db = test_db_with_values();
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let table_path = path.join(&db.name.0).join("test_table");
+        let result = persistence_manager.load_table(&db.name, &"test_table".into()).await.unwrap();
 
-        // Table exists
-        assert!(std::fs::metadata(&table_path).is_ok());
+        assert_eq!(
+            result,
+            test_table_with_values().0
+        );
+    }
+
+    #[tokio::test]
+    async fn load_table_nonexistent() {
+        let persistence_manager = new_filesystem_manager().0;
+
+        let db = test_db_with_values();
+
+        persistence_manager.save_database(&db).await.unwrap();
+
+        let result = persistence_manager.load_table(&db.name, &"nonexistent".into()).await;
+
+        if let Err(SqlError::TableDoesNotExist(name)) = result {
+            assert_eq!(
+                name,
+                "nonexistent".into()
+            )
+        } else {
+            panic!("Wrong result type: {result:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn drop_table_basic() {
+        let (persistence_manager, ref path) = new_filesystem_manager();
+
+        let db = test_db_with_values();
+
+        persistence_manager.save_database(&db).await.unwrap();
+
+        let table_path = table_path(path, &db.name, &"test_table".into());
+
+        assert!(table_path.exists());
 
         persistence_manager.drop_table(&db.name, &"test_table".into()).await.unwrap();
 
-        // Table is gone
-        let result = std::fs::metadata(table_path);
-
-        if let Err(error) = result {
-            let message = format!("{error:?}");
-
-            dbg!(&message);
-            assert!(
-                message.contains("kind: NotFound")
-            );
-        } else {
-            panic!("Wrong result type")
-        }
+        assert!(!table_path.exists());
     }
 }

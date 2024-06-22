@@ -9,6 +9,8 @@ pub mod persistence;
 pub mod serialisation;
 pub mod server;
 
+use std::ffi::OsString;
+
 use types::{ColumnName, ColumnValue, TableName};
 use sql_parse::parser::{ColumnType, Expression, InfixOperator};
 use types::DatabaseName;
@@ -40,6 +42,7 @@ pub enum SqlError {
     CouldNotStoreDatabase(DatabaseName, std::io::Error),
     CouldNotRemoveDatabase(DatabaseName, std::io::Error),
     CouldNotStoreTable(TableName, std::io::Error),
+    CouldNotReadTable(OsString),
     CouldNotRemoveTable(TableName, std::io::Error),
 
     SliceConversionError(std::array::TryFromSliceError),
