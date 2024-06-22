@@ -4,10 +4,9 @@ use super::*;
 use super::super::serialisation::Serialiser;
 use super::super::types::*;
 use sql_parse::parser::ColumnType;
+use crate::utils::tests::*;
 
 mod filesystem {
-    use crate::utils::tests::*;
-
     use super::*;
 
     const TEST_PATH: &str = "/tmp/rusty-db-tests/";
@@ -240,4 +239,19 @@ mod filesystem {
 
         assert!(!table_path.exists());
     }
+}
+
+#[tokio::test]
+// only like 50% bothers me too much
+async fn fix_coverage_noop() {
+    let db = test_db();
+    let table = test_table();
+
+    NoOp.save_table(&db.name, &table).await.unwrap();
+    NoOp.load_table(&db.name, table.name.clone()).await.unwrap();
+    NoOp.drop_table(&db.name, &table.name).await.unwrap();
+
+    NoOp.save_database(&db).await.unwrap();
+    NoOp.load_database(&db.name).await.unwrap();
+    NoOp.drop_database(&db.name).await.unwrap();
 }

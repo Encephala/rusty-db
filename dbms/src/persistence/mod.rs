@@ -28,6 +28,18 @@ pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
 
 }
 
+fn database_path(path: &Path, name: &DatabaseName) -> PathBuf {
+    let result = path.to_path_buf().join(&name.0);
+
+    return result;
+}
+
+fn table_path(path: &Path, database_name: &DatabaseName, name: &TableName) -> PathBuf {
+    let result = path.to_path_buf().join(&database_name.0).join(&name.0);
+
+    return result;
+}
+
 #[derive(Debug)]
 pub struct FileSystem(SerialisationManager, PathBuf);
 
@@ -176,16 +188,4 @@ impl PersistenceManager for NoOp {
     async fn drop_table(&self, _: &DatabaseName, _: &TableName) -> Result<()> {
         return Ok(());
     }
-}
-
-fn database_path(path: &Path, name: &DatabaseName) -> PathBuf {
-    let result = path.to_path_buf().join(&name.0);
-
-    return result;
-}
-
-fn table_path(path: &Path, database_name: &DatabaseName, name: &TableName) -> PathBuf {
-    let result = path.to_path_buf().join(&database_name.0).join(&name.0);
-
-    return result;
 }
