@@ -51,11 +51,7 @@ impl PersistenceManager for FileSystem {
             .create(database_path(&self.1, &database.name))
             .map_err(|error| SqlError::CouldNotStoreDatabase(database.name.clone(), error))?;
 
-        for table in database.tables.values() {
-            // The C in ACID stands for "can't be fucked" right?
-            self.save_table(database, table).await?;
-        }
-
+        // The C in ACID stands for "can't be fucked" right?
         let futures = database.tables.values()
             .map(|table| self.save_table(database, table))
             .collect::<Vec<_>>();
