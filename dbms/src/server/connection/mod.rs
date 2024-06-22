@@ -189,7 +189,7 @@ async fn process_statement(input: String, runtime: &mut Runtime) -> Result<Execu
     if input.starts_with("\\c ") {
         let database_name = input.strip_prefix("\\c ").unwrap();
 
-        runtime.database = match runtime.persistence_manager.load_database(DatabaseName(database_name.into())).await {
+        runtime.database = match runtime.persistence_manager.load_database(&DatabaseName(database_name.into())).await {
             Ok(db) => {
                 println!("Connected to database {}", db.name.0);
 

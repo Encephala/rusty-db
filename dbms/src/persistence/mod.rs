@@ -18,12 +18,12 @@ use super::serialisation::SerialisationManager;
 #[async_trait]
 pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn save_database(&self, database: &Database) -> Result<()>;
-    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName>;
+    async fn load_database(&self, database_name: &DatabaseName) -> Result<Database>;
+    async fn drop_database(&self, name: &DatabaseName) -> Result<()>;
 
     async fn save_table(&self, database: &Database, table: &Table) -> Result<()>;
-    async fn delete_table(&self, database: &Database, table: &Table) -> Result<()>;
+    async fn drop_table(&self, database: &Database, table: &Table) -> Result<()>;
 
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database>;
 }
 
 #[derive(Debug)]
@@ -61,15 +61,15 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
-        let path = database_path(&self.1, &database_name);
+    async fn load_database(&self, database_name: &DatabaseName) -> Result<Database> {
+        let path = database_path(&self.1, database_name);
 
         if !path.exists() {
-            return Err(SqlError::DatabaseDoesNotExist(database_name));
+            return Err(SqlError::DatabaseDoesNotExist(database_name.clone()));
         }
 
         // Create database object, then load tables
-        let mut database = Database::new(database_name);
+        let mut database = Database::new(database_name.clone());
 
         let files = read_dir(path).map_err(SqlError::FSError)?;
 
@@ -87,13 +87,13 @@ impl PersistenceManager for FileSystem {
         return Ok(database);
     }
 
-    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName> {
-        let path = database_path(&self.1, &name);
+    async fn drop_database(&self, name: &DatabaseName) -> Result<()> {
+        let path = database_path(&self.1, name);
 
         remove_dir_all(path)
             .map_err(|error| SqlError::CouldNotRemoveDatabase(name.clone(), error))?;
 
-        return Ok(name);
+        return Ok(());
     }
 
     async fn save_table(&self, database: &Database, table: &Table) -> Result<()> {
@@ -107,7 +107,7 @@ impl PersistenceManager for FileSystem {
         return Ok(());
     }
 
-    async fn delete_table(&self, database: &Database, table: &Table) -> Result<()> {
+    async fn drop_table(&self, database: &Database, table: &Table) -> Result<()> {
         let path = table_path(&self.1, database, table);
 
         remove_file(path)
@@ -128,20 +128,20 @@ impl PersistenceManager for NoOp {
         return Ok(());
     }
 
-    async fn delete_database(&self, name: DatabaseName) -> Result<DatabaseName> {
-        return Ok(name);
+    async fn load_database(&self, database_name: &DatabaseName) -> Result<Database> {
+        return Ok(Database::new(database_name.clone()));
+    }
+
+    async fn drop_database(&self, _: &DatabaseName) -> Result<()> {
+        return Ok(());
     }
 
     async fn save_table(&self, _: &Database, _: &Table) -> Result<()> {
         return Ok(());
     }
 
-    async fn delete_table(&self, _: &Database, _: &Table) -> Result<()> {
+    async fn drop_table(&self, _: &Database, _: &Table) -> Result<()> {
         return Ok(());
-    }
-
-    async fn load_database(&self, database_name: DatabaseName) -> Result<Database> {
-        return Ok(Database::new(database_name));
     }
 }
 

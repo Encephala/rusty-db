@@ -24,7 +24,7 @@ mod filesystem {
 
         let manager = FileSystem::new(
             SerialisationManager(Serialiser::V2),
-            PathBuf::from(&path)
+            path.clone()
         );
 
         return (manager, path);
@@ -72,7 +72,9 @@ mod filesystem {
 
         persistence.save_database(&database).await.unwrap();
 
-        assert!(std::fs::metadata(&path).is_ok());
+        let db_path = path.join(&database.name.0);
+
+        assert!(std::fs::metadata(db_path).is_ok());
     }
 
     #[tokio::test]
@@ -97,17 +99,13 @@ mod filesystem {
 
     #[tokio::test]
     async fn load_database_basic() {
-        let mut runtime = test_runtime();
-
         let db = test_db_with_values();
-
-        runtime.create_database(db.clone());
 
         let persistence = new_filesystem_manager().0;
 
         persistence.save_database(&db).await.unwrap();
 
-        let result = persistence.load_database(db.name.clone()).await.unwrap();
+        let result = persistence.load_database(&db.name).await.unwrap();
 
         assert_eq!(
             result,
@@ -119,12 +117,63 @@ mod filesystem {
     async fn load_database_nonexistent() {
         let persistence = new_filesystem_manager().0;
 
-        let result = persistence.load_database("nonexistent".into()).await;
+        let result = persistence.load_database(&"nonexistent".into()).await;
 
         if let Err(SqlError::DatabaseDoesNotExist(name)) = result {
             assert_eq!(
                 name,
                 "nonexistent".into()
+            );
+        } else {
+            panic!("Wrong result type")
+        }
+    }
+
+    #[tokio::test]
+    async fn drop_database_basic() {
+        let (persistence, ref path) = new_filesystem_manager();
+
+        let db = test_db();
+
+        persistence.save_database(&db).await.unwrap();
+
+        let db_path = path.join(&db.name.0);
+
+        // Created db
+        assert!(std::fs::metadata(&db_path).is_ok());
+
+        persistence.drop_database(&db.name).await.unwrap();
+
+        // Dropped db
+        if let Err(error) = std::fs::metadata(db_path) {
+            let message = format!("{error:?}");
+
+            dbg!(&message);
+            assert!(
+                message.contains("kind: NotFound")
+            );
+        } else {
+            panic!("Path exists");
+        }
+    }
+
+    #[tokio::test]
+    async fn drop_database_nonexistent() {
+        let persistence = new_filesystem_manager().0;
+
+        let result = persistence.drop_database(&"nonexistent".into()).await;
+
+        if let Err(SqlError::CouldNotRemoveDatabase(name, error)) = result {
+            assert_eq!(
+                name,
+                "nonexistent".into()
+            );
+
+            let message = format!("{error:?}");
+
+            dbg!(&message);
+            assert!(
+                message.contains("kind: NotFound")
             );
         } else {
             panic!("Wrong result type")
