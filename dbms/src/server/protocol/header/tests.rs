@@ -61,7 +61,7 @@ fn set_clear_and_get_header_flags() {
 fn parse_message_type_basic() {
     use MessageType::*;
 
-    fn test_header(content: u64) -> RawHeader {
+    fn test_header(content: u8) -> RawHeader {
         let mut result = RawHeader::new(
             1,
             vec![]
@@ -73,7 +73,7 @@ fn parse_message_type_basic() {
     }
 
     let inputs = [
-        (1_u64, Close),
+        (1_u8, Close),
         (2, Ok),
         (3, Str),
         (4, Command),

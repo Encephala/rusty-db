@@ -130,11 +130,24 @@ impl TryFrom<RawHeader> for Header {
     type Error = SqlError;
 
     fn try_from(mut header: RawHeader) -> std::result::Result<Self, Self::Error> {
+        let mut number_of_parsed_flags = 0;
+
         let message_type = header.parse_message_type()?;
+        number_of_parsed_flags += 1;
 
         if message_type.is_none() {
             return Err(SqlError::InvalidHeader("Header must contain message type"));
         }
+
+        // Sanity checks
+        // Check no more flags set after what we've parsed
+        (number_of_parsed_flags..64)
+            .map(|i| (header.flags >> i) & 1)
+            .for_each(|flag| {
+                if flag != 0 {
+                    println!("Warning: ignored flags set in header");
+                }
+            });
 
         if !header.content.is_empty() {
             println!("Warning: unused fields in header detected");
