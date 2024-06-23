@@ -4,7 +4,8 @@ mod tests;
 use std::path::PathBuf;
 
 use tokio::{
-    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
+    net::TcpStream, sync::broadcast::Receiver,
+    io::{AsyncWriteExt, AsyncReadExt},
 };
 
 #[cfg(test)]
@@ -24,11 +25,8 @@ use crate::{
 
 use sql_parse::{parse_statement, parser::Statement};
 
-use super::protocol::{Message, MessageBody};
+use super::{protocol::{Message, MessageBody}, Stream};
 
-// Easiest way to make a type alias, `impl` isn't stable in type aliases
-trait Stream: AsyncRead + AsyncWrite + std::marker::Unpin {}
-impl Stream for TcpStream {}
 
 #[derive(Debug)]
 pub struct Runtime {
@@ -178,7 +176,9 @@ impl Connection {
     pub async fn handle(mut self) -> Result<()> {
         loop {
             tokio::select! {
-                message = Message::read(&mut self.stream, self.context.serialiser) => {
+                // TODO: This probably shouldn't be sermanager(self.context.serialiser), put sermanager somewhere?
+                // Persistence manager also uses it
+                message = Message::read(&mut self.stream, SerialisationManager(self.context.serialiser)) => {
                     // This breaks out of the loop
                     let message = message?;
 

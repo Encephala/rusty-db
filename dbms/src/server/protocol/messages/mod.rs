@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{database::RowSet, serialisation::{SerialisationManager, Serialiser}, Result, SqlError};
 
@@ -200,7 +200,7 @@ impl Message {
 impl Message {
     pub async fn write(
         self,
-        stream: &mut (impl AsyncWriteExt + std::marker::Unpin),
+        stream: &mut (impl AsyncWrite + std::marker::Unpin),
         serialisation_manager: SerialisationManager
     ) -> Result<()> {
         let serialised = self.serialise(serialisation_manager);
@@ -224,7 +224,10 @@ impl Message {
         return result;
     }
 
-    pub async fn read(stream: &mut (impl AsyncReadExt + std::marker::Unpin), serialiser: Serialiser) -> Result<Self> {
+    pub async fn read(
+        stream: &mut (impl AsyncReadExt + std::marker::Unpin),
+        serialisation_manager: SerialisationManager
+    ) -> Result<Self> {
         // TODO: Does cancel safety matter?
         // I guess not because the only other branch in tokio::select is to quit out of the program
         // Although maybe that makes client hang if it is in a write?
@@ -239,7 +242,7 @@ impl Message {
 
         let data = &mut data.as_slice();
 
-        return Self::deserialise(data, SerialisationManager(serialiser));
+        return Self::deserialise(data, serialisation_manager);
     }
 
     fn deserialise(input: &mut &[u8], serialisation_manager: SerialisationManager) -> Result<Self> {

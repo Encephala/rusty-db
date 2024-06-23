@@ -7,21 +7,21 @@ pub use protocol::Message;
 use std::net::SocketAddr;
 
 use tokio::{
-    net::{
+    io::{AsyncRead, AsyncWrite}, net::{
         TcpListener,
         TcpStream,
         ToSocketAddrs,
-    },
-    signal::ctrl_c,
-    spawn,
-    sync::broadcast::*,
-    task::{JoinError, JoinHandle}
+    }, signal::ctrl_c, spawn, sync::broadcast::*, task::{JoinError, JoinHandle}
 };
 use futures::future::{select_all, join_all, OptionFuture};
 
 use connection::Connection;
 
 use crate::SqlError;
+
+// Easiest way to make a type alias, `impl` isn't stable in type aliases
+trait Stream: AsyncRead + AsyncWrite + std::marker::Unpin {}
+impl Stream for TcpStream {}
 
 pub async fn server(listen_address: impl ToSocketAddrs) {
     let listener = TcpListener::bind(listen_address).await.unwrap();

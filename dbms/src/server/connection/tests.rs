@@ -30,7 +30,7 @@ async fn message_read_write() {
 
     let read_message = Message::read(
         &mut BufReader::new(response_stream),
-        Serialiser::V2
+        SerialisationManager(Serialiser::V2)
     ).await.unwrap();
 
     if let MessageBody::Str(value) = read_message.body {

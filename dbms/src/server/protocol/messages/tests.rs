@@ -1,3 +1,5 @@
+use tokio_test::io::Builder as TestIoBuilder;
+
 use super::*;
 
 #[test]
@@ -419,4 +421,44 @@ fn deserialise_rowset_message() {
     } else {
         panic!("Body wrong type");
     }
+}
+
+#[tokio::test]
+async fn read_message() {
+    let message = Message::from_message_body(MessageBody::Str("deez nuts".into()));
+
+    let manager = SerialisationManager(Serialiser::V2);
+
+    let serialised = message.serialise(manager);
+
+    let message = Message::from_message_body(MessageBody::Str("deez nuts".into()));
+
+    let mut stream = TestIoBuilder::new()
+        .read(&(serialised.len() as u64).to_le_bytes())
+        .read(&message.serialise(manager))
+        .build();
+
+    Message::read(&mut stream, manager).await.unwrap();
+}
+
+#[tokio::test]
+async fn write_message() {
+    let message = Message::from_message_body(MessageBody::Command(
+        Command::Connect("sweden".into())
+    ));
+
+    let manager = SerialisationManager(Serialiser::V2);
+
+    let serialised = message.serialise(manager);
+
+    let message = Message::from_message_body(MessageBody::Command(
+        Command::Connect("sweden".into())
+    ));
+
+    let mut stream = TestIoBuilder::new()
+        .write(&(serialised.len() as u64).to_le_bytes())
+        .write(serialised.as_slice())
+        .build();
+
+    message.write(&mut stream, manager).await.unwrap();
 }
