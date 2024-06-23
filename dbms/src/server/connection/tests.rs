@@ -1,3 +1,4 @@
+
 use tokio::{
     io::BufReader,
     net::{
@@ -6,9 +7,9 @@ use tokio::{
     },
 };
 
-use crate::serialisation::{SerialisationManager, Serialiser};
+use crate::{persistence::NoOp, serialisation::{SerialisationManager, Serialiser}, utils::tests::*};
 
-use super::{Message, MessageBody};
+use super::*;
 
 // Only have one test actually open a listener,
 // otherwise we'd have conflicts and stuff
@@ -37,4 +38,28 @@ async fn message_read_write() {
     } else {
         panic!("Body wrong type");
     }
+}
+
+#[test]
+fn create_drop_get_database() {
+    let mut runtime = Runtime::new(NoOp);
+
+    let db = test_db();
+
+    runtime.create_database(db);
+
+    let db = runtime.get_database();
+
+    // Kinda pointless but whatever
+    assert_eq!(
+        db.unwrap().name,
+        "test_db".into(),
+    );
+
+    let name = runtime.drop_database().unwrap();
+
+    assert_eq!(
+        name,
+        "test_db".into(),
+    );
 }

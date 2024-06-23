@@ -74,13 +74,29 @@ impl Runtime {
         return Ok(name);
     }
 
-    // I think these two methods sense?
+    // I think these two methods make sense?
     pub async fn persist(&mut self) -> Result<()> {
-        todo!();
+        if let Some(database) = &self.database {
+            return self.persistence_manager.save_database(database).await;
+        } else {
+            return Err(SqlError::NoDatabaseSelected);
+        }
     }
 
-    pub async fn load_persisted(&mut self, _database_name: DatabaseName) -> Result<&DatabaseName> {
-        todo!();
+    pub async fn load_persisted(&mut self, database_name: DatabaseName) -> Result<&DatabaseName> {
+        let result = self.persistence_manager.load_database(&database_name).await?;
+
+        self.database = Some(result);
+
+        return Ok(&self.database.as_ref().unwrap().name);
+    }
+
+    pub async fn drop(&mut self) -> Result<()> {
+        if let Some(database) = &self.database {
+            return self.persistence_manager.drop_database(&database.name).await;
+        } else {
+            return Err(SqlError::NoDatabaseSelected);
+        }
     }
 }
 
