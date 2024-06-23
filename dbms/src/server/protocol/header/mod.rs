@@ -124,11 +124,6 @@ impl Header {
         return result;
     }
 }
-impl From<Header> for RawHeader {
-    fn from(header: Header) -> Self {
-        return header.to_raw();
-    }
-}
 
 // Deserialisation
 impl TryFrom<RawHeader> for Header {
