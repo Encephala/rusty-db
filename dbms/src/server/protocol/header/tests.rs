@@ -15,6 +15,26 @@ macro_rules! ensure_exhaustive {
 
 // Serialisation
 #[test]
+fn convert_u8_to_message_type() {
+    assert_eq!(
+        MessageType::try_from(1).unwrap(),
+        MessageType::Close,
+    );
+
+    assert_eq!(
+        MessageType::try_from(6).unwrap(),
+        MessageType::RowSet,
+    );
+
+    // Putting this at 7, so that when a new type is added,
+    // the test should give an indication of what code I'm forgetting to update
+    assert!(matches!(
+        MessageType::try_from(7),
+        Err(SqlError::InvalidMessageType(7))
+    ));
+}
+
+#[test]
 fn set_clear_and_get_header_flags() {
     let mut header = RawHeader::default();
 
