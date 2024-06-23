@@ -45,11 +45,7 @@ async fn message_read_write() {
 
 #[test]
 fn create_drop_get_database() {
-    let mut runtime = Runtime::new(NoOp);
-
-    let db = test_db();
-
-    runtime.create_database(db);
+    let mut runtime = test_runtime_with_values();
 
     let db = runtime.get_database();
 
@@ -67,8 +63,20 @@ fn create_drop_get_database() {
     );
 }
 
+#[test]
+fn drop_database_none_selected() {
+    let mut runtime = Runtime::new(NoOp);
+
+    let result = runtime.drop_database();
+
+    assert!(matches!(
+        result,
+        Err(SqlError::NoDatabaseSelected),
+    ));
+}
+
 #[tokio::test]
-async fn negotiate_serialiser_version() {
+async fn negotiate_serialiser_version_basic() {
     let mut client = TestIoBuilder::new()
         .write(&[2, 1, 2])
         .read(&[1])
@@ -101,7 +109,7 @@ async fn negotiate_serialiser_version() {
 }
 
 #[tokio::test]
-async fn setup_context() {
+async fn setup_context_basic() {
     let mut client = TestIoBuilder::new()
         .write(&[2, 1, 2])
         .read(&[1])
@@ -125,4 +133,78 @@ async fn setup_context() {
         result,
         Err(SqlError::IncompatibleVersion(0)),
     ));
+}
+
+#[tokio::test]
+async fn process_statement_basic() {
+    let mut runtime = test_runtime_with_values();
+
+    let statement = "SELECT * FROM tbl;";
+
+    let result = process_statement(statement, &mut runtime).await;
+
+    dbg!(&result);
+    assert!(matches!(
+        result,
+        Err(SqlError::TableDoesNotExist(_)),
+    ));
+
+    let statement = "SELECT * FROM test_table;";
+
+    let result = process_statement(statement, &mut runtime).await.unwrap();
+
+    let expected = runtime.database.unwrap().select(
+        "test_table".into(),
+        crate::types::ColumnSelector::AllColumns,
+        None,
+    ).unwrap();
+
+    assert_eq!(
+        result,
+        ExecutionResult::Select(expected)
+    );
+}
+
+#[tokio::test]
+async fn special_commands_basic() {
+    let mut runtime = test_runtime();
+
+    let input = "\\c test_db";
+
+    dbg!(&runtime);
+    let result = process_statement(input, &mut runtime).await.unwrap();
+
+    assert_eq!(
+        result,
+        ExecutionResult::None
+    );
+
+    assert_eq!(
+        runtime.database,
+        Some(test_db())
+    );
+}
+
+#[tokio::test]
+async fn special_commands_invalid_command() {
+    let mut runtime = test_runtime();
+
+    let inputs = [
+        ("\\a", "a"),
+        ("\\deez nuts", "deez nuts"),
+    ];
+
+    for (input, expected) in inputs {
+        let result = process_statement(input, &mut runtime).await;
+
+        if let Err(SqlError::InvalidCommand(command)) = result {
+            assert_eq!(
+                command,
+                expected
+            );
+        } else {
+            dbg!(&result);
+            panic!("Unexpected result");
+        }
+    }
 }

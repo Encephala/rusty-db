@@ -22,7 +22,7 @@ use crate::{
     }, types::DatabaseName, utils::serialiser_version_to_serialiser, Database, Result, SqlError
 };
 
-use sql_parse::{parse_statement, parser::{CreateType, Statement}};
+use sql_parse::{parse_statement, parser::Statement};
 
 use super::protocol::{Message, MessageBody};
 
@@ -173,7 +173,6 @@ impl Connection {
     }
 
     pub async fn handle(mut self) -> Result<()> {
-
         loop {
             tokio::select! {
                 message = Message::read(&mut self.stream, self.context.serialiser) => {
@@ -182,7 +181,7 @@ impl Connection {
 
                     // Handle message
                     if let MessageBody::Str(statement) = message.body {
-                        let _execution_result = process_statement(statement, &mut self.context.runtime).await?;
+                        let _execution_result = process_statement(&statement, &mut self.context.runtime).await?;
                     };
 
                     // TODO: Construct a proper response message and send it over
@@ -198,66 +197,38 @@ impl Connection {
     }
 }
 
-async fn process_statement(input: String, runtime: &mut Runtime) -> Result<ExecutionResult> {
+async fn process_statement(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
     println!("Executing: {input}");
 
-    if input.starts_with("\\c ") {
-        let database_name = input.strip_prefix("\\c ").unwrap();
-
-        runtime.database = match runtime.persistence_manager.load_database(&DatabaseName(database_name.into())).await {
-            Ok(db) => {
-                println!("Connected to database {}", db.name.0);
-
-                Some(db)
-            },
-            Err(error) => {
-                println!("Got execution error: {error:?}");
-
-                None
-            },
-        };
-
-        return Ok(None.into());
+    if input.starts_with('\\') {
+        return handle_special_commands(input, runtime).await;
     }
 
-    let statement = parse_statement(&input);
+    let statement = parse_input(input)?;
+
+    return statement.execute(runtime).await;
+}
+
+async fn handle_special_commands(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
+    if let Some(database_name) = input.strip_prefix("\\c ") {
+        let database = runtime.persistence_manager.load_database(&DatabaseName(database_name.into())).await?;
+
+        runtime.database = Some(database);
+
+        return Ok(ExecutionResult::None);
+    }
+
+    return Err(SqlError::InvalidCommand(input[1..].to_string()));
+}
+
+fn parse_input(input: &str) -> Result<Statement> {
+    let statement = parse_statement(input);
 
     if statement.is_none() {
         println!("Failed to parse: {input}");
-        return Ok(None.into());
+
+        return Err(SqlError::ParseError)
     }
 
-    let statement = statement.unwrap();
-
-    let is_create_database = matches!(statement, Statement::Create { what: CreateType::Database, .. });
-    let is_drop_database = matches!(statement, Statement::Drop { what: CreateType::Database, .. });
-
-    let result = statement.execute(runtime).await;
-
-    let result = match result {
-        Ok(execution_result) => {
-            execution_result
-        },
-        Err(error) => {
-            println!("Got execution error: {error:?}");
-
-            // Don't persist storage if statement failed, so early return
-            return Ok(None.into());
-        }
-    };
-
-    // If it was one of these two statements, we currently don't have a valid DB selected,
-    // so skip persistence
-    if is_create_database || is_drop_database {
-        return Ok(None.into());
-    }
-
-    // TODO: doing this properly, should only write changed things
-    // Also I can probably do better than the `is_drop_database` above
-    match runtime.persistence_manager.save_database(runtime.database.as_ref().unwrap()).await {
-        Ok(_) => (),
-        Err(error) => println!("Failed saving to disk: {error:?}"),
-    }
-
-    return Ok(result);
+    return Ok(statement.unwrap());
 }

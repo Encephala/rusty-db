@@ -59,6 +59,9 @@ pub enum SqlError {
 
     CouldNotWriteToConnection(std::io::Error),
     CouldNotReadFromConnection(std::io::Error),
+
+    ParseError,
+    InvalidCommand(String),
 }
 
 pub type Result<T> = std::result::Result<T, SqlError>;
