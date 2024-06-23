@@ -180,8 +180,8 @@ impl Connection {
                     let message = message?;
 
                     // Handle message
-                    if let MessageBody::Str(statement) = message.body {
-                        let _execution_result = process_statement(&statement, &mut self.context.runtime).await?;
+                    if let MessageBody::Str(input) = message.body {
+                        let _execution_result = process_input(&input, &mut self.context.runtime).await?;
                     };
 
                     // TODO: Construct a proper response message and send it over
@@ -197,7 +197,7 @@ impl Connection {
     }
 }
 
-async fn process_statement(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
+async fn process_input(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
     println!("Executing: {input}");
 
     if input.starts_with('\\') {

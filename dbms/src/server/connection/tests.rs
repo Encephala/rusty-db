@@ -141,7 +141,7 @@ async fn process_statement_basic() {
 
     let statement = "SELECT * FROM tbl;";
 
-    let result = process_statement(statement, &mut runtime).await;
+    let result = process_input(statement, &mut runtime).await;
 
     dbg!(&result);
     assert!(matches!(
@@ -151,7 +151,7 @@ async fn process_statement_basic() {
 
     let statement = "SELECT * FROM test_table;";
 
-    let result = process_statement(statement, &mut runtime).await.unwrap();
+    let result = process_input(statement, &mut runtime).await.unwrap();
 
     let expected = runtime.database.unwrap().select(
         "test_table".into(),
@@ -172,7 +172,7 @@ async fn special_commands_basic() {
     let input = "\\c test_db";
 
     dbg!(&runtime);
-    let result = process_statement(input, &mut runtime).await.unwrap();
+    let result = process_input(input, &mut runtime).await.unwrap();
 
     assert_eq!(
         result,
@@ -195,7 +195,7 @@ async fn special_commands_invalid_command() {
     ];
 
     for (input, expected) in inputs {
-        let result = process_statement(input, &mut runtime).await;
+        let result = process_input(input, &mut runtime).await;
 
         if let Err(SqlError::InvalidCommand(command)) = result {
             assert_eq!(
