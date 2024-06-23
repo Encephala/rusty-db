@@ -1,5 +1,7 @@
 use tokio_test::io::Builder as TestIoBuilder;
 
+use crate::serialisation::Serialiser;
+
 use super::*;
 
 #[test]
@@ -431,11 +433,9 @@ async fn read_message() {
 
     let serialised = message.serialise(manager);
 
-    let message = Message::from_message_body(MessageBody::Str("deez nuts".into()));
-
     let mut stream = TestIoBuilder::new()
         .read(&(serialised.len() as u64).to_le_bytes())
-        .read(&message.serialise(manager))
+        .read(&serialised)
         .build();
 
     Message::read(&mut stream, manager).await.unwrap();
@@ -451,13 +451,9 @@ async fn write_message() {
 
     let serialised = message.serialise(manager);
 
-    let message = Message::from_message_body(MessageBody::Command(
-        Command::Connect("sweden".into())
-    ));
-
     let mut stream = TestIoBuilder::new()
         .write(&(serialised.len() as u64).to_le_bytes())
-        .write(serialised.as_slice())
+        .write(&serialised)
         .build();
 
     message.write(&mut stream, manager).await.unwrap();

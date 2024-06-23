@@ -3,7 +3,7 @@ mod tests;
 
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{database::RowSet, serialisation::{SerialisationManager, Serialiser}, Result, SqlError};
+use crate::{database::RowSet, serialisation::SerialisationManager, Result, SqlError};
 
 use super::header::{Header, MessageType, RawHeader};
 
@@ -48,8 +48,8 @@ pub enum Command {
 }
 
 // TODO: Test
-impl From<Command> for Vec<u8> {
-    fn from(value: Command) -> Self {
+impl From<&Command> for Vec<u8> {
+    fn from(value: &Command) -> Self {
         let mut result = vec![];
 
         match value {
@@ -58,7 +58,7 @@ impl From<Command> for Vec<u8> {
 
                 result.extend((database_name.len() as u64).to_le_bytes());
 
-                result.extend(database_name.into_bytes());
+                result.extend(database_name.bytes());
             },
             Command::ListDatabases => {
                 result.push(2);
@@ -69,6 +69,12 @@ impl From<Command> for Vec<u8> {
         };
 
         return result;
+    }
+}
+
+impl From<Command> for Vec<u8> {
+    fn from(value: Command) -> Self {
+        return (&value).into();
     }
 }
 
@@ -111,14 +117,14 @@ pub enum MessageBody {
 }
 
 impl MessageBody {
-    fn serialise(self, serialisation_manager: SerialisationManager) -> Vec<u8> {
+    fn serialise(&self, serialisation_manager: SerialisationManager) -> Vec<u8> {
         return match self {
             MessageBody::Close => vec![],
             MessageBody::Ok => vec![],
             MessageBody::Str(value) => {
                 let mut result = (value.len() as u64).to_le_bytes().to_vec();
 
-                result.extend(value.into_bytes());
+                result.extend(value.bytes());
 
                 result
             },
@@ -132,7 +138,7 @@ impl MessageBody {
 
                 result
             },
-            MessageBody::RowSet(value) => serialisation_manager.serialise_rowset(&value),
+            MessageBody::RowSet(value) => serialisation_manager.serialise_rowset(value),
         };
     }
 
@@ -214,7 +220,7 @@ impl Message {
         return Ok(());
     }
 
-    fn serialise(self, serialisation_manager: SerialisationManager) -> Vec<u8> {
+    fn serialise(&self, serialisation_manager: SerialisationManager) -> Vec<u8> {
         let mut result = vec![];
 
         result.extend(self.header.to_raw().serialise());
