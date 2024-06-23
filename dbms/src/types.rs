@@ -10,21 +10,6 @@ use sql_parse::parser::{ColumnType, InfixOperator};
 use crate::Result;
 use super::{Expression, SqlError};
 
-// Implement owned conversion with macro rather than borrowed conversion,
-// because an owned value can be borrowed but a borrowed value can't be owned.
-// Well I guess you could clone it but ah well, would rather clone a String than an Expression I guess
-macro_rules! impl_owned {
-    ($t:ty) => {
-        impl TryFrom<Expression> for $t {
-            type Error = SqlError;
-
-            fn try_from(value: Expression) -> Result<Self> {
-                return (&value).try_into();
-            }
-        }
-    };
-}
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnName(pub String);
@@ -38,8 +23,6 @@ impl TryFrom<&Expression> for ColumnName {
         };
     }
 }
-
-impl_owned!(ColumnName);
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -55,8 +38,6 @@ impl TryFrom<&Expression> for TableName {
         };
     }
 }
-
-impl_owned!(TableName);
 
 
 #[derive(Debug, Clone)]
@@ -77,7 +58,7 @@ impl TryFrom<&Expression> for DatabaseName {
     }
 }
 
-impl_owned!(DatabaseName);
+// impl_owned!(DatabaseName);
 
 
 #[derive(Debug)]
@@ -104,8 +85,6 @@ impl TryFrom<&Expression> for ColumnSelector {
     }
 }
 
-impl_owned!(ColumnSelector);
-
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -130,14 +109,6 @@ impl TryFrom<&Expression> for ColumnValue {
     }
 }
 
-impl_owned!(ColumnValue);
-
-
-impl From<ColumnValue> for ColumnType {
-    fn from(value: ColumnValue) -> Self {
-        return (&value).into();
-    }
-}
 
 impl From<&ColumnValue> for ColumnType {
     fn from(value: &ColumnValue) -> Self {
@@ -165,8 +136,6 @@ impl TryFrom<&Expression> for ColumnDefinition {
         };
     }
 }
-
-impl_owned!(ColumnDefinition);
 
 
 #[derive(Debug)]
@@ -198,8 +167,6 @@ impl TryFrom<&Expression> for Where {
         }
     }
 }
-
-impl_owned!(Where);
 
 #[derive(Debug)]
 pub struct PreparedWhere {
