@@ -17,6 +17,7 @@ dbms.workspace = true
 
 [workspace.dependencies]
 tokio = { version = "*", features = ["full"]}
+tokio-test = { version = "*" }
 
 sql-parse = { path = "./sql-parse", version = "0.1.0" }
 dbms = { path = "./dbms", version = "0.1.0" }

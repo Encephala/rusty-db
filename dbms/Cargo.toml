@@ -9,6 +9,7 @@ description = "Database management system"
 
 [dependencies]
 tokio.workspace = true
+tokio-test.workspace = true
 
 async-trait = "*"
 futures = "*"

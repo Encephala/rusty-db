@@ -4,7 +4,7 @@ mod tests;
 use std::path::PathBuf;
 
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt}, net::TcpStream, sync::broadcast::Receiver
 };
 
 #[cfg(test)]
@@ -25,6 +25,10 @@ use crate::{
 use sql_parse::{parse_statement, parser::{CreateType, Statement}};
 
 use super::protocol::{Message, MessageBody};
+
+// Easiest way to make a type alias, `impl` isn't stable in type aliases
+trait Stream: AsyncRead + AsyncWrite + std::marker::Unpin {}
+impl Stream for TcpStream {}
 
 #[derive(Debug)]
 pub struct Runtime {
@@ -129,7 +133,7 @@ impl Connection {
     /// Returns a [`Context`] object populated with these parameters
     /// as well as other (default) parameters.
     // I don't quite like this function name
-    async fn setup_context(stream: &mut TcpStream) -> Result<Context> {
+    async fn setup_context(stream: &mut impl Stream) -> Result<Context> {
         let serialiser = Connection::negotiate_serialiser_version(stream).await?;
 
         let runtime = Runtime {
@@ -146,7 +150,7 @@ impl Connection {
         });
     }
 
-    async fn negotiate_serialiser_version(stream: &mut TcpStream) -> Result<Serialiser> {
+    async fn negotiate_serialiser_version(stream: &mut impl Stream) -> Result<Serialiser> {
         let available_serialiser_versions = [1, 2];
 
         stream.write_all((available_serialiser_versions.len() as u8).to_le_bytes().as_slice()).await
