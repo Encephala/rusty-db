@@ -44,7 +44,7 @@ async fn message_read_write() {
 }
 
 #[test]
-fn create_drop_get_database() {
+fn create_get_clear_database_basic() {
     let mut runtime = test_runtime_with_values();
 
     let db = runtime.get_database();
@@ -55,7 +55,7 @@ fn create_drop_get_database() {
         "test_db".into(),
     );
 
-    let name = runtime.drop_database().unwrap();
+    let name = runtime.clear_database().unwrap();
 
     assert_eq!(
         name,
@@ -64,10 +64,10 @@ fn create_drop_get_database() {
 }
 
 #[test]
-fn drop_database_none_selected() {
+fn clear_database_none_selected() {
     let mut runtime = Runtime::new(NoOp);
 
-    let result = runtime.drop_database();
+    let result = runtime.clear_database();
 
     assert!(matches!(
         result,
@@ -162,6 +162,49 @@ async fn process_statement_basic() {
     assert_eq!(
         result,
         ExecutionResult::Select(expected)
+    );
+}
+
+#[tokio::test]
+async fn process_statement_parse_error() {
+    let mut runtime = test_runtime();
+
+    let input = "SELECT SELECT SELECT SELECT SELECT;";
+
+    let result = process_input(input, &mut runtime).await;
+
+    assert!(matches!(
+        result,
+        Err(SqlError::ParseError)
+    ));
+}
+
+#[tokio::test]
+async fn runtime_persistence_basic() {
+    let mut runtime = Runtime::new(NoOp);
+
+    let result = runtime.save().await;
+
+    assert!(matches!(
+        result,
+        Err(SqlError::NoDatabaseSelected),
+    ));
+
+    runtime.database = Some(test_db());
+
+    assert!(runtime.drop().await.is_ok());
+
+    assert_eq!(
+        runtime.database,
+        None,
+    );
+
+    // Always succeeds, because NoOp persistence never fails
+    runtime.load(&"test_db".into()).await.unwrap();
+
+    assert_eq!(
+        runtime.database,
+        Some(test_db()),
     );
 }
 

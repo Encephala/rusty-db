@@ -246,7 +246,7 @@ impl Execute for Statement {
         Statement::Drop { what, name } => {
             match what {
             CreateType::Database => {
-                return runtime.drop_database()
+                return runtime.clear_database()
                     .map(ExecutionResult::DropDatabase);
             },
             CreateType::Table => {
