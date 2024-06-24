@@ -94,7 +94,7 @@ pub mod tests {
     pub fn test_row_set(values: Vec<Row>) -> Result<RowSet> {
         let types = values
             .first()
-            .map(|row| row.0.iter().map(|value| ColumnType::from(value)).collect())
+            .map(|row| row.0.iter().map(ColumnType::from).collect())
             .ok_or(SqlError::InvalidParameter)?;
 
         let names = std::iter::repeat("test_column_name".to_owned())

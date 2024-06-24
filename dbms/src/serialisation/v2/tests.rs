@@ -1,4 +1,4 @@
-//! Essentially the same tests as v1, except it uses u64 instead of u64 for sizes
+//! Essentially the same tests as v1, except it uses u64 instead of usize for sizes
 use super::*;
 
 use crate::database::Row;
