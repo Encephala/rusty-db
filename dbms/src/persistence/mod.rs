@@ -51,12 +51,6 @@ impl FileSystem {
 #[async_trait]
 impl PersistenceManager for FileSystem {
     async fn save_database(&self, database: &Database) -> Result<()> {
-        let db_path = database_path(&self.1, &database.name);
-
-        if db_path.exists() {
-            return Err(SqlError::DuplicateDatabase(database.name.clone()));
-        }
-
         DirBuilder::new()
             .recursive(true)
             .mode(0o750) // Windows support can get lost byeeeee
