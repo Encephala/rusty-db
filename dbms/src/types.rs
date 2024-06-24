@@ -62,6 +62,7 @@ impl TryFrom<&Expression> for DatabaseName {
 
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum ColumnSelector {
     AllColumns,
     Name(Vec<ColumnName>),
@@ -173,4 +174,88 @@ pub struct PreparedWhere {
     pub left: usize,
     pub operator: InfixOperator,
     pub right: ColumnValue,
+}
+
+#[cfg(test)]
+mod tests {
+    use sql_parse::parser::Expression;
+
+    use crate::SqlError;
+
+    use super::*;
+
+    #[test]
+    fn names_from_invalid_expression() {
+        let input = Expression::Int(5);
+
+
+        let name = ColumnName::try_from(&input);
+
+        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::ColumnName")) = name {
+            if let Expression::Int(5) = expression {
+            } else {
+                panic!("Wrong expression");
+            }
+        } else {
+            panic!("Incorrect return type");
+        }
+
+
+        let name = TableName::try_from(&input);
+
+        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::TableName")) = name {
+            if let Expression::Int(5) = expression {
+            } else {
+                panic!("Wrong expression");
+            }
+        } else {
+            panic!("Incorrect return type");
+        }
+
+
+        let name = DatabaseName::try_from(&input);
+
+        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::DatabaseName")) = name {
+            if let Expression::Int(5) = expression {
+            } else {
+                panic!("Wrong expression");
+            }
+        } else {
+            panic!("Incorrect return type");
+        }
+    }
+
+    #[test]
+    fn column_selector_from_array_expression() {
+        let input = Expression::Array(vec![
+            Expression::Ident("a".into()),
+            Expression::Ident("deez nuts".into()),
+        ]);
+
+        let selector = ColumnSelector::try_from(&input).unwrap();
+
+        assert_eq!(
+            selector,
+            ColumnSelector::Name(vec![
+                "a".into(),
+                "deez nuts".into(),
+            ])
+        );
+    }
+
+    #[test]
+    fn column_selector_from_invalid_expression() {
+        let input = Expression::Int(5);
+
+        let selector = ColumnSelector::try_from(&input);
+
+        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::ColumnSelector")) = selector{
+            if let Expression::Int(5) = expression {
+            } else {
+                panic!("Wrong expression");
+            }
+        } else {
+            panic!("Incorrect return type");
+        }
+    }
 }
