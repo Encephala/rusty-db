@@ -2,7 +2,7 @@ mod connection;
 mod protocol;
 
 pub use connection::Runtime;
-pub use protocol::Message;
+pub use protocol::{Message, MessageBody, Command};
 
 use std::net::SocketAddr;
 

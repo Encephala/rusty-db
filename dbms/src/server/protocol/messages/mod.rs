@@ -3,7 +3,7 @@ mod tests;
 
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{database::RowSet, serialisation::SerialisationManager, Result, SqlError};
+use crate::{database::RowSet, serialisation::SerialisationManager, types::DatabaseName, Result, SqlError};
 
 use super::header::{Header, MessageType, RawHeader};
 
@@ -41,10 +41,10 @@ pub struct Message {
     pub body: MessageBody,
 }
 
-#[derive(Debug, PartialEq)]
-#[cfg_attr(test, derive(Clone))]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum Command {
-    Connect(String),
+    Connect(DatabaseName),
     ListDatabases,
     ListTables,
 }
@@ -58,9 +58,9 @@ impl From<&Command> for Vec<u8> {
             Command::Connect(database_name) => {
                 result.push(1);
 
-                result.extend((database_name.len() as u64).to_le_bytes());
+                result.extend((database_name.0.len() as u64).to_le_bytes());
 
-                result.extend(database_name.bytes());
+                result.extend(database_name.0.bytes());
             }
             Command::ListDatabases => {
                 result.push(2);
@@ -91,7 +91,7 @@ impl Command {
 
                 let string = string_from_input(input)?;
 
-                Command::Connect(string)
+                Command::Connect(DatabaseName(string))
             }
             2 => {
                 *input = &input[1..];

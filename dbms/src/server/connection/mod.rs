@@ -21,10 +21,10 @@ use crate::{
     Database, Result, SqlError,
 };
 
-use sql_parse::{parse_statement, parser::Statement};
+use sql_parse::parse_statement;
 
 use super::{
-    protocol::{Message, MessageBody},
+    protocol::{Command, Message, MessageBody},
     Stream,
 };
 
@@ -94,6 +94,12 @@ impl Runtime {
         return Ok(());
     }
 
+    // TODO: We have to be able to drop a database that we're not connected to right now,
+    // but then uhh
+    // (besides consistency and isolation and stuff)
+    // what interface makes sense? Just naming it `drop` doesn't make sense,
+    // also this function checks and clears self.database and that's not necessary in that case.
+    // When I wrote this code, I wasn't thinking about how it would be used.
     pub async fn drop(&mut self) -> Result<()> {
         if let Some(database) = &self.database {
             self.persistence_manager
@@ -139,7 +145,7 @@ impl Connection {
     /// as well as other (default) parameters.
     // I don't quite like this function name
     async fn setup_context(stream: &mut impl Stream) -> Result<Context> {
-        let serialiser = Connection::negotiate_serialiser_version(stream).await?;
+        let serialiser: Serialiser = Connection::negotiate_serialiser_version(stream).await?;
 
         let runtime = Runtime {
             persistence_manager: Box::new(FileSystem::new(
@@ -196,11 +202,30 @@ impl Connection {
                     let message = message?;
 
                     // Handle message
-                    if let MessageBody::Str(input) = message.body {
-                        let _execution_result = process_input(&input, &mut self.context.runtime).await?;
+                    let result = match message.body {
+                        MessageBody::Close => break,
+                        MessageBody::Ok => Ok(ExecutionResult::None),
+                        MessageBody::Str(statement) => handle_statement(&statement, &mut self.context.runtime).await,
+                        MessageBody::Command(command) => handle_special_commands(command, &mut self.context.runtime).await,
+                        MessageBody::Error(error) => {
+                            println!("ERROR: {error:?}");
+
+                            Ok(ExecutionResult::None)
+                        },
+                        MessageBody::RowSet(rowset) => {
+                            println!("Server received a rowset? What does that mean ({rowset:?})");
+
+                            Ok(ExecutionResult::None)
+                        },
                     };
 
-                    // TODO: Construct a proper response message and send it over
+                    // TODO: respond
+                    // Have to convert an ExecutionResult into a MessageBody
+
+                    // For now, just debug printing as message and yeeting it over hell yeah
+                    let response = Message::from_message_body(MessageBody::Str(format!("{result:?}")));
+
+                    response.write(&mut self.stream, SerialisationManager(self.context.serialiser)).await?;
                 },
                 _ = self.shutdown_receiver.recv() => {
                     let message = Message::from_message_body(MessageBody::Close);
@@ -216,34 +241,27 @@ impl Connection {
     }
 }
 
-async fn process_input(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
-    println!("Executing: {input}");
+async fn handle_special_commands(command: Command, runtime: &mut Runtime) -> Result<ExecutionResult> {
+    match command {
+        Command::Connect(database_name) => {
+            runtime.load(&database_name).await?;
 
-    if input.starts_with('\\') {
-        return handle_special_commands(input, runtime).await;
+            return Ok(ExecutionResult::None);
+        },
+        Command::ListDatabases => {
+            todo!();
+        },
+        Command::ListTables => {
+            let database = runtime.database.as_ref().ok_or(SqlError::NoDatabaseSelected)?;
+
+            let names = database.tables.keys().cloned().collect();
+
+            return Ok(ExecutionResult::ListTables(names));
+        },
     }
-
-    let statement = parse_input(input)?;
-
-    return statement.execute(runtime).await;
 }
 
-async fn handle_special_commands(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
-    if let Some(database_name) = input.strip_prefix("\\c ") {
-        let database = runtime
-            .persistence_manager
-            .load_database(&DatabaseName(database_name.into()))
-            .await?;
-
-        runtime.database = Some(database);
-
-        return Ok(ExecutionResult::None);
-    }
-
-    return Err(SqlError::InvalidCommand(input[1..].to_string()));
-}
-
-fn parse_input(input: &str) -> Result<Statement> {
+async fn handle_statement(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
     let statement = parse_statement(input);
 
     if statement.is_none() {
@@ -252,5 +270,5 @@ fn parse_input(input: &str) -> Result<Statement> {
         return Err(SqlError::ParseError);
     }
 
-    return Ok(statement.unwrap());
+    return statement.unwrap().execute(runtime).await;
 }

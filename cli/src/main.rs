@@ -2,25 +2,16 @@
 use std::io::Write;
 
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpStream, ToSocketAddrs},
 };
 
 use dbms::{
-    serialisation::{SerialisationManager, Serialiser},
-    server::Message,
-    utils::serialiser_version_to_serialiser,
-    SqlError,
+    serialisation::SerialisationManager, server::{Command, Message, MessageBody}, types::DatabaseName, utils::serialiser_version_to_serialiser, SqlError
 };
-
-const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);
 
 async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
     let mut stream = TcpStream::connect(address).await.unwrap();
-
-    let (reader, mut writer) = stream.split();
-
-    let mut reader = BufReader::new(reader);
 
     // TODO: How do I do this?
     let number_of_serialisers = stream
@@ -43,42 +34,40 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
 
     let serialiser = serialiser_version_to_serialiser(*highest_serialiser)?;
 
-    println!("Chose serialiser {serialiser:?}");
+    let serialisation_manager = SerialisationManager(serialiser);
 
     stream
         .write_u8(*highest_serialiser)
         .await
         .map_err(SqlError::CouldNotWriteToConnection)?;
 
-    todo!();
+    loop {
+        let input = rep_without_the_l();
 
-    // loop {
-    //     let input = rep_without_the_l();
+        let message = if let Some(command) = parse_command(&input) {
+            Message::from_message_body(MessageBody::Command(command))
+        } else {
+            Message::from_message_body(MessageBody::Str(input))
+        };
 
-    //     let message = Message::from(input);
+        message.write(&mut stream, serialisation_manager).await?;
 
-    //     message.write(&mut writer).await?;
+        let response = Message::read(&mut stream, serialisation_manager).await?;
 
-    //     let response = Message::read(&mut reader).await?;
+        match response.body {
+            // TODO: This doesn't work, because we're waiting on user input synchronously
+            // That has to be made async
+            MessageBody::Close => break,
+            MessageBody::Ok => (),
+            MessageBody::Str(message) => println!("{message}"),
+            MessageBody::Command(uhoh) => panic!("Client received a command? What is going on ({uhoh:?})"),
+            // Actually this never gets sent, errors get sent as a Str because serialisation is hard
+            MessageBody::Error(error) => println!("ERROR: {error:?}"),
+            MessageBody::RowSet(rowset) => println!("{rowset:?}"),
+        }
+    }
 
-    //     let deserialised_response = SERIALISATION_MANAGER.deserialise_rowset(response.0.as_slice());
-
-    //     match deserialised_response {
-    //         Ok(response) => {
-    //             println!("Result: {response:?}");
-
-    //             continue;
-    //         },
-    //         Err(error) => println!("Deserialisation error: {error:?}"),
-    //     }
-
-    //     match std::str::from_utf8(&response.0) {
-    //         Ok(response) => println!("Text response: {response}"),
-    //         Err(_) => println!("Got binary message: {:?}", response.0),
-    //     }
-    // }
-
-    // return Ok(());
+    return Ok(());
 }
 
 fn rep_without_the_l() -> String {
@@ -98,6 +87,22 @@ fn rep_without_the_l() -> String {
     input.pop();
 
     return input;
+}
+
+fn parse_command(input: &str) -> Option<Command> {
+    if let Some(database_name) = input.strip_prefix("\\c ") {
+        return Some(Command::Connect(DatabaseName(database_name.to_string())));
+    }
+
+    if input.starts_with("\\l") {
+        return Some(Command::ListTables);
+    }
+
+    if input.starts_with("\\d") {
+        return Some(Command::ListDatabases);
+    }
+
+    return None;
 }
 
 #[tokio::main]

@@ -113,19 +113,19 @@ async fn setup_context_basic() {
 }
 
 #[tokio::test]
-async fn process_statement_basic() {
+async fn handle_statement_basic() {
     let mut runtime = test_runtime_with_values();
 
     let statement = "SELECT * FROM tbl;";
 
-    let result = process_input(statement, &mut runtime).await;
+    let result = handle_statement(statement, &mut runtime).await;
 
     dbg!(&result);
     assert!(matches!(result, Err(SqlError::TableDoesNotExist(_)),));
 
     let statement = "SELECT * FROM test_table;";
 
-    let result = process_input(statement, &mut runtime).await.unwrap();
+    let result = handle_statement(statement, &mut runtime).await.unwrap();
 
     let expected = runtime
         .database
@@ -141,12 +141,12 @@ async fn process_statement_basic() {
 }
 
 #[tokio::test]
-async fn process_statement_parse_error() {
+async fn handle_statement_parse_error() {
     let mut runtime = test_runtime();
 
     let input = "SELECT SELECT SELECT SELECT SELECT;";
 
-    let result = process_input(input, &mut runtime).await;
+    let result = handle_statement(input, &mut runtime).await;
 
     assert!(matches!(result, Err(SqlError::ParseError)));
 }
@@ -175,30 +175,11 @@ async fn runtime_persistence_basic() {
 async fn special_commands_basic() {
     let mut runtime = test_runtime();
 
-    let input = "\\c test_db";
+    let command = Command::Connect("test_db".into());
 
-    dbg!(&runtime);
-    let result = process_input(input, &mut runtime).await.unwrap();
+    let result = handle_special_commands(command, &mut runtime).await.unwrap();
 
     assert_eq!(result, ExecutionResult::None);
 
     assert_eq!(runtime.database, Some(test_db()));
-}
-
-#[tokio::test]
-async fn special_commands_invalid_command() {
-    let mut runtime = test_runtime();
-
-    let inputs = [("\\a", "a"), ("\\deez nuts", "deez nuts")];
-
-    for (input, expected) in inputs {
-        let result = process_input(input, &mut runtime).await;
-
-        if let Err(SqlError::InvalidCommand(command)) = result {
-            assert_eq!(command, expected);
-        } else {
-            dbg!(&result);
-            panic!("Unexpected result");
-        }
-    }
 }
