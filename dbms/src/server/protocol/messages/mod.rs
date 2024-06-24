@@ -9,8 +9,9 @@ use super::header::{Header, MessageType, RawHeader};
 
 fn u64_from_input(input: &mut &[u8]) -> Result<u64> {
     let result = u64::from_le_bytes(
-        input[..8].try_into()
-            .map_err(SqlError::SliceConversionError)?
+        input[..8]
+            .try_into()
+            .map_err(SqlError::SliceConversionError)?,
     );
 
     *input = &input[8..];
@@ -22,16 +23,17 @@ fn string_from_input(input: &mut &[u8]) -> Result<String> {
     let length = u64_from_input(input)? as usize;
 
     let string = String::from_utf8(
-        input.get(..length)
+        input
+            .get(..length)
             .ok_or(SqlError::InputTooShort(length, input.len()))?
-            .to_vec()
-    ).map_err(SqlError::NotAValidString)?;
+            .to_vec(),
+    )
+    .map_err(SqlError::NotAValidString)?;
 
     *input = &input[length..];
 
     return Ok(string);
 }
-
 
 #[derive(Debug)]
 pub struct Message {
@@ -59,13 +61,13 @@ impl From<&Command> for Vec<u8> {
                 result.extend((database_name.len() as u64).to_le_bytes());
 
                 result.extend(database_name.bytes());
-            },
+            }
             Command::ListDatabases => {
                 result.push(2);
-            },
+            }
             Command::ListTables => {
                 result.push(3);
-            },
+            }
         };
 
         return result;
@@ -80,26 +82,28 @@ impl From<Command> for Vec<u8> {
 
 impl Command {
     fn deserialise(input: &mut &[u8]) -> Result<Self> {
-        let result = match input.first()
-            .ok_or(SqlError::InputTooShort(1, input.len()))? {
-                1 => {
-                    *input = &input[1..];
+        let result = match input
+            .first()
+            .ok_or(SqlError::InputTooShort(1, input.len()))?
+        {
+            1 => {
+                *input = &input[1..];
 
-                    let string = string_from_input(input)?;
+                let string = string_from_input(input)?;
 
-                    Command::Connect(string)
-                }
-                2 => {
-                    *input = &input[1..];
+                Command::Connect(string)
+            }
+            2 => {
+                *input = &input[1..];
 
-                    Command::ListDatabases
-                },
-                3 => {
-                    *input = &input[1..];
+                Command::ListDatabases
+            }
+            3 => {
+                *input = &input[1..];
 
-                    Command::ListTables
-                }
-                _ => return Err(SqlError::InvalidMessage(input.to_vec()))
+                Command::ListTables
+            }
+            _ => return Err(SqlError::InvalidMessage(input.to_vec())),
         };
 
         return Ok(result);
@@ -127,7 +131,7 @@ impl MessageBody {
                 result.extend(value.bytes());
 
                 result
-            },
+            }
             MessageBody::Command(value) => value.into(),
             MessageBody::Error(value) => {
                 let message = format!("ERROR: {:?}", value);
@@ -137,12 +141,16 @@ impl MessageBody {
                 result.extend(message.into_bytes());
 
                 result
-            },
+            }
             MessageBody::RowSet(value) => serialisation_manager.serialise_rowset(value),
         };
     }
 
-    fn deserialise(input: &mut &[u8], message_type: &MessageType, serialisation_manager: SerialisationManager) -> Result<Self> {
+    fn deserialise(
+        input: &mut &[u8],
+        message_type: &MessageType,
+        serialisation_manager: SerialisationManager,
+    ) -> Result<Self> {
         let result = match message_type {
             MessageType::Close => MessageBody::Close,
             MessageType::Ok => MessageBody::Ok,
@@ -150,12 +158,12 @@ impl MessageBody {
                 let string = string_from_input(input)?;
 
                 MessageBody::Str(string)
-            },
+            }
             MessageType::Command => {
                 let command = Command::deserialise(input)?;
 
                 MessageBody::Command(command)
-            },
+            }
             MessageType::Error => {
                 let string = string_from_input(input)?;
 
@@ -163,7 +171,7 @@ impl MessageBody {
                 // But that's really hard because it contains expressions etc.
                 // So maybe better way of signalling that this was an error?
                 MessageBody::Str(string)
-            },
+            }
             MessageType::RowSet => {
                 let result = serialisation_manager.deserialise_rowset(input)?;
 
@@ -185,8 +193,8 @@ impl From<&MessageBody> for MessageType {
             MessageBody::Str(_) => MT::Str,
             MessageBody::Command(_) => MT::Command,
             MessageBody::Error(_) => MT::Error,
-            MessageBody::RowSet(_) => MT::RowSet
-        }
+            MessageBody::RowSet(_) => MT::RowSet,
+        };
     }
 }
 
@@ -207,14 +215,18 @@ impl Message {
     pub async fn write(
         self,
         stream: &mut (impl AsyncWrite + std::marker::Unpin),
-        serialisation_manager: SerialisationManager
+        serialisation_manager: SerialisationManager,
     ) -> Result<()> {
         let serialised = self.serialise(serialisation_manager);
 
-        stream.write_u64_le(serialised.len() as u64).await
+        stream
+            .write_u64_le(serialised.len() as u64)
+            .await
             .map_err(SqlError::CouldNotWriteToConnection)?;
 
-        stream.write_all(serialised.as_slice()).await
+        stream
+            .write_all(serialised.as_slice())
+            .await
             .map_err(SqlError::CouldNotWriteToConnection)?;
 
         return Ok(());
@@ -232,18 +244,22 @@ impl Message {
 
     pub async fn read(
         stream: &mut (impl AsyncReadExt + std::marker::Unpin),
-        serialisation_manager: SerialisationManager
+        serialisation_manager: SerialisationManager,
     ) -> Result<Self> {
         // TODO: Does cancel safety matter?
         // I guess not because the only other branch in tokio::select is to quit out of the program
         // Although maybe that makes client hang if it is in a write?
         // By the description of cancel safety, I think it should only leave buffer in undefined state,
         // but connection should be handled properly still?
-        let length = stream.read_u64_le().await
+        let length = stream
+            .read_u64_le()
+            .await
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
         let mut data = vec![0_u8; length as usize];
-        stream.read_exact(&mut data).await
+        stream
+            .read_exact(&mut data)
+            .await
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
         let data = &mut data.as_slice();
@@ -257,13 +273,13 @@ impl Message {
         let body = MessageBody::deserialise(input, &header.message_type, serialisation_manager)?;
 
         if !input.is_empty() {
-            println!("Warning: deserialising message ignored remaining {} bytes", input.len());
+            println!(
+                "Warning: deserialising message ignored remaining {} bytes",
+                input.len()
+            );
         }
 
-        return Ok(Message {
-            header,
-            body,
-        });
+        return Ok(Message { header, body });
     }
 
     fn parse_raw_header(input: &mut &[u8]) -> Result<RawHeader> {
@@ -276,7 +292,9 @@ impl Message {
         let mut header_length = 0;
 
         if !result.get_flag(0) {
-            return Err(SqlError::InvalidHeader("Header didn't have `message_type` flag set"));
+            return Err(SqlError::InvalidHeader(
+                "Header didn't have `message_type` flag set",
+            ));
         }
 
         header_length += 1;

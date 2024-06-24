@@ -11,7 +11,6 @@ pub fn test_all_cases(parser: impl ExpressionParser, inputs: &[(&str, Option<Exp
     });
 }
 
-
 #[test]
 fn number_parser_basic() {
     let inputs = [
@@ -68,9 +67,7 @@ fn type_parser_basic() {
 fn type_parser_list() {
     let input = "bool, int, integer, text";
 
-    let result = Type.multiple().parse(
-        &mut Lexer::lex(input).as_slice()
-    );
+    let result = Type.multiple().parse(&mut Lexer::lex(input).as_slice());
 
     assert_eq!(
         result,
@@ -97,8 +94,14 @@ fn identifier_parser_basic() {
 #[test]
 fn column_definition_parser_basic() {
     let inputs = [
-        ("asdf INT", Some(E::ColumnDefinition("asdf".into(), ColumnType::Int))),
-        ("jkl TEXT", Some(E::ColumnDefinition("jkl".into(), ColumnType::Text))),
+        (
+            "asdf INT",
+            Some(E::ColumnDefinition("asdf".into(), ColumnType::Int)),
+        ),
+        (
+            "jkl TEXT",
+            Some(E::ColumnDefinition("jkl".into(), ColumnType::Text)),
+        ),
     ];
 
     test_all_cases(ColumnDefinition, &inputs);
@@ -106,10 +109,7 @@ fn column_definition_parser_basic() {
 
 #[test]
 fn parse_all_columns_character() {
-    let inputs = [
-        ("*", Some(E::AllColumns)),
-        ("asdf", None)
-    ];
+    let inputs = [("*", Some(E::AllColumns)), ("asdf", None)];
 
     test_all_cases(AllColumn, &inputs);
 }
@@ -118,12 +118,18 @@ fn parse_all_columns_character() {
 fn column_parser_basic() {
     let inputs = [
         ("*", Some(E::Array(vec![E::AllColumns]))),
-        ("column_name", Some(E::Array(vec![E::Ident("column_name".into())]))),
-        ("otherColumnName", Some(E::Array(vec![E::Ident("otherColumnName".into())]))),
-        ("a, b", Some(E::Array(vec![
-            E::Ident("a".into()),
-            E::Ident("b".into()),
-        ]))),
+        (
+            "column_name",
+            Some(E::Array(vec![E::Ident("column_name".into())])),
+        ),
+        (
+            "otherColumnName",
+            Some(E::Array(vec![E::Ident("otherColumnName".into())])),
+        ),
+        (
+            "a, b",
+            Some(E::Array(vec![E::Ident("a".into()), E::Ident("b".into())])),
+        ),
         // No trailing commas
         ("a, b,", None),
     ];
@@ -134,21 +140,30 @@ fn column_parser_basic() {
 #[test]
 fn where_parser_basic() {
     let inputs = [
-        ("WHERE a = 5", Some(E::Where {
-            left: E::Ident("a".into()).into(),
-            operator: InfixOperator::Equals,
-            right: E::Int(5).into()
-        })),
-        ("WHERE column >= other_column", Some(E::Where {
-            left: E::Ident("column".into()).into(),
-            operator: InfixOperator::GreaterThanEqual,
-            right: E::Ident("other_column".into()).into()
-        })),
-        ("WHERE 10 <> 5", Some(E::Where {
-            left: E::Int(10).into(),
-            operator: InfixOperator::NotEqual,
-            right: E::Int(5).into()
-        })),
+        (
+            "WHERE a = 5",
+            Some(E::Where {
+                left: E::Ident("a".into()).into(),
+                operator: InfixOperator::Equals,
+                right: E::Int(5).into(),
+            }),
+        ),
+        (
+            "WHERE column >= other_column",
+            Some(E::Where {
+                left: E::Ident("column".into()).into(),
+                operator: InfixOperator::GreaterThanEqual,
+                right: E::Ident("other_column".into()).into(),
+            }),
+        ),
+        (
+            "WHERE 10 <> 5",
+            Some(E::Where {
+                left: E::Int(10).into(),
+                operator: InfixOperator::NotEqual,
+                right: E::Int(5).into(),
+            }),
+        ),
         ("WHERE column", None),
         ("column <> other_column", None),
         ("WHERE * = 0", None),
@@ -160,16 +175,17 @@ fn where_parser_basic() {
 #[test]
 fn array_basic() {
     let inputs = [
-        ("(1, 2.3, 'hey', 4)", Some(E::Array(vec![
-            E::Int(1),
-            E::Decimal(2, 3),
-            E::Str("hey".into()),
-            E::Int(4),
-        ]))),
+        (
+            "(1, 2.3, 'hey', 4)",
+            Some(E::Array(vec![
+                E::Int(1),
+                E::Decimal(2, 3),
+                E::Str("hey".into()),
+                E::Int(4),
+            ])),
+        ),
         // Allow trailing commas
-        ("(1,)", Some(E::Array(vec![
-            E::Int(1),
-        ]))),
+        ("(1,)", Some(E::Array(vec![E::Int(1)]))),
     ];
 
     test_all_cases(Array, &inputs);

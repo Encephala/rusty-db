@@ -3,8 +3,8 @@ mod v2;
 
 use super::SqlError;
 use crate::{
+    database::{RowSet, Table},
     Result,
-    database::{Table, RowSet}
 };
 
 use v1::V1;
@@ -48,7 +48,7 @@ impl TryFrom<u8> for Serialiser {
             1 => Ok(Serialiser::V1),
             2 => Ok(Serialiser::V2),
             _ => Err(SqlError::IncompatibleVersion(value)),
-        }
+        };
     }
 }
 
@@ -89,9 +89,7 @@ impl Serialise for Serialiser {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct SerialisationManager(
-    pub Serialiser
-);
+pub struct SerialisationManager(pub Serialiser);
 
 impl SerialisationManager {
     pub const fn new(serialiser: Serialiser) -> Self {
@@ -151,7 +149,6 @@ impl SerialisationManager {
 
         return serialiser.deserialise_rowset(input);
     }
-
 }
 
 #[cfg(test)]
@@ -168,22 +165,15 @@ mod tests {
 
         let serialised = manager.serialise_table(&table);
 
-        assert_eq!(
-            serialised.first().unwrap(),
-            &1
-        );
+        assert_eq!(serialised.first().unwrap(), &1);
 
-        let rowset = table.select(
-            crate::types::ColumnSelector::AllColumns,
-            None
-        ).unwrap();
+        let rowset = table
+            .select(crate::types::ColumnSelector::AllColumns, None)
+            .unwrap();
 
         let serialised = manager.serialise_rowset(&rowset);
 
-        assert_eq!(
-            serialised.first().unwrap(),
-            &1
-        );
+        assert_eq!(serialised.first().unwrap(), &1);
     }
 
     #[test]
@@ -203,10 +193,9 @@ mod tests {
             Err(SqlError::IncompatibleVersion(0))
         ));
 
-        let rowset = table.select(
-            crate::types::ColumnSelector::AllColumns,
-            None
-        ).unwrap();
+        let rowset = table
+            .select(crate::types::ColumnSelector::AllColumns, None)
+            .unwrap();
 
         let mut serialised = manager.serialise_rowset(&rowset);
 

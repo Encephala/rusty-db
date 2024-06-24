@@ -6,29 +6,19 @@ use super::*;
 fn insert_basic() {
     let mut table = test_table();
 
-    let row1 = vec![
-        5.into(),
-        true.into(),
-    ];
+    let row1 = vec![5.into(), true.into()];
 
-    let row2 = vec![
-        6.into(),
-        false.into(),
-    ];
+    let row2 = vec![6.into(), false.into()];
 
     table.insert(&None, row1.clone()).unwrap();
 
-    assert_eq!(
-        table.values,
-        vec![Row(row1.clone())]
-    );
+    assert_eq!(table.values, vec![Row(row1.clone())]);
 
-    table.insert_multiple(&None, vec![row1.clone(), row2.clone()]).unwrap();
+    table
+        .insert_multiple(&None, vec![row1.clone(), row2.clone()])
+        .unwrap();
 
-    assert_eq!(
-        table.values,
-        vec![Row(row1.clone()), Row(row1), Row(row2)]
-    );
+    assert_eq!(table.values, vec![Row(row1.clone()), Row(row1), Row(row2)]);
 }
 
 #[test]
@@ -36,10 +26,7 @@ fn insert_check_types() {
     let mut table = test_table();
 
     // Wrong order
-    let row1 = vec![
-        true.into(),
-        5.into(),
-    ];
+    let row1 = vec![true.into(), 5.into()];
 
     let row2 = vec![
         6.into(),
@@ -52,10 +39,7 @@ fn insert_check_types() {
     assert!(matches!(result1, Err(SqlError::IncompatibleTypes(_, _))));
     assert!(matches!(result2, Err(SqlError::IncompatibleTypes(_, _))));
 
-    assert_eq!(
-        table.values,
-        vec![]
-    );
+    assert_eq!(table.values, vec![]);
 }
 
 #[test]
@@ -69,19 +53,18 @@ fn select_basic() {
         test_row_set(vec![Row(row1.clone()), Row(row2)]).unwrap()
     );
 
-    let where_bool_true = table.select(
-        ColumnSelector::AllColumns,
-        Some(Where {
-            left: "second".into(),
-            operator: InfixOperator::Equals,
-            right: true.into(),
-        })
-    ).unwrap();
+    let where_bool_true = table
+        .select(
+            ColumnSelector::AllColumns,
+            Some(Where {
+                left: "second".into(),
+                operator: InfixOperator::Equals,
+                right: true.into(),
+            }),
+        )
+        .unwrap();
 
-    assert_eq!(
-        where_bool_true,
-        test_row_set(vec![Row(row1)]).unwrap()
-    );
+    assert_eq!(where_bool_true, test_row_set(vec![Row(row1)]).unwrap());
 }
 
 #[test]
@@ -144,7 +127,6 @@ fn evaluate_less_than() {
         (row1.evaluate_less_than(0, &Decimal(5, 0)).unwrap(), false),
         (row1.evaluate_less_than(1, &Bool(false)).unwrap(), false),
         (row1.evaluate_less_than(1, &Bool(true)).unwrap(), false),
-
         (row2.evaluate_less_than(1, &Bool(true)).unwrap(), true),
     ];
 
@@ -157,9 +139,9 @@ fn evaluate_less_than() {
         (row1.evaluate_less_than(0, &Bool(false))),
     ];
 
-    failing_inputs.iter().for_each(|input| {
-        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
-    });
+    failing_inputs
+        .iter()
+        .for_each(|input| assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _)))));
 }
 
 #[test]
@@ -173,10 +155,15 @@ fn evaluate_less_than_equal() {
         (row1.evaluate_less_than_equal(0, &Int(5)).unwrap(), true),
         (row1.evaluate_less_than_equal(0, &Int(6)).unwrap(), true),
         (row1.evaluate_less_than_equal(0, &Int(4)).unwrap(), false),
-        (row1.evaluate_less_than_equal(0, &Decimal(5, 0)).unwrap(), true),
-        (row1.evaluate_less_than_equal(1, &Bool(false)).unwrap(), false),
+        (
+            row1.evaluate_less_than_equal(0, &Decimal(5, 0)).unwrap(),
+            true,
+        ),
+        (
+            row1.evaluate_less_than_equal(1, &Bool(false)).unwrap(),
+            false,
+        ),
         (row1.evaluate_less_than_equal(1, &Bool(true)).unwrap(), true),
-
         (row2.evaluate_less_than_equal(1, &Bool(true)).unwrap(), true),
     ];
 
@@ -189,9 +176,9 @@ fn evaluate_less_than_equal() {
         (row1.evaluate_less_than_equal(0, &Bool(false))),
     ];
 
-    failing_inputs.iter().for_each(|input| {
-        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
-    });
+    failing_inputs
+        .iter()
+        .for_each(|input| assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _)))));
 }
 
 #[test]
@@ -205,10 +192,12 @@ fn evaluate_greater_than() {
         (row1.evaluate_greater_than(0, &Int(5)).unwrap(), false),
         (row1.evaluate_greater_than(0, &Int(6)).unwrap(), false),
         (row1.evaluate_greater_than(0, &Int(4)).unwrap(), true),
-        (row1.evaluate_greater_than(0, &Decimal(5, 0)).unwrap(), false),
+        (
+            row1.evaluate_greater_than(0, &Decimal(5, 0)).unwrap(),
+            false,
+        ),
         (row1.evaluate_greater_than(1, &Bool(false)).unwrap(), true),
         (row1.evaluate_greater_than(1, &Bool(true)).unwrap(), false),
-
         (row2.evaluate_greater_than(1, &Bool(false)).unwrap(), false),
     ];
 
@@ -221,9 +210,9 @@ fn evaluate_greater_than() {
         (row1.evaluate_greater_than(0, &Bool(false))),
     ];
 
-    failing_inputs.iter().for_each(|input| {
-        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
-    });
+    failing_inputs
+        .iter()
+        .for_each(|input| assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _)))));
 }
 
 #[test]
@@ -237,11 +226,22 @@ fn evaluate_greater_than_equal() {
         (row1.evaluate_greater_than_equal(0, &Int(5)).unwrap(), true),
         (row1.evaluate_greater_than_equal(0, &Int(6)).unwrap(), false),
         (row1.evaluate_greater_than_equal(0, &Int(4)).unwrap(), true),
-        (row1.evaluate_greater_than_equal(0, &Decimal(5, 0)).unwrap(), true),
-        (row1.evaluate_greater_than_equal(1, &Bool(false)).unwrap(), true),
-        (row1.evaluate_greater_than_equal(1, &Bool(true)).unwrap(), true),
-
-        (row2.evaluate_greater_than_equal(1, &Bool(false)).unwrap(), true),
+        (
+            row1.evaluate_greater_than_equal(0, &Decimal(5, 0)).unwrap(),
+            true,
+        ),
+        (
+            row1.evaluate_greater_than_equal(1, &Bool(false)).unwrap(),
+            true,
+        ),
+        (
+            row1.evaluate_greater_than_equal(1, &Bool(true)).unwrap(),
+            true,
+        ),
+        (
+            row2.evaluate_greater_than_equal(1, &Bool(false)).unwrap(),
+            true,
+        ),
     ];
 
     inputs.iter().for_each(|(result, expected)| {
@@ -253,54 +253,43 @@ fn evaluate_greater_than_equal() {
         (row1.evaluate_greater_than_equal(0, &Bool(false))),
     ];
 
-    failing_inputs.iter().for_each(|input| {
-        assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _))))
-    });
+    failing_inputs
+        .iter()
+        .for_each(|input| assert!(matches!(input, Err(SqlError::ImpossibleComparison(_, _)))));
 }
 
 #[test]
 fn select_with_where() {
     let (table, _) = test_table_with_values();
 
-    let only_int_five = table.select(
-        ColumnSelector::Name(vec![ColumnName("first".into())]),
-        Some(Where {
-            left: "first".into(),
-            operator: InfixOperator::Equals,
-            right: 5.into(),
-        })
-    ).unwrap();
+    let only_int_five = table
+        .select(
+            ColumnSelector::Name(vec![ColumnName("first".into())]),
+            Some(Where {
+                left: "first".into(),
+                operator: InfixOperator::Equals,
+                right: 5.into(),
+            }),
+        )
+        .unwrap();
 
     assert_eq!(
         only_int_five,
         test_row_set(vec![Row(vec![5.into()])]).unwrap()
     );
 
-    let none = table.select(
-        ColumnSelector::Name(vec![]),
-        None,
-    ).unwrap();
+    let none = table.select(ColumnSelector::Name(vec![]), None).unwrap();
 
-    assert_eq!(
-        none,
-        test_row_set(vec![
-            Row(vec![]),
-            Row(vec![]),
-        ]).unwrap()
-    )
+    assert_eq!(none, test_row_set(vec![Row(vec![]), Row(vec![]),]).unwrap())
 }
 
 #[test]
 fn update_basic() {
     let (mut table, _) = test_table_with_values();
 
-    table.update(
-        vec![
-            ColumnName("first".into()),
-        ],
-        vec![69.into()],
-        None
-    ).unwrap();
+    table
+        .update(vec![ColumnName("first".into())], vec![69.into()], None)
+        .unwrap();
 
     assert_eq!(
         table.values,
@@ -310,17 +299,17 @@ fn update_basic() {
         ]
     );
 
-    table.update(
-        vec![
-            ColumnName("first".into()),
-        ],
-        vec![420.into()],
-        Some(Where {
-            left: "second".into(),
-            operator: InfixOperator::Equals,
-            right: true.into(),
-        })
-    ).unwrap();
+    table
+        .update(
+            vec![ColumnName("first".into())],
+            vec![420.into()],
+            Some(Where {
+                left: "second".into(),
+                operator: InfixOperator::Equals,
+                right: true.into(),
+            }),
+        )
+        .unwrap();
 
     assert_eq!(
         table.values,
@@ -337,23 +326,17 @@ fn delete_basic() {
 
     table.delete(None).unwrap();
 
-    assert_eq!(
-        table.values,
-        vec![]
-    );
+    assert_eq!(table.values, vec![]);
 
     let (mut table, _) = test_table_with_values();
 
-    table.delete(Some(Where {
-        left: "second".into(),
-        operator: InfixOperator::Equals,
-        right: false.into(),
-    })).unwrap();
+    table
+        .delete(Some(Where {
+            left: "second".into(),
+            operator: InfixOperator::Equals,
+            right: false.into(),
+        }))
+        .unwrap();
 
-    assert_eq!(
-        table.values,
-        vec![
-            Row(vec![5.into(), true.into()])
-        ]
-    )
+    assert_eq!(table.values, vec![Row(vec![5.into(), true.into()])])
 }

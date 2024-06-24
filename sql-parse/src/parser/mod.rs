@@ -3,5 +3,5 @@ mod expressions;
 pub mod statements;
 mod utils;
 
-pub use statements::{Statement, CreateType};
-pub use expressions::{Expression, ColumnType, InfixOperator};
+pub use expressions::{ColumnType, Expression, InfixOperator};
+pub use statements::{CreateType, Statement};

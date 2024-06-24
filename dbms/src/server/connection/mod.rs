@@ -4,29 +4,29 @@ mod tests;
 use std::path::PathBuf;
 
 use tokio::{
-    net::TcpStream, sync::broadcast::Receiver,
-    io::{AsyncWriteExt, AsyncReadExt},
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+    sync::broadcast::Receiver,
 };
 
 #[cfg(test)]
 use crate::persistence::NoOp;
 
 use crate::{
-    evaluate::{
-        Execute,
-        ExecutionResult
-    }, persistence::{
-        FileSystem, PersistenceManager
-    }, serialisation::{
-        SerialisationManager,
-        Serialiser
-    }, types::DatabaseName, utils::serialiser_version_to_serialiser, Database, Result, SqlError
+    evaluate::{Execute, ExecutionResult},
+    persistence::{FileSystem, PersistenceManager},
+    serialisation::{SerialisationManager, Serialiser},
+    types::DatabaseName,
+    utils::serialiser_version_to_serialiser,
+    Database, Result, SqlError,
 };
 
 use sql_parse::{parse_statement, parser::Statement};
 
-use super::{protocol::{Message, MessageBody}, Stream};
-
+use super::{
+    protocol::{Message, MessageBody},
+    Stream,
+};
 
 #[derive(Debug)]
 pub struct Runtime {
@@ -48,7 +48,7 @@ impl Runtime {
     pub fn new(persistence_manager: impl PersistenceManager + 'static) -> Self {
         return Self {
             persistence_manager: Box::new(persistence_manager),
-            database: None
+            database: None,
         };
     }
 
@@ -84,7 +84,10 @@ impl Runtime {
     }
 
     pub async fn load(&mut self, database_name: &DatabaseName) -> Result<()> {
-        let result = self.persistence_manager.load_database(database_name).await?;
+        let result = self
+            .persistence_manager
+            .load_database(database_name)
+            .await?;
 
         self.database = Some(result);
 
@@ -93,7 +96,9 @@ impl Runtime {
 
     pub async fn drop(&mut self) -> Result<()> {
         if let Some(database) = &self.database {
-            self.persistence_manager.drop_database(&database.name).await?;
+            self.persistence_manager
+                .drop_database(&database.name)
+                .await?;
 
             // Note: Only clears own database if dropping succeeded
             self.database = None;
@@ -104,7 +109,6 @@ impl Runtime {
         }
     }
 }
-
 
 pub struct Connection {
     stream: TcpStream,
@@ -139,9 +143,9 @@ impl Connection {
 
         let runtime = Runtime {
             persistence_manager: Box::new(FileSystem::new(
-                    SerialisationManager(serialiser),
-                    PathBuf::from("/tmp/rusty-db"),
-                )),
+                SerialisationManager(serialiser),
+                PathBuf::from("/tmp/rusty-db"),
+            )),
             database: None,
         };
 
@@ -154,16 +158,25 @@ impl Connection {
     async fn negotiate_serialiser_version(stream: &mut impl Stream) -> Result<Serialiser> {
         let available_serialiser_versions = [1, 2];
 
-        stream.write_all((available_serialiser_versions.len() as u8).to_le_bytes().as_slice()).await
+        stream
+            .write_all(
+                (available_serialiser_versions.len() as u8)
+                    .to_le_bytes()
+                    .as_slice(),
+            )
+            .await
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
-        stream.write_all(available_serialiser_versions.as_slice()).await
+        stream
+            .write_all(available_serialiser_versions.as_slice())
+            .await
             .map_err(SqlError::CouldNotReadFromConnection)?;
-
 
         let mut serialiser_version_buffer = [0_u8];
 
-        stream.read_exact(&mut serialiser_version_buffer).await
+        stream
+            .read_exact(&mut serialiser_version_buffer)
+            .await
             .map_err(SqlError::CouldNotReadFromConnection)?;
 
         let [decided_version] = serialiser_version_buffer;
@@ -214,7 +227,10 @@ async fn process_input(input: &str, runtime: &mut Runtime) -> Result<ExecutionRe
 
 async fn handle_special_commands(input: &str, runtime: &mut Runtime) -> Result<ExecutionResult> {
     if let Some(database_name) = input.strip_prefix("\\c ") {
-        let database = runtime.persistence_manager.load_database(&DatabaseName(database_name.into())).await?;
+        let database = runtime
+            .persistence_manager
+            .load_database(&DatabaseName(database_name.into()))
+            .await?;
 
         runtime.database = Some(database);
 
@@ -230,7 +246,7 @@ fn parse_input(input: &str) -> Result<Statement> {
     if statement.is_none() {
         println!("Failed to parse: {input}");
 
-        return Err(SqlError::ParseError)
+        return Err(SqlError::ParseError);
     }
 
     return Ok(statement.unwrap());

@@ -6,14 +6,15 @@ pub use protocol::Message;
 
 use std::net::SocketAddr;
 
+use futures::future::{join_all, select_all, OptionFuture};
 use tokio::{
-    io::{AsyncRead, AsyncWrite}, net::{
-        TcpListener,
-        TcpStream,
-        ToSocketAddrs,
-    }, signal::ctrl_c, spawn, sync::broadcast::*, task::{JoinError, JoinHandle}
+    io::{AsyncRead, AsyncWrite},
+    net::{TcpListener, TcpStream, ToSocketAddrs},
+    signal::ctrl_c,
+    spawn,
+    sync::broadcast::*,
+    task::{JoinError, JoinHandle},
 };
-use futures::future::{select_all, join_all, OptionFuture};
 
 use connection::Connection;
 
@@ -56,7 +57,8 @@ pub async fn server(listen_address: impl ToSocketAddrs) {
         let join_all_future: OptionFuture<_> = match join_handles.len() {
             0 => None,
             _ => Some(select_all(&mut join_handles)),
-        }.into();
+        }
+        .into();
 
         tokio::select! {
             _ = shutdown_receiver_main.recv() => {

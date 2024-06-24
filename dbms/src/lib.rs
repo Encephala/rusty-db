@@ -2,22 +2,20 @@
 #![allow(clippy::needless_return)]
 
 mod database;
-pub mod types;
 pub mod evaluate;
-pub mod utils;
 pub mod persistence;
 pub mod serialisation;
 pub mod server;
+pub mod types;
+pub mod utils;
 
 use std::ffi::OsString;
 
-use types::{ColumnName, ColumnValue, TableName};
 use sql_parse::parser::{ColumnType, Expression, InfixOperator};
 use types::DatabaseName;
+use types::{ColumnName, ColumnValue, TableName};
 
 pub use database::Database;
-
-
 
 #[derive(Debug)]
 pub enum SqlError {

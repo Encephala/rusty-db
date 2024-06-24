@@ -1,9 +1,6 @@
-use crate::{
-    SqlError, Result,
-    serialisation::Serialiser
-};
+use crate::{serialisation::Serialiser, Result, SqlError};
 
-pub fn serialiser_version_to_serialiser(version: u8) -> Result<Serialiser>{
+pub fn serialiser_version_to_serialiser(version: u8) -> Result<Serialiser> {
     return match version {
         1 => Ok(Serialiser::V1),
         2 => Ok(Serialiser::V2),
@@ -13,9 +10,9 @@ pub fn serialiser_version_to_serialiser(version: u8) -> Result<Serialiser>{
 
 #[cfg(test)]
 pub mod tests {
+    use super::super::database::{Row, RowSet, Table};
+    use super::super::types::{ColumnDefinition, ColumnName, ColumnValue, DatabaseName, TableName};
     use sql_parse::parser::ColumnType;
-    use super::super::database::{Table, Row, RowSet};
-    use super::super::types::{TableName, ColumnName, DatabaseName, ColumnValue, ColumnDefinition};
 
     use crate::server::Runtime;
     use crate::{Database, Result, SqlError};
@@ -69,7 +66,8 @@ pub mod tests {
                 ColumnDefinition("first".into(), ColumnType::Int),
                 ColumnDefinition("second".into(), ColumnType::Bool),
             ],
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     pub fn test_table_with_values() -> (Table, (Vec<ColumnValue>, Vec<ColumnValue>)) {
@@ -79,35 +77,24 @@ pub mod tests {
                 ColumnDefinition("first".into(), ColumnType::Int),
                 ColumnDefinition("second".into(), ColumnType::Bool),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
-        let row1 = vec![
-            5.into(),
-            true.into()
-        ];
+        let row1 = vec![5.into(), true.into()];
 
-        let row2 = vec![
-            6.into(),
-            false.into(),
-        ];
+        let row2 = vec![6.into(), false.into()];
 
-        result.insert_multiple(
-            &None,
-            vec![row1.clone(), row2.clone()]
-        ).unwrap();
+        result
+            .insert_multiple(&None, vec![row1.clone(), row2.clone()])
+            .unwrap();
 
         return (result, (row1, row2));
     }
 
     pub fn test_row_set(values: Vec<Row>) -> Result<RowSet> {
-        let types = values.first()
-            .map(|row|
-                row.0.iter()
-                .map(|value| {
-                    ColumnType::from(value)
-                })
-                .collect()
-            )
+        let types = values
+            .first()
+            .map(|row| row.0.iter().map(|value| ColumnType::from(value)).collect())
             .ok_or(SqlError::InvalidParameter)?;
 
         let names = std::iter::repeat("test_column_name".to_owned())

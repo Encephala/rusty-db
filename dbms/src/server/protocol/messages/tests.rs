@@ -9,29 +9,16 @@ fn serialise_command() {
     let inputs = [
         (
             Command::Connect("sweden".into()),
-            vec![
-                1,
-                6, 0, 0, 0, 0, 0, 0, 0,
-                115, 119, 101, 100, 101, 110
-            ]
+            vec![1, 6, 0, 0, 0, 0, 0, 0, 0, 115, 119, 101, 100, 101, 110],
         ),
-        (
-            Command::ListDatabases,
-            vec![2]
-        ),
-        (
-            Command::ListTables,
-            vec![3]
-        ),
+        (Command::ListDatabases, vec![2]),
+        (Command::ListTables, vec![3]),
     ];
 
     inputs.into_iter().for_each(|(input, expected)| {
         let result: Vec<u8> = input.into();
 
-        assert_eq!(
-            result,
-            expected
-        );
+        assert_eq!(result, expected);
     })
 }
 
@@ -44,7 +31,10 @@ fn close_body_to_message() {
     assert!(matches!(
         message,
         Message {
-            header: Header { message_type: MessageType::Close, .. },
+            header: Header {
+                message_type: MessageType::Close,
+                ..
+            },
             body: MessageBody::Close,
         }
     ));
@@ -56,40 +46,33 @@ fn serialise_close_message() {
 
     let serialised = message.serialise(SerialisationManager(Serialiser::V2));
 
-    let expected = RawHeader::new(
-        1,
-        vec![1]
-    ).serialise();
+    let expected = RawHeader::new(1, vec![1]).serialise();
 
-    assert_eq!(
-        serialised,
-        expected
-    )
+    assert_eq!(serialised, expected)
 }
 
 #[test]
 fn deserialise_close_message() {
     let serialised = vec![
         // Flags
-        1, 0, 0, 0, 0, 0, 0, 0,
-        // Message type
+        1, 0, 0, 0, 0, 0, 0, 0, // Message type
         1,
     ];
 
     let message = Message::deserialise(
         &mut serialised.as_slice(),
-        SerialisationManager(Serialiser::V2)
-    ).unwrap();
+        SerialisationManager(Serialiser::V2),
+    )
+    .unwrap();
 
     assert_eq!(
         message.header,
-        Header { message_type: MessageType::Close },
+        Header {
+            message_type: MessageType::Close
+        },
     );
 
-    assert!(matches!(
-        message.body,
-        MessageBody::Close,
-    ));
+    assert!(matches!(message.body, MessageBody::Close,));
 }
 
 #[test]
@@ -101,7 +84,10 @@ fn ok_body_to_message() {
     assert!(matches!(
         message,
         Message {
-            header: Header { message_type: MessageType::Ok, .. },
+            header: Header {
+                message_type: MessageType::Ok,
+                ..
+            },
             body: MessageBody::Ok,
         }
     ));
@@ -113,40 +99,33 @@ fn serialise_ok_message() {
 
     let serialised = message.serialise(SerialisationManager(Serialiser::V2));
 
-    let expected = RawHeader::new(
-        1,
-        vec![2]
-    ).serialise();
+    let expected = RawHeader::new(1, vec![2]).serialise();
 
-    assert_eq!(
-        serialised,
-        expected
-    )
+    assert_eq!(serialised, expected)
 }
 
 #[test]
 fn deserialise_ok_message() {
     let serialised = vec![
         // Flags
-        1, 0, 0, 0, 0, 0, 0, 0,
-        // Message type
+        1, 0, 0, 0, 0, 0, 0, 0, // Message type
         2,
     ];
 
     let message = Message::deserialise(
         &mut serialised.as_slice(),
-        SerialisationManager(Serialiser::V2)
-    ).unwrap();
+        SerialisationManager(Serialiser::V2),
+    )
+    .unwrap();
 
     assert_eq!(
         message.header,
-        Header { message_type: MessageType::Ok },
+        Header {
+            message_type: MessageType::Ok
+        },
     );
 
-    assert!(matches!(
-        message.body,
-        MessageBody::Ok,
-    ));
+    assert!(matches!(message.body, MessageBody::Ok,));
 }
 
 #[test]
@@ -158,7 +137,10 @@ fn string_body_to_message() {
     assert!(matches!(
         message,
         Message {
-            header: Header { message_type: MessageType::Str, .. },
+            header: Header {
+                message_type: MessageType::Str,
+                ..
+            },
             body: MessageBody::Str(_),
         }
     ));
@@ -166,52 +148,43 @@ fn string_body_to_message() {
 
 #[test]
 fn serialise_string_message() {
-    let message = Message::from_message_body(
-        MessageBody::Str("deez nuts".into())
-    );
+    let message = Message::from_message_body(MessageBody::Str("deez nuts".into()));
 
     let serialised = message.serialise(SerialisationManager(Serialiser::V2));
 
     let mut expected = vec![
         // Header
-        1, 0, 0, 0, 0, 0, 0, 0,
-        3,
-        // String length
+        1, 0, 0, 0, 0, 0, 0, 0, 3, // String length
         9, 0, 0, 0, 0, 0, 0, 0,
     ];
 
     expected.extend("deez nuts".as_bytes());
 
-    assert_eq!(
-        serialised,
-        expected
-    );
+    assert_eq!(serialised, expected);
 }
 
 #[test]
 fn deserialise_string_message() {
     let mut input = vec![
         // Header
-        1, 0, 0, 0, 0, 0, 0, 0,
-        3,
-        // String length
+        1, 0, 0, 0, 0, 0, 0, 0, 3, // String length
         9, 0, 0, 0, 0, 0, 0, 0,
     ];
 
     input.extend("deez nuts".as_bytes());
 
-    let message = Message::deserialise(&mut input.as_slice(), SerialisationManager(Serialiser::V2)).unwrap();
+    let message =
+        Message::deserialise(&mut input.as_slice(), SerialisationManager(Serialiser::V2)).unwrap();
 
     assert_eq!(
         message.header,
-        Header { message_type: MessageType::Str }
+        Header {
+            message_type: MessageType::Str
+        }
     );
 
     if let MessageBody::Str(parsed_string) = message.body {
-        assert_eq!(
-            parsed_string,
-            "deez nuts",
-        );
+        assert_eq!(parsed_string, "deez nuts",);
     } else {
         panic!("Body wrong type");
     }
@@ -253,13 +226,17 @@ fn command_body_to_message() {
 
         assert_eq!(
             message.header,
-            Header { message_type: MessageType::Command }
+            Header {
+                message_type: MessageType::Command
+            }
         );
 
         assert!(matches!(
             message,
             Message {
-                header: Header { message_type: MessageType::Command },
+                header: Header {
+                    message_type: MessageType::Command
+                },
                 body: MessageBody::Command(_),
             }
         ));
@@ -273,12 +250,10 @@ fn serialise_command_message() {
             Command::Connect("sweden".into()),
             vec![
                 // Command type
-                1,
-                // String length
-                6, 0, 0, 0, 0, 0, 0, 0,
-                // "sweden"
+                1, // String length
+                6, 0, 0, 0, 0, 0, 0, 0, // "sweden"
                 115, 119, 101, 100, 101, 110,
-            ]
+            ],
         ),
         (Command::ListDatabases, vec![2]),
         (Command::ListTables, vec![3]),
@@ -289,19 +264,11 @@ fn serialise_command_message() {
 
         let serialised = message.serialise(SerialisationManager(Serialiser::V2));
 
-        let mut expected = vec![
-            1, 0, 0, 0, 0, 0, 0, 0,
-            4,
-        ];
+        let mut expected = vec![1, 0, 0, 0, 0, 0, 0, 0, 4];
 
-        expected.extend(
-            extra
-        );
+        expected.extend(extra);
 
-        assert_eq!(
-            serialised,
-            expected,
-        );
+        assert_eq!(serialised, expected,);
     });
 }
 
@@ -321,18 +288,18 @@ fn deserialise_command_message() {
         let deserialised = Message::deserialise(
             &mut serialised.as_slice(),
             SerialisationManager(Serialiser::V2),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(
             deserialised.header,
-            Header { message_type: MessageType::Command }
+            Header {
+                message_type: MessageType::Command
+            }
         );
 
         if let MessageBody::Command(command) = deserialised.body {
-            assert_eq!(
-                command,
-                input,
-            );
+            assert_eq!(command, input,);
         } else {
             panic!("Body wrong type");
         }
@@ -362,20 +329,17 @@ fn rowset_body_to_message() {
 
 #[test]
 fn serialise_rowset_message() {
-    let message = Message::from_message_body(
-        MessageBody::RowSet(RowSet {
-            types: vec![],
-            names: vec![],
-            values: vec![],
-        })
-    );
+    let message = Message::from_message_body(MessageBody::RowSet(RowSet {
+        types: vec![],
+        names: vec![],
+        values: vec![],
+    }));
 
     let serialised = message.serialise(SerialisationManager(Serialiser::V2));
 
     let mut expected = vec![
         // Header
-        1, 0, 0, 0, 0, 0, 0, 0,
-        6,
+        1, 0, 0, 0, 0, 0, 0, 0, 6,
     ];
 
     expected.extend(
@@ -383,21 +347,17 @@ fn serialise_rowset_message() {
             types: vec![],
             names: vec![],
             values: vec![],
-        })
+        }),
     );
 
-    assert_eq!(
-        serialised,
-        expected,
-    );
+    assert_eq!(serialised, expected,);
 }
 
 #[test]
 fn deserialise_rowset_message() {
     let mut input = vec![
         // Header
-        1, 0, 0, 0, 0, 0, 0, 0,
-        6,
+        1, 0, 0, 0, 0, 0, 0, 0, 6,
     ];
 
     input.extend(
@@ -405,20 +365,27 @@ fn deserialise_rowset_message() {
             types: vec![],
             names: vec![],
             values: vec![],
-        })
+        }),
     );
 
-    let message = Message::deserialise(&mut input.as_slice(), SerialisationManager(Serialiser::V2)).unwrap();
+    let message =
+        Message::deserialise(&mut input.as_slice(), SerialisationManager(Serialiser::V2)).unwrap();
 
     assert_eq!(
         message.header,
-        Header { message_type: MessageType::RowSet }
+        Header {
+            message_type: MessageType::RowSet
+        }
     );
 
     if let MessageBody::RowSet(rowset) = message.body {
         assert_eq!(
             rowset,
-            RowSet { types: vec![], names: vec![], values: vec![] }
+            RowSet {
+                types: vec![],
+                names: vec![],
+                values: vec![]
+            }
         );
     } else {
         panic!("Body wrong type");
@@ -443,9 +410,8 @@ async fn read_message() {
 
 #[tokio::test]
 async fn write_message() {
-    let message = Message::from_message_body(MessageBody::Command(
-        Command::Connect("sweden".into())
-    ));
+    let message =
+        Message::from_message_body(MessageBody::Command(Command::Connect("sweden".into())));
 
     let manager = SerialisationManager(Serialiser::V2);
 

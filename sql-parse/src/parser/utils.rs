@@ -1,6 +1,5 @@
 use crate::lexer::Token;
 
-
 /// Checks whether the first token in put is `equals`.
 ///
 /// If not, returns [`None`].
@@ -17,8 +16,8 @@ pub fn check_and_skip(input: &mut &[Token], equals: Token) -> Option<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{Lexer, Token};
     use super::check_and_skip;
+    use crate::lexer::{Lexer, Token};
 
     #[test]
     fn check_and_skip_basic() {

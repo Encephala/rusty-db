@@ -8,12 +8,12 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 
+use super::database::{Database, Table};
+use super::serialisation::SerialisationManager;
+use super::types::DatabaseName;
+use super::SqlError;
 use crate::types::TableName;
 use crate::Result;
-use super::SqlError;
-use super::database::{Database, Table};
-use super::types::DatabaseName;
-use super::serialisation::SerialisationManager;
 
 // Love me some premature abstractions
 #[async_trait]
@@ -25,7 +25,6 @@ pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()>;
     async fn load_table(&self, database_name: &DatabaseName, name: TableName) -> Result<Table>;
     async fn drop_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<()>;
-
 }
 
 fn database_path(path: &Path, name: &DatabaseName) -> PathBuf {
@@ -65,7 +64,9 @@ impl PersistenceManager for FileSystem {
             .map_err(|error| SqlError::CouldNotStoreDatabase(database.name.clone(), error))?;
 
         // The C in ACID stands for "can't be fucked" right?
-        let futures = database.tables.values()
+        let futures = database
+            .tables
+            .values()
             .map(|table| self.save_table(&database.name, table))
             .collect::<Vec<_>>();
 
@@ -86,13 +87,14 @@ impl PersistenceManager for FileSystem {
 
         let files = fs::read_dir(path).map_err(SqlError::FSError)?;
 
-
         let mut futures = vec![];
 
         for file in files {
             let file = file.map_err(SqlError::FSError)?;
 
-            let name = file.file_name().into_string()
+            let name = file
+                .file_name()
+                .into_string()
                 .map_err(SqlError::CouldNotReadTable)?;
 
             let name = TableName(name);
@@ -133,7 +135,7 @@ impl PersistenceManager for FileSystem {
         let path = table_path(&self.1, database_name, &name);
 
         if !path.exists() {
-            return Err(SqlError::TableDoesNotExist(name))
+            return Err(SqlError::TableDoesNotExist(name));
         }
 
         let data = fs::read(path).map_err(SqlError::FSError)?;
@@ -177,10 +179,7 @@ impl PersistenceManager for NoOp {
     }
 
     async fn load_table(&self, _: &DatabaseName, name: TableName) -> Result<Table> {
-        let result = Table::new(
-            name,
-            vec![]
-        ).unwrap();
+        let result = Table::new(name, vec![]).unwrap();
 
         return Ok(result);
     }

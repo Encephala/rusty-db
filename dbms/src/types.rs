@@ -7,9 +7,8 @@ use std::any::type_name;
 
 use sql_parse::parser::{ColumnType, InfixOperator};
 
-use crate::Result;
 use super::{Expression, SqlError};
-
+use crate::Result;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnName(pub String);
@@ -19,7 +18,10 @@ impl TryFrom<&Expression> for ColumnName {
     fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(ColumnName(name.clone())),
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnName>())),
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<ColumnName>(),
+            )),
         };
     }
 }
@@ -34,11 +36,13 @@ impl TryFrom<&Expression> for TableName {
     fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(TableName(name.clone())),
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<TableName>())),
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<TableName>(),
+            )),
         };
     }
 }
-
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -53,13 +57,15 @@ impl TryFrom<&Expression> for DatabaseName {
     fn try_from(value: &Expression) -> Result<Self> {
         return match value {
             Expression::Ident(name) => Ok(DatabaseName(name.clone())),
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<DatabaseName>())),
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<DatabaseName>(),
+            )),
         };
     }
 }
 
 // impl_owned!(DatabaseName);
-
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -75,17 +81,20 @@ impl TryFrom<&Expression> for ColumnSelector {
         return match value {
             Expression::AllColumns => Ok(ColumnSelector::AllColumns),
             Expression::Array(columns) => {
-                let columns: Vec<ColumnName> = columns.iter()
+                let columns: Vec<ColumnName> = columns
+                    .iter()
                     .map(|column| column.try_into())
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(ColumnSelector::Name(columns))
             }
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnSelector>())),
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<ColumnSelector>(),
+            )),
         };
     }
 }
-
 
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -105,11 +114,13 @@ impl TryFrom<&Expression> for ColumnValue {
             E::Decimal(whole, fractional) => Ok(ColumnValue::Decimal(*whole, *fractional)),
             E::Str(value) => Ok(ColumnValue::Str(value.clone())),
             E::Bool(value) => Ok(ColumnValue::Bool(*value)),
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnValue>())),
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<ColumnValue>(),
+            )),
         };
     }
 }
-
 
 impl From<&ColumnValue> for ColumnType {
     fn from(value: &ColumnValue) -> Self {
@@ -132,12 +143,14 @@ impl TryFrom<&Expression> for ColumnDefinition {
         return match value {
             Expression::ColumnDefinition(name, column_type) => {
                 Ok(Self(ColumnName(name.clone()), *column_type))
-            },
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<ColumnDefinition>()))
+            }
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<ColumnDefinition>(),
+            )),
         };
     }
 }
-
 
 #[derive(Debug)]
 // TODO: this is janky and hacky to only support <column> <op> <value> comparisons
@@ -152,7 +165,11 @@ impl TryFrom<&Expression> for Where {
 
     fn try_from(value: &Expression) -> Result<Self> {
         return match value {
-            Expression::Where { left, operator, right } => {
+            Expression::Where {
+                left,
+                operator,
+                right,
+            } => {
                 // TODO: might be a literal. I have to rework this whole Where thingy
                 let left: ColumnName = left.as_ref().try_into()?;
 
@@ -162,10 +179,13 @@ impl TryFrom<&Expression> for Where {
                     left,
                     operator: *operator,
                     right,
-                })
-            },
-            _ => Err(SqlError::ImpossibleConversion(value.clone(), type_name::<Where>()))
-        }
+                });
+            }
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<Where>(),
+            )),
+        };
     }
 }
 
@@ -188,7 +208,6 @@ mod tests {
     fn names_from_invalid_expression() {
         let input = Expression::Int(5);
 
-
         let name = ColumnName::try_from(&input);
 
         if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::ColumnName")) = name {
@@ -200,7 +219,6 @@ mod tests {
             panic!("Incorrect return type");
         }
 
-
         let name = TableName::try_from(&input);
 
         if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::TableName")) = name {
@@ -211,7 +229,6 @@ mod tests {
         } else {
             panic!("Incorrect return type");
         }
-
 
         let name = DatabaseName::try_from(&input);
 
@@ -236,10 +253,7 @@ mod tests {
 
         assert_eq!(
             selector,
-            ColumnSelector::Name(vec![
-                "a".into(),
-                "deez nuts".into(),
-            ])
+            ColumnSelector::Name(vec!["a".into(), "deez nuts".into(),])
         );
     }
 
@@ -249,7 +263,9 @@ mod tests {
 
         let selector = ColumnSelector::try_from(&input);
 
-        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::ColumnSelector")) = selector{
+        if let Err(SqlError::ImpossibleConversion(expression, "dbms::types::ColumnSelector")) =
+            selector
+        {
             if let Expression::Int(5) = expression {
             } else {
                 panic!("Wrong expression");

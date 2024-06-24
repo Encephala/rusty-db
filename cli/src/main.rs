@@ -1,16 +1,16 @@
 #![allow(clippy::needless_return)]
 use std::io::Write;
 
-use tokio::{io::{AsyncReadExt, AsyncWriteExt, BufReader}, net::{
-    TcpStream,
-    ToSocketAddrs,
-}};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    net::{TcpStream, ToSocketAddrs},
+};
 
 use dbms::{
-    SqlError,
     serialisation::{SerialisationManager, Serialiser},
     server::Message,
     utils::serialiser_version_to_serialiser,
+    SqlError,
 };
 
 const SERIALISATION_MANAGER: SerialisationManager = SerialisationManager::new(Serialiser::V2);
@@ -23,12 +23,16 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
     let mut reader = BufReader::new(reader);
 
     // TODO: How do I do this?
-    let number_of_serialisers = stream.read_u8().await
+    let number_of_serialisers = stream
+        .read_u8()
+        .await
         .map_err(SqlError::CouldNotReadFromConnection)?;
 
     let mut serialisers_buffer = vec![0_u8; number_of_serialisers as usize];
 
-    stream.read_exact(&mut serialisers_buffer).await
+    stream
+        .read_exact(&mut serialisers_buffer)
+        .await
         .map_err(SqlError::CouldNotReadFromConnection)?;
 
     if serialisers_buffer.is_empty() {
@@ -41,7 +45,9 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
 
     println!("Chose serialiser {serialiser:?}");
 
-    stream.write_u8(*highest_serialiser).await
+    stream
+        .write_u8(*highest_serialiser)
+        .await
         .map_err(SqlError::CouldNotWriteToConnection)?;
 
     todo!();
@@ -90,7 +96,6 @@ fn rep_without_the_l() -> String {
     // TODO: probably should fix this by properly implementing special commands,
     // where they don't blow up if there's extra whitespace at the end
     input.pop();
-
 
     return input;
 }

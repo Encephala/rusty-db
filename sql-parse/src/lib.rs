@@ -4,7 +4,9 @@ pub mod lexer;
 pub mod parser;
 
 use lexer::{Lexer, Token};
-use parser::statements::{StatementParser, Statement, Create, Insert, Select, Update, Delete, Drop};
+use parser::statements::{
+    Create, Delete, Drop, Insert, Select, Statement, StatementParser, Update,
+};
 
 pub fn parse_statement(input: &str) -> Option<Statement> {
     let tokens = &mut &Lexer::lex(input);
@@ -19,7 +21,6 @@ pub fn parse_statement(input: &str) -> Option<Statement> {
         _ => None,
     };
 }
-
 
 #[cfg(test)]
 mod tests {

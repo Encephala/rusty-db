@@ -16,12 +16,18 @@ pub enum Expression {
     Decimal(usize, usize),
     Str(String),
     Bool(bool),
-    Where { left: Box<Expression>, operator: InfixOperator, right: Box<Expression> },
+    Where {
+        left: Box<Expression>,
+        operator: InfixOperator,
+        right: Box<Expression>,
+    },
     Array(Vec<Expression>),
-    ColumnValuePair { column: Box<Expression>, value: Box<Expression> },
+    ColumnValuePair {
+        column: Box<Expression>,
+        value: Box<Expression>,
+    },
 }
 use Expression as E;
-
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -66,11 +72,9 @@ impl InfixOperator {
     }
 }
 
-
 pub trait ExpressionParser: std::fmt::Debug {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression>;
 }
-
 
 #[derive(Debug)]
 pub struct Int;
@@ -122,7 +126,6 @@ impl ExpressionParser for Str {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Bool;
 impl ExpressionParser for Bool {
@@ -136,7 +139,6 @@ impl ExpressionParser for Bool {
         return None;
     }
 }
-
 
 #[derive(Debug)]
 pub struct Type;
@@ -157,7 +159,6 @@ impl ExpressionParser for Type {
         return result;
     }
 }
-
 
 #[derive(Debug)]
 pub struct Identifier;
@@ -182,10 +183,7 @@ impl ExpressionParser for ColumnDefinition {
         let column_type = Type.parse(input)?;
 
         if let (E::Ident(name), E::Type(column_type)) = (name, column_type) {
-            return Some(E::ColumnDefinition(
-                name,
-                column_type,
-            ));
+            return Some(E::ColumnDefinition(name, column_type));
         } else {
             return None;
         }
@@ -228,10 +226,13 @@ impl ExpressionParser for Where {
 
         let right = parser.parse(input)?.into();
 
-        return Some(E::Where { left, operator, right });
+        return Some(E::Where {
+            left,
+            operator,
+            right,
+        });
     }
 }
-
 
 #[derive(Debug)]
 pub struct Value;
@@ -240,7 +241,6 @@ impl ExpressionParser for Value {
         return Str.or(Number).or(Bool).parse(input);
     }
 }
-
 
 #[derive(Debug)]
 pub struct Array;

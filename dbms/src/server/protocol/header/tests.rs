@@ -16,15 +16,9 @@ macro_rules! ensure_exhaustive {
 // Serialisation
 #[test]
 fn convert_u8_to_message_type() {
-    assert_eq!(
-        MessageType::try_from(1).unwrap(),
-        MessageType::Close,
-    );
+    assert_eq!(MessageType::try_from(1).unwrap(), MessageType::Close,);
 
-    assert_eq!(
-        MessageType::try_from(6).unwrap(),
-        MessageType::RowSet,
-    );
+    assert_eq!(MessageType::try_from(6).unwrap(), MessageType::RowSet,);
 
     // Putting this at 7, so that when a new type is added,
     // the test should give an indication of what code I'm forgetting to update
@@ -40,17 +34,11 @@ fn set_clear_and_get_header_flags() {
 
     header.set_flag(0);
 
-    assert_eq!(
-        header.flags,
-        1,
-    );
+    assert_eq!(header.flags, 1,);
 
     header.set_flag(10);
 
-    assert_eq!(
-        header.flags,
-        u64::from_be_bytes([0, 0, 0, 0, 0, 0, 4, 1])
-    );
+    assert_eq!(header.flags, u64::from_be_bytes([0, 0, 0, 0, 0, 0, 4, 1]));
 
     assert!(header.get_flag(10));
 
@@ -62,10 +50,7 @@ fn parse_message_type_basic() {
     use MessageType::*;
 
     fn test_header(content: u8) -> RawHeader {
-        let mut result = RawHeader::new(
-            1,
-            vec![]
-        );
+        let mut result = RawHeader::new(1, vec![]);
 
         result.content = content.to_le_bytes().into();
 
@@ -86,10 +71,7 @@ fn parse_message_type_basic() {
 
         let parsed = Header::try_from(header).unwrap();
 
-        assert_eq!(
-            parsed.message_type,
-            expected,
-        );
+        assert_eq!(parsed.message_type, expected,);
     });
 }
 
@@ -119,15 +101,9 @@ fn set_message_type_basic() {
 
     let raw = header.to_raw();
 
-    assert_eq!(
-        raw.flags,
-        1,
-    );
+    assert_eq!(raw.flags, 1,);
 
-    assert_eq!(
-        raw.content,
-        vec![2]
-    );
+    assert_eq!(raw.content, vec![2]);
 }
 
 // TODO: This when more fields exist
@@ -142,15 +118,7 @@ fn set_message_type_basic() {
 // Doesn't look like it, I don't want to use a macro
 #[test]
 fn seralise_headers() {
-    ensure_exhaustive!(
-        MessageType,
-        Close,
-        Ok,
-        Str,
-        Command,
-        Error,
-        RowSet,
-    );
+    ensure_exhaustive!(MessageType, Close, Ok, Str, Command, Error, RowSet,);
 
     let inputs = [
         MessageType::Close,
@@ -172,10 +140,17 @@ fn seralise_headers() {
             serialised,
             vec![
                 // Flags
-                1, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 // Message type
                 (i + 1) as u8,
             ]
         );
-    };
+    }
 }

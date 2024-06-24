@@ -2,7 +2,9 @@
 mod tests;
 
 use super::combinators::Chain;
-use super::expressions::{AllColumn, Array, ColumnDefinition, Expression, ExpressionParser, Identifier, Value, Where};
+use super::expressions::{
+    AllColumn, Array, ColumnDefinition, Expression, ExpressionParser, Identifier, Value, Where,
+};
 use super::utils::check_and_skip;
 use crate::lexer::Token;
 
@@ -22,7 +24,7 @@ pub enum Statement {
     Insert {
         into: Expression,
         columns: Option<Expression>, // Expression::Array
-        values: Expression, // Expression::Array
+        values: Expression,          // Expression::Array
     },
     Update {
         from: Expression,
@@ -50,7 +52,6 @@ pub trait StatementParser {
     fn parse(&self, input: &[Token]) -> Option<Statement>;
 }
 
-
 pub struct Select;
 impl StatementParser for Select {
     fn parse(&self, mut input: &[Token]) -> Option<Statement> {
@@ -76,17 +77,16 @@ impl StatementParser for Select {
     }
 }
 
-
 fn parse_table_or_database(input: &mut &[Token]) -> Option<CreateType> {
-        let which = match input.first()? {
-            Token::Table => Some(CreateType::Table),
-            Token::Database => Some(CreateType::Database),
-            _ => None,
-        }?;
+    let which = match input.first()? {
+        Token::Table => Some(CreateType::Table),
+        Token::Database => Some(CreateType::Database),
+        _ => None,
+    }?;
 
-        *input = &input[1..];
+    *input = &input[1..];
 
-        return Some(which);
+    return Some(which);
 }
 
 pub struct Create;
@@ -118,7 +118,6 @@ impl StatementParser for Create {
     }
 }
 
-
 pub struct Insert;
 impl StatementParser for Insert {
     fn parse(&self, mut input: &[Token]) -> Option<Statement> {
@@ -147,13 +146,12 @@ impl StatementParser for Insert {
         check_and_skip(input, Token::Semicolon)?;
 
         return Some(Statement::Insert {
-           into,
-           columns,
-           values,
+            into,
+            columns,
+            values,
         });
     }
 }
-
 
 pub struct Update;
 impl StatementParser for Update {
@@ -215,7 +213,6 @@ fn destructure_column_value_pair(pair: Expression) -> (Expression, Expression) {
     panic!("split_column_value_pairs called with something other than a ColumnValuePair");
 }
 
-
 pub struct Delete;
 impl StatementParser for Delete {
     fn parse(&self, mut input: &[Token]) -> Option<Statement> {
@@ -231,13 +228,9 @@ impl StatementParser for Delete {
 
         check_and_skip(input, Token::Semicolon)?;
 
-        return Some(Statement::Delete {
-            from,
-            where_clause,
-        });
+        return Some(Statement::Delete { from, where_clause });
     }
 }
-
 
 #[derive(Debug)]
 pub struct Drop;
@@ -253,9 +246,6 @@ impl StatementParser for Drop {
 
         check_and_skip(input, Token::Semicolon)?;
 
-        return Some(Statement::Drop {
-            what,
-            name,
-        })
+        return Some(Statement::Drop { what, name });
     }
 }

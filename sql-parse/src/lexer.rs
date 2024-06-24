@@ -170,32 +170,28 @@ impl<'a> Lexer<'a> {
                 }
 
                 Str(result)
+            }
+            '<' => match self.next_char {
+                Some('>') => {
+                    self.advance();
+
+                    NotEquals
+                }
+                Some('=') => {
+                    self.advance();
+
+                    LessThanEqual
+                }
+                _ => LessThan,
             },
-            '<' => {
-                match self.next_char {
-                    Some('>') => {
-                        self.advance();
+            '>' => match self.next_char {
+                Some('=') => {
+                    self.advance();
 
-                        NotEquals
-                    },
-                    Some('=') => {
-                        self.advance();
-
-                        LessThanEqual
-                    }
-                    _ => LessThan,
+                    GreaterThanEqual
                 }
-            }
-            '>' => {
-                match self.next_char {
-                    Some('=') => {
-                        self.advance();
-
-                        GreaterThanEqual
-                    }
-                    _ => GreaterThan,
-                }
-            }
+                _ => GreaterThan,
+            },
             '+' => Plus,
             '-' => Minus,
             '/' => Slash,
@@ -216,15 +212,13 @@ impl<'a> Lexer<'a> {
         let mut result = String::new();
 
         while let Some(current_char) = self.current_char {
-            if !current_char.is_alphanumeric() &&
-                current_char != '_'
-            {
+            if !current_char.is_alphanumeric() && current_char != '_' {
                 break;
             }
 
             result.push(current_char);
             self.advance();
-        };
+        }
 
         return Token::from(result);
     }
@@ -233,9 +227,7 @@ impl<'a> Lexer<'a> {
         let mut result = String::new();
 
         while let Some(current_char) = self.current_char {
-            if !current_char.is_numeric() &&
-                current_char != '.'
-            {
+            if !current_char.is_numeric() && current_char != '.' {
                 break;
             }
 
@@ -258,17 +250,17 @@ impl<'a> Lexer<'a> {
                 } else {
                     Token::Invalid(format!("No number found after decimal dot in {result}"))
                 }
-            },
-            _ => {
-                Token::Invalid(format!("Found {number_of_dots} decimal separators in number '{result}'"))
             }
-        }
-     }
+            _ => Token::Invalid(format!(
+                "Found {number_of_dots} decimal separators in number '{result}'"
+            )),
+        };
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Token::*, Lexer};
+    use super::{Lexer, Token::*};
 
     #[test]
     fn lexer_advance() {
@@ -300,17 +292,7 @@ mod tests {
 
         assert_eq!(
             result,
-            vec![
-                Select,
-                From,
-                Table,
-                TypeBool,
-                TypeBool,
-                TypeInt,
-                TypeInt,
-                TypeText,
-                Eof,
-            ],
+            vec![Select, From, Table, TypeBool, TypeBool, TypeInt, TypeInt, TypeText, Eof,],
         )
     }
 
@@ -320,10 +302,7 @@ mod tests {
 
         let result = Lexer::lex(input);
 
-        assert_eq!(
-            result,
-            vec![Select, Eof]
-        )
+        assert_eq!(result, vec![Select, Eof])
     }
 
     #[test]
@@ -368,9 +347,7 @@ mod tests {
 
     #[test]
     fn all_symbols() {
-        let result = Lexer::lex(
-            ", ; * = < <= > >= + - /"
-        );
+        let result = Lexer::lex(", ; * = < <= > >= + - /");
 
         assert_eq!(
             result,
@@ -393,9 +370,7 @@ mod tests {
 
     #[test]
     fn symbols_in_query() {
-        let result = Lexer::lex(
-            "SELECT * FROM bla WHERE asdf <> 5;",
-        );
+        let result = Lexer::lex("SELECT * FROM bla WHERE asdf <> 5;");
 
         assert_eq!(
             result,
@@ -416,9 +391,7 @@ mod tests {
 
     #[test]
     fn identifier_list() {
-        let result = Lexer::lex(
-            "SELECT a,b, asdf FROM c;"
-        );
+        let result = Lexer::lex("SELECT a,b, asdf FROM c;");
 
         assert_eq!(
             result,
@@ -439,9 +412,7 @@ mod tests {
 
     #[test]
     fn bool() {
-        let result = Lexer::lex(
-            "true false true true false though"
-        );
+        let result = Lexer::lex("true false true true false though");
 
         assert_eq!(
             result,
@@ -459,28 +430,16 @@ mod tests {
 
     #[test]
     fn string() {
-        let result = Lexer::lex(
-            "'asdfghjkl';"
-        );
+        let result = Lexer::lex("'asdfghjkl';");
 
-        assert_eq!(
-            result,
-            vec![
-                Str("asdfghjkl".into()),
-                Semicolon,
-                Eof,
-            ]
-        );
+        assert_eq!(result, vec![Str("asdfghjkl".into()), Semicolon, Eof,]);
     }
 
     #[test]
     fn handle_invalid_token() {
         assert_eq!(
             Lexer::lex("&"),
-            vec![
-                Invalid("Unknown character '&'".into()),
-                Eof,
-            ]
+            vec![Invalid("Unknown character '&'".into()), Eof,]
         );
 
         assert_eq!(

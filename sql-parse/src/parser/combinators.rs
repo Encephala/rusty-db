@@ -1,11 +1,11 @@
 //! Combinators for ExpressionParsers.
 
+use super::expressions::{Expression, ExpressionParser};
 use crate::lexer::Token;
-use super::expressions::{ExpressionParser, Expression};
 
 #[derive(Debug)]
 pub struct Or {
-    parsers: Vec<Box<dyn ExpressionParser>>
+    parsers: Vec<Box<dyn ExpressionParser>>,
 }
 
 impl Or {
@@ -33,16 +33,14 @@ impl ExpressionParser for Or {
     }
 }
 
-
-
 #[derive(Debug)]
 pub struct Multiple {
-    parser: Box<dyn ExpressionParser>
+    parser: Box<dyn ExpressionParser>,
 }
 impl Multiple {
     fn new(parser: impl ExpressionParser + 'static) -> Self {
         return Multiple {
-            parser: Box::new(parser)
+            parser: Box::new(parser),
         };
     }
 }
@@ -70,15 +68,18 @@ impl ExpressionParser for Multiple {
     }
 }
 
-
 pub trait Chain {
     fn or(self, parser: impl ExpressionParser + 'static) -> Or
-    where Self: ExpressionParser + Sized + 'static {
+    where
+        Self: ExpressionParser + Sized + 'static,
+    {
         return Or::new(self).or(parser);
     }
 
     fn multiple(self) -> Multiple
-    where Self: ExpressionParser + Sized + 'static {
+    where
+        Self: ExpressionParser + Sized + 'static,
+    {
         return Multiple::new(self);
     }
 }
@@ -87,42 +88,27 @@ impl<T: ExpressionParser> Chain for T {}
 
 #[cfg(test)]
 mod tests {
+    use super::super::expressions::{
+        Array, Expression as E, ExpressionParser, Identifier, Number, Str,
+    };
     use super::Chain;
-    use super::super::expressions::{ExpressionParser, Expression as E, Identifier, Str, Number, Array};
     use crate::lexer::Lexer;
 
     #[test]
     fn or_basic() {
         let inputs = [
-            (
-                Str.or(Number),
-                "'a'",
-                Some(E::Str('a'.into()))
-            ),
-            (
-                Str.or(Number),
-                "5",
-                Some(E::Int(5))
-            ),
+            (Str.or(Number), "'a'", Some(E::Str('a'.into()))),
+            (Str.or(Number), "5", Some(E::Int(5))),
             (
                 Array.or(Identifier),
                 "('asdf', 1)",
-                Some(E::Array(vec![
-                    E::Str("asdf".into()),
-                    E::Int(1),
-                ])),
+                Some(E::Array(vec![E::Str("asdf".into()), E::Int(1)])),
             ),
-            (
-                Array.or(Identifier),
-                "hey",
-                Some(E::Ident("hey".into())),
-            ),
+            (Array.or(Identifier), "hey", Some(E::Ident("hey".into()))),
         ];
 
         inputs.iter().for_each(|test_case| {
-            let result = test_case.0.parse(
-                &mut Lexer::lex(test_case.1).as_slice()
-            );
+            let result = test_case.0.parse(&mut Lexer::lex(test_case.1).as_slice());
 
             assert_eq!(result, test_case.2);
         });
@@ -134,10 +120,7 @@ mod tests {
             (
                 Box::new(Identifier.multiple()),
                 "asdf, jkl",
-                E::Array(vec![
-                    E::Ident("asdf".into()),
-                    E::Ident("jkl".into()),
-                ]),
+                E::Array(vec![E::Ident("asdf".into()), E::Ident("jkl".into())]),
             ),
             (
                 Box::new(Identifier.or(Number).multiple()),
@@ -152,14 +135,8 @@ mod tests {
                 Box::new(Array.multiple()),
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
-                    E::Array(vec![
-                        E::Str("asdf".into()),
-                        E::Int(1),
-                    ]),
-                    E::Array(vec![
-                        E::Str("jkl".into()),
-                        E::Int(2),
-                    ]),
+                    E::Array(vec![E::Str("asdf".into()), E::Int(1)]),
+                    E::Array(vec![E::Str("jkl".into()), E::Int(2)]),
                 ]),
             ),
             // For funsies
@@ -167,14 +144,8 @@ mod tests {
                 Box::new(Array.multiple().or(Number)),
                 "('asdf', 1), ('jkl', 2)",
                 E::Array(vec![
-                    E::Array(vec![
-                        E::Str("asdf".into()),
-                        E::Int(1),
-                    ]),
-                    E::Array(vec![
-                        E::Str("jkl".into()),
-                        E::Int(2),
-                    ]),
+                    E::Array(vec![E::Str("asdf".into()), E::Int(1)]),
+                    E::Array(vec![E::Str("jkl".into()), E::Int(2)]),
                 ]),
             ),
             (
@@ -185,9 +156,7 @@ mod tests {
         ];
 
         inputs.into_iter().for_each(|test_case| {
-            let result = test_case.0.parse(
-                &mut Lexer::lex(test_case.1).as_slice()
-            );
+            let result = test_case.0.parse(&mut Lexer::lex(test_case.1).as_slice());
 
             assert_eq!(result, Some(test_case.2));
         });

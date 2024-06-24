@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use super::*;
 use super::super::serialisation::Serialiser;
 use super::super::types::*;
-use sql_parse::parser::ColumnType;
+use super::*;
 use crate::utils::tests::*;
+use sql_parse::parser::ColumnType;
 
 mod filesystem {
     use super::*;
@@ -21,10 +21,7 @@ mod filesystem {
 
         let path = PathBuf::from(TEST_PATH.to_owned() + &random_suffix);
 
-        let manager = FileSystem::new(
-            SerialisationManager(Serialiser::V2),
-            path.clone()
-        );
+        let manager = FileSystem::new(SerialisationManager(Serialiser::V2), path.clone());
 
         println!("Test running at path {path:?}");
 
@@ -37,10 +34,7 @@ mod filesystem {
 
         let path = database_path(&PathBuf::from_str("/tmp").unwrap(), &database.name);
 
-        assert_eq!(
-            path,
-            PathBuf::from_str("/tmp/db").unwrap()
-        );
+        assert_eq!(path, PathBuf::from_str("/tmp/db").unwrap());
     }
 
     #[test]
@@ -52,17 +46,19 @@ mod filesystem {
             vec![
                 ColumnDefinition("col1".into(), ColumnType::Int),
                 ColumnDefinition("col2".into(), ColumnType::Bool),
-            ]
-        ).unwrap();
+            ],
+        )
+        .unwrap();
 
         database.create(table.clone()).unwrap();
 
-        let path = table_path(&PathBuf::from_str("/tmp").unwrap(), &database.name, &table.name);
-
-        assert_eq!(
-            path,
-            PathBuf::from_str("/tmp/db/tbl").unwrap()
+        let path = table_path(
+            &PathBuf::from_str("/tmp").unwrap(),
+            &database.name,
+            &table.name,
         );
+
+        assert_eq!(path, PathBuf::from_str("/tmp/db/tbl").unwrap());
     }
 
     #[tokio::test]
@@ -89,10 +85,7 @@ mod filesystem {
         let result = persistence_manager.save_database(&database).await;
 
         if let Err(SqlError::DuplicateDatabase(name)) = result {
-            assert_eq!(
-                name,
-                database.name,
-            );
+            assert_eq!(name, database.name,);
         } else {
             panic!("Wrong result type: {result:?}");
         }
@@ -108,23 +101,19 @@ mod filesystem {
 
         let result = persistence_manager.load_database(&db.name).await.unwrap();
 
-        assert_eq!(
-            result,
-            db
-        );
+        assert_eq!(result, db);
     }
 
     #[tokio::test]
     async fn load_database_nonexistent() {
         let persistence_manager = new_filesystem_manager().0;
 
-        let result = persistence_manager.load_database(&"nonexistent".into()).await;
+        let result = persistence_manager
+            .load_database(&"nonexistent".into())
+            .await;
 
         if let Err(SqlError::DatabaseDoesNotExist(name)) = result {
-            assert_eq!(
-                name,
-                "nonexistent".into()
-            );
+            assert_eq!(name, "nonexistent".into());
         } else {
             panic!("Wrong result type: {result:?}")
         }
@@ -151,20 +140,17 @@ mod filesystem {
     async fn drop_database_nonexistent() {
         let persistence_manager = new_filesystem_manager().0;
 
-        let result = persistence_manager.drop_database(&"nonexistent".into()).await;
+        let result = persistence_manager
+            .drop_database(&"nonexistent".into())
+            .await;
 
         if let Err(SqlError::CouldNotRemoveDatabase(name, error)) = result {
-            assert_eq!(
-                name,
-                "nonexistent".into()
-            );
+            assert_eq!(name, "nonexistent".into());
 
             let message = format!("{error:?}");
 
             dbg!(&message);
-            assert!(
-                message.contains("kind: NotFound")
-            );
+            assert!(message.contains("kind: NotFound"));
         } else {
             panic!("Wrong result type: {result:?}")
         }
@@ -180,7 +166,10 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        persistence_manager.save_table(&db.name, &table).await.unwrap();
+        persistence_manager
+            .save_table(&db.name, &table)
+            .await
+            .unwrap();
 
         let table_path = table_path(path, &db.name, &table.name);
 
@@ -195,12 +184,12 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let result = persistence_manager.load_table(&db.name, "test_table".into()).await.unwrap();
+        let result = persistence_manager
+            .load_table(&db.name, "test_table".into())
+            .await
+            .unwrap();
 
-        assert_eq!(
-            result,
-            test_table_with_values().0
-        );
+        assert_eq!(result, test_table_with_values().0);
     }
 
     #[tokio::test]
@@ -211,13 +200,12 @@ mod filesystem {
 
         persistence_manager.save_database(&db).await.unwrap();
 
-        let result = persistence_manager.load_table(&db.name, "nonexistent".into()).await;
+        let result = persistence_manager
+            .load_table(&db.name, "nonexistent".into())
+            .await;
 
         if let Err(SqlError::TableDoesNotExist(name)) = result {
-            assert_eq!(
-                name,
-                "nonexistent".into()
-            )
+            assert_eq!(name, "nonexistent".into())
         } else {
             panic!("Wrong result type: {result:?}");
         }
@@ -235,7 +223,10 @@ mod filesystem {
 
         assert!(table_path.exists());
 
-        persistence_manager.drop_table(&db.name, &"test_table".into()).await.unwrap();
+        persistence_manager
+            .drop_table(&db.name, &"test_table".into())
+            .await
+            .unwrap();
 
         assert!(!table_path.exists());
     }

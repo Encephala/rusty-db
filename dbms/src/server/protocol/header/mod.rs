@@ -5,7 +5,6 @@ use std::collections::VecDeque;
 
 use crate::{Result, SqlError};
 
-
 #[derive(Debug, PartialEq)]
 pub enum MessageType {
     Close,
@@ -113,7 +112,6 @@ pub struct Header {
     pub message_type: MessageType,
 }
 
-
 // Serialisation
 impl Header {
     pub fn to_raw(&self) -> RawHeader {
@@ -161,7 +159,7 @@ impl TryFrom<RawHeader> for Header {
 
 fn parse_u8(input: &mut VecDeque<u8>) -> Result<u8> {
     if input.is_empty() {
-        return Err(SqlError::InputTooShort(input.len(), 1))
+        return Err(SqlError::InputTooShort(input.len(), 1));
     }
 
     let result = input.pop_front().unwrap();
