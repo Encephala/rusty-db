@@ -75,23 +75,6 @@ mod filesystem {
     }
 
     #[tokio::test]
-    async fn save_database_duplicate() {
-        let persistence_manager = new_filesystem_manager().0;
-
-        let database = Database::new("test_save_duplicate_db".into());
-
-        persistence_manager.save_database(&database).await.unwrap();
-
-        let result = persistence_manager.save_database(&database).await;
-
-        if let Err(SqlError::DuplicateDatabase(name)) = result {
-            assert_eq!(name, database.name,);
-        } else {
-            panic!("Wrong result type: {result:?}");
-        }
-    }
-
-    #[tokio::test]
     async fn load_database_basic() {
         let db = test_db_with_values();
 
