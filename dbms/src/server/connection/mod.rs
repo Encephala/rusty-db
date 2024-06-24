@@ -203,7 +203,10 @@ impl Connection {
                     // TODO: Construct a proper response message and send it over
                 },
                 _ = self.shutdown_receiver.recv() => {
-                    // TODO: Inform client of shutdown
+                    let message = Message::from_message_body(MessageBody::Close);
+
+                    message.write(&mut self.stream, SerialisationManager(self.context.serialiser)).await?;
+
                     break;
                 }
             }
