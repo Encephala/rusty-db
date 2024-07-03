@@ -17,6 +17,13 @@ pub enum Token {
     Delete,
     Drop,
 
+    Foreign,
+    Key,
+    References,
+    On,
+    // Delete,
+    // Update,
+
     // Types
     TypeInt,
     TypeDecimal,
@@ -69,20 +76,27 @@ impl From<String> for Token {
             "WHERE" => Where,
             "INSERT" => Insert,
             "INTO" => Into,
-            "CREATE" => Create,
             "VALUES" => Values,
+            "CREATE" => Create,
             "DATABASE" => Database,
             "TABLE" => Table,
             "UPDATE" => Update,
             "SET" => Set,
             "DELETE" => Delete,
             "DROP" => Drop,
+
+            "FOREIGN" => Foreign,
+            "KEY" => Key,
+            "REFERENCES" => References,
+            "ON" => On,
+
             "INT" => TypeInt,
             "INTEGER" => TypeInt,
             "DECIMAL" => TypeDecimal,
             "TEXT" => TypeText,
             "BOOL" => TypeBool,
             "BOOLEAN" => TypeBool,
+
             // Hijacking from_identifier to parse boolean literals
             "TRUE" => Bool(true),
             "FALSE" => Bool(false),
@@ -433,6 +447,41 @@ mod tests {
         let result = Lexer::lex("'asdfghjkl';");
 
         assert_eq!(result, vec![Str("asdfghjkl".into()), Semicolon, Eof,]);
+    }
+
+    #[test]
+    fn foreign_key_constraint() {
+        let result = Lexer::lex("CREATE TABLE test_tbl (
+            id INT,
+            foreign_id INT,
+            FOREIGN KEY (foreign_id) REFERENCES other_tbl(id)
+        );");
+
+        assert_eq!(result, vec![
+            Create,
+            Table,
+            Ident("test_tbl".into()),
+            LParenthesis,
+            Ident("id".into()),
+            TypeInt,
+            Comma,
+            Ident("foreign_id".into()),
+            TypeInt,
+            Comma,
+            Foreign,
+            Key,
+            LParenthesis,
+            Ident("foreign_id".into()),
+            RParenthesis,
+            References,
+            Ident("other_tbl".into()),
+            LParenthesis,
+            Ident("id".into()),
+            RParenthesis,
+            RParenthesis,
+            Semicolon,
+            Eof,
+        ]);
     }
 
     #[test]

@@ -10,6 +10,11 @@ use crate::lexer::Token;
 pub enum Expression {
     Type(ColumnType),
     ColumnDefinition(String, ColumnType),
+    ForeignKeyConstraint {
+        column: Box<Expression>,
+        foreign_table: Box<Expression>,
+        foreign_column: Box<Expression>,
+    },
     AllColumns,
     Ident(String),
     Int(usize),
@@ -175,18 +180,54 @@ impl ExpressionParser for Identifier {
 }
 
 #[derive(Debug)]
+pub struct ForeignKeyConstraint;
+impl ExpressionParser for ForeignKeyConstraint {
+    fn parse(&self, input: &mut &[Token]) -> Option<E> {
+        check_and_skip(input, Token::Foreign)?;
+
+        check_and_skip(input, Token::Key)?;
+
+        check_and_skip(input, Token::LParenthesis)?;
+
+        let own_column = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::RParenthesis)?;
+
+        check_and_skip(input, Token::References)?;
+
+        let table_name = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::LParenthesis)?;
+
+        let column = Identifier.parse(input)?;
+
+        check_and_skip(input, Token::RParenthesis)?;
+
+        return Some(E::ForeignKeyConstraint {
+            column: Box::new(own_column),
+            foreign_table: Box::new(table_name),
+            foreign_column: Box::new(column),
+        });
+    }
+}
+
+#[derive(Debug)]
 pub struct ColumnDefinition;
 impl ExpressionParser for ColumnDefinition {
     fn parse(&self, input: &mut &[Token]) -> Option<Expression> {
-        let name = Identifier.parse(input)?;
+        let name = Identifier.parse(input);
 
-        let column_type = Type.parse(input)?;
+        if let Some(name) = name {
+            let column_type = Type.parse(input)?;
 
-        if let (E::Ident(name), E::Type(column_type)) = (name, column_type) {
-            return Some(E::ColumnDefinition(name, column_type));
-        } else {
-            return None;
+            if let (E::Ident(name), E::Type(column_type)) = (name, column_type) {
+                return Some(E::ColumnDefinition(name, column_type));
+            } else {
+                panic!("Return types got all messed up")
+            }
         }
+
+        return ForeignKeyConstraint.parse(input);
     }
 }
 

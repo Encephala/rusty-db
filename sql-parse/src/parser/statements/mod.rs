@@ -110,6 +110,8 @@ impl StatementParser for Create {
             check_and_skip(input, Token::RParenthesis)?;
         }
 
+        check_and_skip(input, Token::Semicolon)?;
+
         return Some(Statement::Create {
             what,
             name,
