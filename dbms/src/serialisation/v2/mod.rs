@@ -217,6 +217,7 @@ impl V2Deserialise for Table {
             types,
             column_names,
             values,
+            constraints: vec![], // TODO
         });
     }
 }

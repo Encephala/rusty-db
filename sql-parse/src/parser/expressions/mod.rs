@@ -11,9 +11,9 @@ pub enum Expression {
     Type(ColumnType),
     ColumnDefinition(String, ColumnType),
     ForeignKeyConstraint {
-        column: Box<Expression>,
-        foreign_table: Box<Expression>,
-        foreign_column: Box<Expression>,
+        column: Box<Expression>, // Ident for own column name
+        foreign_table: Box<Expression>, // Ident
+        foreign_column: Box<Expression>, // Ident
     },
     AllColumns,
     Ident(String),
@@ -28,7 +28,7 @@ pub enum Expression {
     },
     Array(Vec<Expression>),
     ColumnValuePair {
-        column: Box<Expression>,
+        column: Box<Expression>, // Ident for column name
         value: Box<Expression>,
     },
 }

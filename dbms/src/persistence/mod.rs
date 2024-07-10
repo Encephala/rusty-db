@@ -173,7 +173,7 @@ impl PersistenceManager for NoOp {
     }
 
     async fn load_table(&self, _: &DatabaseName, name: TableName) -> Result<Table> {
-        let result = Table::new(name, vec![]).unwrap();
+        let result = Table::new(name, vec![], vec![]).unwrap();
 
         return Ok(result);
     }

@@ -47,6 +47,7 @@ mod filesystem {
                 ColumnDefinition("col1".into(), ColumnType::Int),
                 ColumnDefinition("col2".into(), ColumnType::Bool),
             ],
+            vec![],
         )
         .unwrap();
 

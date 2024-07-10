@@ -219,6 +219,7 @@ impl V1Deserialise for Table {
             types,
             column_names,
             values,
+            constraints: vec![], // V1 does not support constraints. There's no reason for that, I'm just lazy
         });
     }
 }

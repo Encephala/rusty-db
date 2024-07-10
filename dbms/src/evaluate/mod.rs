@@ -7,6 +7,7 @@ use super::database::{Database, RowSet, Table};
 use super::types::{ColumnName, ColumnSelector, ColumnValue, DatabaseName, TableName, Where};
 use super::SqlError;
 use crate::server::Runtime;
+use crate::types::{ColumnDefinition, ForeignKeyConstraint};
 use crate::Result;
 
 impl Database {
@@ -194,13 +195,29 @@ async fn execute_statement(statement: &Statement, runtime: &mut Runtime) -> Resu
                         columns.as_ref().ok_or(SqlError::InvalidParameter)?,
                     )?;
 
-                    let columns = columns
-                        .iter()
-                        .map(|column_definition| column_definition.try_into())
-                        .collect::<Result<Vec<_>>>()?;
+                    let mut column_definitions = vec![];
+                    let mut constraints = vec![];
+
+                    for column in columns {
+                        let column_definition: Result<ColumnDefinition> = column.try_into();
+                        if let Ok(column_definition) = column_definition {
+                            column_definitions.push(column_definition);
+
+                            continue;
+                        }
+
+                        let constraint: Result<ForeignKeyConstraint> = column.try_into();
+                        if let Ok(constraint) = constraint {
+                            constraints.push(constraint);
+
+                            continue;
+                        }
+
+                        return Err(SqlError::ImpossibleConversion(column.clone(), "A column definiton or foreign key constraint"))
+                    }
 
                     return database
-                        .create(Table::new(name.try_into()?, columns)?)
+                        .create(Table::new(name.try_into()?, column_definitions, constraints)?)
                         .map(|_| ExecutionResult::None);
                 }
             };

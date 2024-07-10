@@ -153,6 +153,30 @@ impl TryFrom<&Expression> for ColumnDefinition {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(Clone, PartialEq))]
+pub struct ForeignKeyConstraint(ColumnName, TableName, ColumnName);
+
+impl TryFrom<&Expression> for ForeignKeyConstraint {
+    type Error = SqlError;
+
+    fn try_from(value: &Expression) -> std::result::Result<Self, Self::Error> {
+        return match value {
+            Expression::ForeignKeyConstraint { column, foreign_table, foreign_column } => {
+                let column_name = ColumnName::try_from(column.as_ref())?;
+                let foreign_table = TableName::try_from(foreign_table.as_ref())?;
+                let foreign_column = ColumnName::try_from(foreign_column.as_ref())?;
+
+                Ok(ForeignKeyConstraint(column_name, foreign_table, foreign_column))
+            },
+            _ => Err(SqlError::ImpossibleConversion(
+                value.clone(),
+                type_name::<ForeignKeyConstraint>()
+            )),
+        }
+    }
+}
+
+#[derive(Debug)]
 // TODO: this is janky and hacky to only support <column> <op> <value> comparisons
 pub struct Where {
     pub left: ColumnName,

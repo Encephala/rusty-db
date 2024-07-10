@@ -10,6 +10,7 @@ use super::types::{
     TableName, Where,
 };
 use super::SqlError;
+use crate::types::ForeignKeyConstraint;
 use crate::Result;
 
 #[derive(Debug)]
@@ -183,10 +184,11 @@ pub struct Table {
     pub column_names: Vec<ColumnName>,
     pub types: Vec<ColumnType>,
     pub values: Vec<Row>,
+    pub constraints: Vec<ForeignKeyConstraint>,
 }
 
 impl Table {
-    pub fn new(name: TableName, columns: Vec<ColumnDefinition>) -> Result<Self> {
+    pub fn new(name: TableName, columns: Vec<ColumnDefinition>, constraints: Vec<ForeignKeyConstraint>) -> Result<Self> {
         let (column_names, types): (Vec<_>, Vec<_>) = columns
             .into_iter()
             .map(|column_definition| (column_definition.0, column_definition.1))
@@ -204,6 +206,7 @@ impl Table {
             column_names,
             types,
             values: vec![],
+            constraints,
         });
     }
 

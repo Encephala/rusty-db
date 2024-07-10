@@ -15,6 +15,7 @@ fn create_and_drop_tables_basic() {
             ColumnDefinition("a".into(), ColumnType::Int),
             ColumnDefinition("b".into(), ColumnType::Decimal),
         ],
+        vec![],
     )
     .unwrap();
 
@@ -35,7 +36,7 @@ fn create_and_drop_tables_basic() {
 fn create_table_duplicate_name() {
     let mut db = Database::new("test_db".into());
 
-    let table = Table::new("test_table1".into(), vec![]).unwrap();
+    let table = Table::new("test_table1".into(), vec![], vec![]).unwrap();
 
     db.create(table.clone()).unwrap();
 

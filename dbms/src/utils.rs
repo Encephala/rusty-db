@@ -66,6 +66,7 @@ pub mod tests {
                 ColumnDefinition("first".into(), ColumnType::Int),
                 ColumnDefinition("second".into(), ColumnType::Bool),
             ],
+            vec![],
         )
         .unwrap();
     }
@@ -77,6 +78,7 @@ pub mod tests {
                 ColumnDefinition("first".into(), ColumnType::Int),
                 ColumnDefinition("second".into(), ColumnType::Bool),
             ],
+            vec![],
         )
         .unwrap();
 
