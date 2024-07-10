@@ -234,7 +234,11 @@ impl V2Deserialise for Table {
 
         let values = Vec::<Row>::deserialise(input, DO::ColumnTypes(schema.types.clone()))?;
 
-        return Ok(Table { schema, values });
+        return Ok(Table {
+            schema,
+            values,
+            constraints: todo!(),
+        });
     }
 }
 
@@ -253,7 +257,6 @@ impl V2Deserialise for TableSchema {
             name,
             column_names,
             types,
-            constraints: vec![], // TODO
         });
     }
 }
