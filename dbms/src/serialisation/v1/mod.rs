@@ -6,7 +6,7 @@ use sql_parse::parser::ColumnType;
 use crate::{Result, SqlError};
 
 use crate::database::{Row, RowSet, Table};
-use crate::types::{ColumnName, ColumnValue, TableName};
+use crate::types::{ColumnName, ColumnValue, TableName, TableSchema};
 
 use super::Serialise;
 
@@ -64,15 +64,15 @@ impl V1Serialise for Table {
     fn serialise(&self) -> Vec<u8> {
         let mut result = vec![];
 
-        let name = self.name.serialise();
+        let name = self.schema.name.serialise();
 
         result.extend(name);
 
-        let types = self.types.serialise();
+        let types = self.schema.types.serialise();
 
         result.extend(types);
 
-        let names = self.column_names.serialise();
+        let names = self.schema.column_names.serialise();
 
         result.extend(names);
 
@@ -214,12 +214,16 @@ impl V1Deserialise for Table {
 
         let values = Vec::<Row>::deserialise(input, DO::ColumnTypes(types.clone()))?;
 
-        return Ok(Table {
+        let schema = TableSchema {
             name,
-            types,
             column_names,
+            types,
+        };
+
+        return Ok(Table {
+            schema,
             values,
-            constraints: vec![], // V1 does not support constraints. There's no reason for that, I'm just lazy
+            constraints: todo!(),
         });
     }
 }

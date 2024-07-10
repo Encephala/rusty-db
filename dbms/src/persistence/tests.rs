@@ -56,7 +56,7 @@ mod filesystem {
         let path = table_path(
             &PathBuf::from_str("/tmp").unwrap(),
             &database.name,
-            &table.name,
+            &table.schema.name,
         );
 
         assert_eq!(path, PathBuf::from_str("/tmp/db/tbl").unwrap());
@@ -155,7 +155,7 @@ mod filesystem {
             .await
             .unwrap();
 
-        let table_path = table_path(path, &db.name, &table.name);
+        let table_path = table_path(path, &db.name, &table.schema.name);
 
         assert!(table_path.exists());
     }
@@ -223,8 +223,10 @@ async fn fix_coverage_noop() {
     let table = test_table();
 
     NoOp.save_table(&db.name, &table).await.unwrap();
-    NoOp.load_table(&db.name, table.name.clone()).await.unwrap();
-    NoOp.drop_table(&db.name, &table.name).await.unwrap();
+    NoOp.load_table(&db.name, table.schema.name.clone())
+        .await
+        .unwrap();
+    NoOp.drop_table(&db.name, &table.schema.name).await.unwrap();
 
     NoOp.save_database(&db).await.unwrap();
     NoOp.load_database(&db.name).await.unwrap();

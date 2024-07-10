@@ -220,6 +220,14 @@ pub struct PreparedWhere {
     pub right: ColumnValue,
 }
 
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone, PartialEq))]
+pub struct TableSchema {
+    pub name: TableName,
+    pub column_names: Vec<ColumnName>,
+    pub types: Vec<ColumnType>,
+}
+
 #[cfg(test)]
 mod tests {
     use sql_parse::parser::Expression;

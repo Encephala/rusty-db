@@ -6,7 +6,7 @@ use sql_parse::parser::ColumnType;
 
 use crate::{
     database::{Row, RowSet, Table},
-    types::{ColumnName, ColumnValue, TableName},
+    types::{ColumnName, ColumnValue, TableName, TableSchema},
     Result, SqlError,
 };
 
@@ -64,6 +64,22 @@ impl V2Serialise for Table {
     fn serialise(&self) -> Vec<u8> {
         let mut result = vec![];
 
+        let schema = self.schema.serialise();
+
+        result.extend(schema);
+
+        let values = self.values.serialise();
+
+        result.extend(values);
+
+        return result;
+    }
+}
+
+impl V2Serialise for TableSchema {
+    fn serialise(&self) -> Vec<u8> {
+        let mut result = vec![];
+
         let name = self.name.serialise();
 
         result.extend(name);
@@ -75,10 +91,6 @@ impl V2Serialise for Table {
         let names = self.column_names.serialise();
 
         result.extend(names);
-
-        let values = self.values.serialise();
-
-        result.extend(values);
 
         return result;
     }
@@ -204,19 +216,29 @@ impl V2Serialise for RowSet {
 
 impl V2Deserialise for Table {
     fn deserialise(input: &mut &[u8], _: DO) -> Result<Self> {
+        let schema = TableSchema::deserialise(input, DO::None)?;
+
+        let values = Vec::<Row>::deserialise(input, DO::ColumnTypes(schema.types.clone()))?;
+
+        return Ok(Table { schema, values });
+    }
+}
+
+impl V2Deserialise for TableSchema {
+    fn deserialise(input: &mut &[u8], _: DeserialisationOptions) -> Result<Self>
+    where
+        Self: Sized,
+    {
         let name = TableName::deserialise(input, None.into())?;
 
         let types = Vec::<ColumnType>::deserialise(input, None.into())?;
 
         let column_names = Vec::<ColumnName>::deserialise(input, None.into())?;
 
-        let values = Vec::<Row>::deserialise(input, DO::ColumnTypes(types.clone()))?;
-
-        return Ok(Table {
+        return Ok(TableSchema {
             name,
-            types,
             column_names,
-            values,
+            types,
             constraints: vec![], // TODO
         });
     }

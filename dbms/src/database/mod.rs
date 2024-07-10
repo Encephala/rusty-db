@@ -10,7 +10,7 @@ use super::types::{
     TableName, Where,
 };
 use super::SqlError;
-use crate::types::ForeignKeyConstraint;
+use crate::types::{ForeignKeyConstraint, TableSchema};
 use crate::Result;
 
 #[derive(Debug)]
@@ -180,15 +180,17 @@ impl PartialEq for RowSet {
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone, PartialEq))]
 pub struct Table {
-    pub name: TableName,
-    pub column_names: Vec<ColumnName>,
-    pub types: Vec<ColumnType>,
+    pub schema: TableSchema,
     pub values: Vec<Row>,
     pub constraints: Vec<ForeignKeyConstraint>,
 }
 
 impl Table {
-    pub fn new(name: TableName, columns: Vec<ColumnDefinition>, constraints: Vec<ForeignKeyConstraint>) -> Result<Self> {
+    pub fn new(
+        name: TableName,
+        columns: Vec<ColumnDefinition>,
+        constraints: Vec<ForeignKeyConstraint>,
+    ) -> Result<Self> {
         let (column_names, types): (Vec<_>, Vec<_>) = columns
             .into_iter()
             .map(|column_definition| (column_definition.0, column_definition.1))
@@ -201,10 +203,14 @@ impl Table {
             }
         }
 
-        return Ok(Table {
+        let schema = TableSchema {
             name,
             column_names,
             types,
+        };
+
+        return Ok(Table {
+            schema,
             values: vec![],
             constraints,
         });
@@ -217,8 +223,11 @@ impl Table {
     ) -> Result<()> {
         let types = row.iter().map(|row| row.into()).collect::<Vec<_>>();
 
-        if types != self.types {
-            return Err(SqlError::IncompatibleTypes(types, self.types.clone()));
+        if types != self.schema.types {
+            return Err(SqlError::IncompatibleTypes(
+                types,
+                self.schema.types.clone(),
+            ));
         }
 
         // TODO: Check that all non-nullable columns were passed
@@ -254,10 +263,14 @@ impl Table {
         } = clause;
 
         let left_index = self
+            .schema
             .column_names
             .iter()
             .position(|self_name| self_name == &left)
-            .ok_or(SqlError::NameDoesNotExist(left, self.column_names.clone()))?;
+            .ok_or(SqlError::NameDoesNotExist(
+                left,
+                self.schema.column_names.clone(),
+            ))?;
 
         return Ok(PreparedWhere {
             left: left_index,
@@ -270,11 +283,12 @@ impl Table {
     // Also this whole method kinda sucks donkey dick, wtf am I looking at
     pub fn select(&self, columns: ColumnSelector, condition: Option<Where>) -> Result<RowSet> {
         let column_indices: Vec<_> = match columns {
-            ColumnSelector::AllColumns => (0..self.types.len()).collect(),
+            ColumnSelector::AllColumns => (0..self.schema.types.len()).collect(),
             ColumnSelector::Name(names) => names
                 .iter()
                 .flat_map(|name| {
-                    self.column_names
+                    self.schema
+                        .column_names
                         .iter()
                         .position(|self_name| self_name == name)
                 })
@@ -282,6 +296,7 @@ impl Table {
         };
 
         let types = self
+            .schema
             .types
             .iter()
             .enumerate()
@@ -308,7 +323,7 @@ impl Table {
 
         return Ok(RowSet {
             types,
-            names: self.column_names.clone(),
+            names: self.schema.column_names.clone(),
             values: rows,
         });
     }
@@ -324,13 +339,15 @@ impl Table {
         let column_indices = columns
             .iter()
             .flat_map(|name| {
-                self.column_names
+                self.schema
+                    .column_names
                     .iter()
                     .position(|self_name| self_name == name)
             })
             .collect::<Vec<_>>();
 
         let self_types: Vec<_> = self
+            .schema
             .types
             .iter()
             .enumerate()
@@ -344,7 +361,10 @@ impl Table {
             .collect();
 
         if self_types != new_types {
-            return Err(SqlError::IncompatibleTypes(new_types, self.types.clone()));
+            return Err(SqlError::IncompatibleTypes(
+                new_types,
+                self.schema.types.clone(),
+            ));
         }
 
         let prepared_condition = if let Some(condition) = condition {

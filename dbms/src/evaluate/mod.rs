@@ -12,11 +12,11 @@ use crate::Result;
 
 impl Database {
     pub fn create(&mut self, table: Table) -> Result<()> {
-        if self.tables.contains_key(&table.name.0) {
-            return Err(SqlError::DuplicateTable(table.name.0.clone()));
+        if self.tables.contains_key(&table.schema.name.0) {
+            return Err(SqlError::DuplicateTable(table.schema.name.0.clone()));
         }
 
-        self.tables.insert(table.name.0.clone(), table);
+        self.tables.insert(table.schema.name.0.clone(), table);
 
         return Ok(());
     }

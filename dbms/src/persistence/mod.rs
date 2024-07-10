@@ -99,7 +99,7 @@ impl PersistenceManager for FileSystem {
         let tables = try_join_all(futures).await?;
 
         tables.into_iter().for_each(|table| {
-            database.tables.insert(table.name.0.clone(), table);
+            database.tables.insert(table.schema.name.0.clone(), table);
         });
 
         return Ok(database);
@@ -115,12 +115,12 @@ impl PersistenceManager for FileSystem {
     }
 
     async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()> {
-        let path = table_path(&self.1, database_name, &table.name);
+        let path = table_path(&self.1, database_name, &table.schema.name);
 
         let data = self.0.serialise_table(table);
 
         fs::write(path, data)
-            .map_err(|error| SqlError::CouldNotStoreTable(table.name.clone(), error))?;
+            .map_err(|error| SqlError::CouldNotStoreTable(table.schema.name.clone(), error))?;
 
         return Ok(());
     }

@@ -23,13 +23,13 @@ fn create_and_drop_tables_basic() {
 
     assert_eq!(db.tables.len(), 1);
 
-    assert_eq!(db.tables.get(&table.name.0), Some(&table));
+    assert_eq!(db.tables.get(&table.schema.name.0), Some(&table));
 
-    db.drop_table(table.name.clone()).unwrap();
+    db.drop_table(table.schema.name.clone()).unwrap();
 
     assert_eq!(db.tables.len(), 0);
 
-    assert_eq!(db.tables.get(&table.name.0), None);
+    assert_eq!(db.tables.get(&table.schema.name.0), None);
 }
 
 #[test]
