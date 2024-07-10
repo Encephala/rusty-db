@@ -9,8 +9,6 @@ pub mod server;
 pub mod types;
 pub mod utils;
 
-use std::ffi::OsString;
-
 use sql_parse::parser::{ColumnType, Expression, InfixOperator};
 use types::DatabaseName;
 use types::{ColumnName, ColumnValue, TableName};
@@ -40,8 +38,10 @@ pub enum SqlError {
     CouldNotStoreDatabase(DatabaseName, std::io::Error),
     CouldNotRemoveDatabase(DatabaseName, std::io::Error),
     CouldNotStoreTable(TableName, std::io::Error),
-    CouldNotReadTable(OsString),
     CouldNotRemoveTable(TableName, std::io::Error),
+    CouldNotStoreSchemas(DatabaseName, std::io::Error),
+    CouldNotReadSchemas(std::io::Error),
+    SchemaDoesNotExist(DatabaseName),
 
     SliceConversionError(std::array::TryFromSliceError),
     InputTooShort(usize, usize),

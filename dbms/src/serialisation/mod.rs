@@ -4,6 +4,7 @@ mod v2;
 use super::SqlError;
 use crate::{
     database::{RowSet, Table},
+    types::TableSchema,
     Result,
 };
 
@@ -57,9 +58,13 @@ trait Serialise {
 
     fn serialise_rowset(&self, value: &RowSet) -> Vec<u8>;
 
+    fn serialise_schemas(&self, value: Vec<&TableSchema>) -> Vec<u8>;
+
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table>;
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet>;
+
+    fn deserialise_schemas(&self, input: &mut &[u8]) -> Result<Vec<TableSchema>>;
 }
 
 impl Serialise for Serialiser {
@@ -75,6 +80,12 @@ impl Serialise for Serialiser {
         return implementation.serialise_rowset(value);
     }
 
+    fn serialise_schemas(&self, value: Vec<&TableSchema>) -> Vec<u8> {
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.serialise_schemas(value);
+    }
+
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
         let implementation: Box<dyn Serialise> = self.into();
 
@@ -85,6 +96,12 @@ impl Serialise for Serialiser {
         let implementation: Box<dyn Serialise> = self.into();
 
         return implementation.deserialise_rowset(input);
+    }
+
+    fn deserialise_schemas(&self, input: &mut &[u8]) -> Result<Vec<TableSchema>> {
+        let implementation: Box<dyn Serialise> = self.into();
+
+        return implementation.deserialise_schemas(input);
     }
 }
 
@@ -122,6 +139,14 @@ impl SerialisationManager {
         return result;
     }
 
+    pub fn serialise_schemas(&self, value: Vec<&TableSchema>) -> Vec<u8> {
+        let mut result = self.write_version();
+
+        result.extend(self.0.serialise_schemas(value));
+
+        return result;
+    }
+
     fn read_version(&self, input: &mut &[u8]) -> Result<Serialiser> {
         if input.is_empty() {
             return Err(SqlError::InputTooShort(input.len(), 1));
@@ -148,6 +173,14 @@ impl SerialisationManager {
         let serialiser = self.read_version(input)?;
 
         return serialiser.deserialise_rowset(input);
+    }
+
+    pub fn deserialise_schemas(&self, mut input: &[u8]) -> Result<Vec<TableSchema>> {
+        let input = &mut input;
+
+        let serialiser = self.read_version(input)?;
+
+        return serialiser.deserialise_schemas(input);
     }
 }
 

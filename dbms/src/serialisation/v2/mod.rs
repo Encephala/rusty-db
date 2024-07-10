@@ -24,12 +24,20 @@ impl Serialise for V2 {
         return value.serialise();
     }
 
+    fn serialise_schemas(&self, value: Vec<&TableSchema>) -> Vec<u8> {
+        return value.serialise();
+    }
+
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
         return Table::deserialise(input, None.into());
     }
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
         return RowSet::deserialise(input, None.into());
+    }
+
+    fn deserialise_schemas(&self, input: &mut &[u8]) -> Result<Vec<TableSchema>> {
+        return Vec::<TableSchema>::deserialise(input, None.into());
     }
 }
 
@@ -77,6 +85,12 @@ impl V2Serialise for Table {
 }
 
 impl V2Serialise for TableSchema {
+    fn serialise(&self) -> Vec<u8> {
+        return (&self).serialise();
+    }
+}
+
+impl V2Serialise for &TableSchema {
     fn serialise(&self) -> Vec<u8> {
         let mut result = vec![];
 
@@ -241,6 +255,23 @@ impl V2Deserialise for TableSchema {
             types,
             constraints: vec![], // TODO
         });
+    }
+}
+
+impl V2Deserialise for Vec<TableSchema> {
+    fn deserialise(input: &mut &[u8], _: DeserialisationOptions) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let count = u64::deserialise(input, None.into())?;
+
+        let mut result = vec![];
+
+        for _ in 0..count {
+            result.push(TableSchema::deserialise(input, None.into())?);
+        }
+
+        return Ok(result);
     }
 }
 

@@ -22,12 +22,20 @@ impl Serialise for V1 {
         return value.serialise();
     }
 
+    fn serialise_schemas(&self, _: Vec<&TableSchema>) -> Vec<u8> {
+        panic!("V1 can't serialise schemas");
+    }
+
     fn deserialise_table(&self, input: &mut &[u8]) -> Result<Table> {
         return Table::deserialise(input, None.into());
     }
 
     fn deserialise_rowset(&self, input: &mut &[u8]) -> Result<RowSet> {
         return RowSet::deserialise(input, None.into());
+    }
+
+    fn deserialise_schemas(&self, _: &mut &[u8]) -> Result<Vec<TableSchema>> {
+        panic!("V1 can't deserialise schemas");
     }
 }
 

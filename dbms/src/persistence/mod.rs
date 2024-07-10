@@ -12,7 +12,7 @@ use super::database::{Database, Table};
 use super::serialisation::SerialisationManager;
 use super::types::DatabaseName;
 use super::SqlError;
-use crate::types::TableName;
+use crate::types::{TableName, TableSchema};
 use crate::Result;
 
 // Love me some premature abstractions
@@ -25,6 +25,9 @@ pub trait PersistenceManager: std::fmt::Debug + Send + Sync {
     async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()>;
     async fn load_table(&self, database_name: &DatabaseName, name: TableName) -> Result<Table>;
     async fn drop_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<()>;
+
+    async fn save_schemas(&self, database: &Database) -> Result<()>;
+    async fn load_schemas(&self, database_name: &DatabaseName) -> Result<Vec<TableSchema>>;
 }
 
 fn database_path(path: &Path, name: &DatabaseName) -> PathBuf {
@@ -35,6 +38,12 @@ fn database_path(path: &Path, name: &DatabaseName) -> PathBuf {
 
 fn table_path(path: &Path, database_name: &DatabaseName, name: &TableName) -> PathBuf {
     let result = path.to_path_buf().join(&database_name.0).join(&name.0);
+
+    return result;
+}
+
+fn schema_path(path: &Path, database_name: &DatabaseName) -> PathBuf {
+    let result = path.to_path_buf().join(&database_name.0).join(".schema");
 
     return result;
 }
@@ -57,12 +66,16 @@ impl PersistenceManager for FileSystem {
             .create(database_path(&self.1, &database.name))
             .map_err(|error| SqlError::CouldNotStoreDatabase(database.name.clone(), error))?;
 
+        let mut futures = vec![self.save_schemas(database)];
+
         // The C in ACID stands for "can't be fucked" right?
-        let futures = database
-            .tables
-            .values()
-            .map(|table| self.save_table(&database.name, table))
-            .collect::<Vec<_>>();
+        futures.extend(
+            database
+                .tables
+                .values()
+                .map(|table| self.save_table(&database.name, table))
+                .collect::<Vec<_>>(),
+        );
 
         try_join_all(futures).await?;
 
@@ -79,22 +92,14 @@ impl PersistenceManager for FileSystem {
         // Create database object, then load tables
         let mut database = Database::new(name.clone());
 
-        let files = fs::read_dir(path).map_err(SqlError::FSError)?;
+        let mut schema = fs::read(path.join(".schema")).map_err(SqlError::CouldNotReadSchemas)?;
+        let schemas = self.0.deserialise_schemas(schema.as_mut_slice())?;
 
-        let mut futures = vec![];
-
-        for file in files {
-            let file = file.map_err(SqlError::FSError)?;
-
-            let name = file
-                .file_name()
-                .into_string()
-                .map_err(SqlError::CouldNotReadTable)?;
-
-            let name = TableName(name);
-
-            futures.push(self.load_table(&database.name, name));
-        }
+        let futures = schemas
+            .into_iter()
+            .map(|schema| schema.name)
+            .map(|name| self.load_table(&database.name, name))
+            .collect::<Vec<_>>();
 
         let tables = try_join_all(futures).await?;
 
@@ -108,10 +113,8 @@ impl PersistenceManager for FileSystem {
     async fn drop_database(&self, name: &DatabaseName) -> Result<()> {
         let path = database_path(&self.1, name);
 
-        fs::remove_dir_all(path)
-            .map_err(|error| SqlError::CouldNotRemoveDatabase(name.clone(), error))?;
-
-        return Ok(());
+        return fs::remove_dir_all(path)
+            .map_err(|error| SqlError::CouldNotRemoveDatabase(name.clone(), error));
     }
 
     async fn save_table(&self, database_name: &DatabaseName, table: &Table) -> Result<()> {
@@ -119,10 +122,8 @@ impl PersistenceManager for FileSystem {
 
         let data = self.0.serialise_table(table);
 
-        fs::write(path, data)
-            .map_err(|error| SqlError::CouldNotStoreTable(table.schema.name.clone(), error))?;
-
-        return Ok(());
+        return fs::write(path, data)
+            .map_err(|error| SqlError::CouldNotStoreTable(table.schema.name.clone(), error));
     }
 
     async fn load_table(&self, database_name: &DatabaseName, name: TableName) -> Result<Table> {
@@ -142,10 +143,37 @@ impl PersistenceManager for FileSystem {
     async fn drop_table(&self, database_name: &DatabaseName, name: &TableName) -> Result<()> {
         let path = table_path(&self.1, database_name, name);
 
-        fs::remove_file(path)
-            .map_err(|error| SqlError::CouldNotRemoveTable(name.clone(), error))?;
+        return fs::remove_file(path)
+            .map_err(|error| SqlError::CouldNotRemoveTable(name.clone(), error));
+    }
 
-        return Ok(());
+    async fn save_schemas(&self, database: &Database) -> Result<()> {
+        let path = schema_path(&self.1, &database.name);
+
+        let schemas = database
+            .tables
+            .values()
+            .map(|table| &table.schema)
+            .collect::<Vec<_>>();
+
+        let data = self.0.serialise_schemas(schemas);
+
+        return fs::write(path, data)
+            .map_err(|error| SqlError::CouldNotStoreSchemas(database.name.clone(), error));
+    }
+
+    async fn load_schemas(&self, database_name: &DatabaseName) -> Result<Vec<TableSchema>> {
+        let path = schema_path(&self.1, database_name);
+
+        if !path.exists() {
+            return Err(SqlError::SchemaDoesNotExist(database_name.clone()));
+        }
+
+        let mut data = fs::read(path).map_err(SqlError::FSError)?;
+
+        let schemas = self.0.deserialise_schemas(data.as_mut_slice())?;
+
+        return Ok(schemas);
     }
 }
 
@@ -180,5 +208,13 @@ impl PersistenceManager for NoOp {
 
     async fn drop_table(&self, _: &DatabaseName, _: &TableName) -> Result<()> {
         return Ok(());
+    }
+
+    async fn save_schemas(&self, _: &Database) -> Result<()> {
+        return Ok(());
+    }
+
+    async fn load_schemas(&self, _: &DatabaseName) -> Result<Vec<TableSchema>> {
+        return Ok(vec![]);
     }
 }
