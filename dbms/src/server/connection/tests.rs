@@ -177,7 +177,9 @@ async fn special_commands_basic() {
 
     let command = Command::Connect("test_db".into());
 
-    let result = handle_special_commands(command, &mut runtime).await.unwrap();
+    let result = handle_special_commands(command, &mut runtime)
+        .await
+        .unwrap();
 
     assert_eq!(result, ExecutionResult::None);
 

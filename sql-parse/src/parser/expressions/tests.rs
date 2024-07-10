@@ -109,20 +109,17 @@ fn column_definition_parser_basic() {
 
 #[test]
 fn column_definition_foreign_key() {
-    let inputs = [
-        (
-            "FOREIGN KEY (foreign_id) REFERENCES other_tbl(id)",
-            Some(E::ForeignKeyConstraint {
-                column: Box::new(E::Ident("foreign_id".into())),
-                foreign_table: Box::new(E::Ident("other_tbl".into())),
-                foreign_column: Box::new(E::Ident("id".into()))
-            }),
-        ),
-    ];
+    let inputs = [(
+        "FOREIGN KEY (foreign_id) REFERENCES other_tbl(id)",
+        Some(E::ForeignKeyConstraint {
+            column: Box::new(E::Ident("foreign_id".into())),
+            foreign_table: Box::new(E::Ident("other_tbl".into())),
+            foreign_column: Box::new(E::Ident("id".into())),
+        }),
+    )];
 
     test_all_cases(ForeignKeyConstraint, &inputs)
 }
-
 
 #[test]
 fn parse_all_columns_character() {

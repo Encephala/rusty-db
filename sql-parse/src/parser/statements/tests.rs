@@ -94,28 +94,26 @@ fn create_basic() {
 
 #[test]
 fn create_table_foreign_key() {
-    let inputs = [
-        (
-            "CREATE TABLE tbl (
+    let inputs = [(
+        "CREATE TABLE tbl (
                 id INT,
                 foreign_id INT,
                 FOREIGN KEY (foreign_id) REFERENCES other_tbl(id)
             );",
-            Some(S::Create {
-                what: CreateType::Table,
-                name: E::Ident("tbl".into()),
-                columns: Some(E::Array(vec![
-                    E::ColumnDefinition("id".into(), ColumnType::Int),
-                    E::ColumnDefinition("foreign_id".into(), ColumnType::Int),
-                    E::ForeignKeyConstraint {
-                        column: Box::new(E::Ident("foreign_id".into())),
-                        foreign_table: Box::new(E::Ident("other_tbl".into())),
-                        foreign_column: Box::new(E::Ident("id".into())),
-                    },
-                ])),
-            }),
-        ),
-    ];
+        Some(S::Create {
+            what: CreateType::Table,
+            name: E::Ident("tbl".into()),
+            columns: Some(E::Array(vec![
+                E::ColumnDefinition("id".into(), ColumnType::Int),
+                E::ColumnDefinition("foreign_id".into(), ColumnType::Int),
+                E::ForeignKeyConstraint {
+                    column: Box::new(E::Ident("foreign_id".into())),
+                    foreign_table: Box::new(E::Ident("other_tbl".into())),
+                    foreign_column: Box::new(E::Ident("id".into())),
+                },
+            ])),
+        }),
+    )];
 
     test_all_cases(Create, &inputs);
 }

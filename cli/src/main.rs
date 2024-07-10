@@ -7,7 +7,11 @@ use tokio::{
 };
 
 use dbms::{
-    serialisation::SerialisationManager, server::{Command, Message, MessageBody}, types::DatabaseName, utils::serialiser_version_to_serialiser, SqlError
+    serialisation::SerialisationManager,
+    server::{Command, Message, MessageBody},
+    types::DatabaseName,
+    utils::serialiser_version_to_serialiser,
+    SqlError,
 };
 
 async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
@@ -60,7 +64,9 @@ async fn session(address: impl ToSocketAddrs) -> Result<(), SqlError> {
             MessageBody::Close => break,
             MessageBody::Ok => (),
             MessageBody::Str(message) => println!("{message}"),
-            MessageBody::Command(uhoh) => panic!("Client received a command? What is going on ({uhoh:?})"),
+            MessageBody::Command(uhoh) => {
+                panic!("Client received a command? What is going on ({uhoh:?})")
+            }
             // Actually this never gets sent, errors get sent as a Str because serialisation is hard
             MessageBody::Error(error) => println!("ERROR: {error:?}"),
             MessageBody::RowSet(rowset) => println!("{rowset:?}"),

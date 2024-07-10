@@ -451,37 +451,42 @@ mod tests {
 
     #[test]
     fn foreign_key_constraint() {
-        let result = Lexer::lex("CREATE TABLE test_tbl (
+        let result = Lexer::lex(
+            "CREATE TABLE test_tbl (
             id INT,
             foreign_id INT,
             FOREIGN KEY (foreign_id) REFERENCES other_tbl(id)
-        );");
+        );",
+        );
 
-        assert_eq!(result, vec![
-            Create,
-            Table,
-            Ident("test_tbl".into()),
-            LParenthesis,
-            Ident("id".into()),
-            TypeInt,
-            Comma,
-            Ident("foreign_id".into()),
-            TypeInt,
-            Comma,
-            Foreign,
-            Key,
-            LParenthesis,
-            Ident("foreign_id".into()),
-            RParenthesis,
-            References,
-            Ident("other_tbl".into()),
-            LParenthesis,
-            Ident("id".into()),
-            RParenthesis,
-            RParenthesis,
-            Semicolon,
-            Eof,
-        ]);
+        assert_eq!(
+            result,
+            vec![
+                Create,
+                Table,
+                Ident("test_tbl".into()),
+                LParenthesis,
+                Ident("id".into()),
+                TypeInt,
+                Comma,
+                Ident("foreign_id".into()),
+                TypeInt,
+                Comma,
+                Foreign,
+                Key,
+                LParenthesis,
+                Ident("foreign_id".into()),
+                RParenthesis,
+                References,
+                Ident("other_tbl".into()),
+                LParenthesis,
+                Ident("id".into()),
+                RParenthesis,
+                RParenthesis,
+                Semicolon,
+                Eof,
+            ]
+        );
     }
 
     #[test]

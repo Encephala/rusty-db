@@ -143,7 +143,10 @@ impl Execute for Statement {
     }
 }
 
-async fn execute_statement(statement: &Statement, runtime: &mut Runtime) -> Result<ExecutionResult> {
+async fn execute_statement(
+    statement: &Statement,
+    runtime: &mut Runtime,
+) -> Result<ExecutionResult> {
     let database = runtime.get_database();
 
     match statement {
@@ -191,9 +194,8 @@ async fn execute_statement(statement: &Statement, runtime: &mut Runtime) -> Resu
 
                     let database = database.unwrap();
 
-                    let columns = try_destructure_array(
-                        columns.as_ref().ok_or(SqlError::InvalidParameter)?,
-                    )?;
+                    let columns =
+                        try_destructure_array(columns.as_ref().ok_or(SqlError::InvalidParameter)?)?;
 
                     let mut column_definitions = vec![];
                     let mut constraints = vec![];

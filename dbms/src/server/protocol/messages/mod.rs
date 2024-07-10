@@ -3,7 +3,9 @@ mod tests;
 
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-use crate::{database::RowSet, serialisation::SerialisationManager, types::DatabaseName, Result, SqlError};
+use crate::{
+    database::RowSet, serialisation::SerialisationManager, types::DatabaseName, Result, SqlError,
+};
 
 use super::header::{Header, MessageType, RawHeader};
 

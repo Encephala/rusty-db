@@ -241,23 +241,29 @@ impl Connection {
     }
 }
 
-async fn handle_special_commands(command: Command, runtime: &mut Runtime) -> Result<ExecutionResult> {
+async fn handle_special_commands(
+    command: Command,
+    runtime: &mut Runtime,
+) -> Result<ExecutionResult> {
     match command {
         Command::Connect(database_name) => {
             runtime.load(&database_name).await?;
 
             return Ok(ExecutionResult::None);
-        },
+        }
         Command::ListDatabases => {
             todo!();
-        },
+        }
         Command::ListTables => {
-            let database = runtime.database.as_ref().ok_or(SqlError::NoDatabaseSelected)?;
+            let database = runtime
+                .database
+                .as_ref()
+                .ok_or(SqlError::NoDatabaseSelected)?;
 
             let names = database.tables.keys().cloned().collect();
 
             return Ok(ExecutionResult::ListTables(names));
-        },
+        }
     }
 }
 
